@@ -40,6 +40,21 @@ def render_nsx_workbench() -> None:
         "Chỉ tải hồ sơ mà V có quyền xử lý trên máy chủ này. "
         "Chế độ này không tự gửi tới Gemini hoặc ghi Google Drive/Sheets."
     )
+    allowed = st.checkbox(
+        "Tôi xác nhận tài liệu dùng thử là tài liệu công khai hoặc đã ẩn thông tin nhạy cảm, "
+        "và được phép xử lý trên máy chủ Preview này.",
+        value=False, key="tdv_nsx_real_allowed_preview",
+    )
+    if not allowed:
+        st.info(
+            "Chức năng đọc hồ sơ thật đã có, nhưng Preview chưa tích hợp đăng nhập và "
+            "phân quyền doanh nghiệp. Hãy xác nhận phạm vi dữ liệu được phép thử "
+            "trước khi chọn tệp. Không đưa tài liệu mật hoặc báo giá nội bộ lên Preview."
+        )
+        st.session_state.pop("tdv_nsx_real_report", None)
+        st.session_state.pop("tdv_nsx_real_signature", None)
+        return
+
     product = st.file_uploader(
         "1. Hồ sơ sản phẩm tân dược (mỗi lần một sản phẩm)",
         type=list(ACCEPTED), key="tdv_nsx_real_product",
