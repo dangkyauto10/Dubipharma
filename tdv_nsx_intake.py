@@ -74,7 +74,11 @@ def _evidence_pair(raw: str) -> list[tuple[str, str]]:
     bits = [_cell(x) for x in raw.split("|") if _cell(x)]
     pairs: list[tuple[str, str]] = []
     if len(bits) >= 2:
-        # A table row may have "Tên hoạt chất | Acenocoumarol".
+        # Do NOT interpret header rows with two or more field labels as values:
+        # "Mã sản phẩm | Tên thuốc | Hoạt chất | ..." is NOT a product record.
+        if sum(bool(LOOKUP.get(normalize(bit.strip(":： ")))) for bit in bits) >= 2:
+            return []
+        # A key-value row may have "Tên hoạt chất | Acenocoumarol".
         label = LOOKUP.get(normalize(bits[0].strip(":： ")))
         if label:
             pairs.append((label, bits[1]))
