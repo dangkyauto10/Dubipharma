@@ -216,6 +216,35 @@ class AutoBatchTests(unittest.TestCase):
                             for r in quote_prices))
         wb.close()
 
+    def test_large_quotation_is_not_silently_treated_as_complete(self):
+        # Hitting a 250-row limit must not claim every price has been read.
+        many = workbook(
+            ["Mã sản phẩm", "Đơn giá báo giá"],
+            [["P001", i + 10] for i in range(251)],
+        )
+        report = analyze_auto([
+            ("products.xlsx", products()),
+            ("prices.xlsx", many),
+        ])
+        self.assertEqual(report["files"][1]["kind"], "QUOTE")
+        self.assertFalse(report["files"][1]["complete_read"])
+        self.assertFalse(report["links"])
+        self.assertTrue(any(x["status"] == "CHUA_DOC_DU_BANG_BAO_GIA"
+                            for x in report["review_queue"]))
+        self.assertTrue(any("giới hạn" in x for x in report["warnings"]))
+
+    def test_preview_nsx_has_no_visible_legacy_demo_workflow(self):
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[1]
+        code = (root / "app.py").read_text(encoding="utf-8")
+        nsx = code.split("    elif page == PAGES[2]:", 1)[1].split(
+            "    elif page == PAGES[3]:", 1
+        )[0]
+        self.assertIn("render_nsx_workbench()", nsx)
+        self.assertNotIn("DEMO", nsx)
+        self.assertNotIn("file_uploader", nsx)
+        self.assertNotIn("st.selectbox", nsx)
+
     def test_no_manual_upload_fields_or_product_picker_in_natural_ui(self):
         source = inspect.getsource(render_nsx_workbench)
         self.assertEqual(source.count("st.file_uploader("), 1)
