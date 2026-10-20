@@ -14,9 +14,11 @@ from tdv_ehsmt_intake import inspect_ehsmt_pdf, export_ehsmt_csv
 from see_pro_multiformat import ACCEPTED, extract_file, identify_codes
 from see_pro_structured import identify_document
 from see_pro_adapters import parse_tabular_document
+from see_pro_pdf_geometry import extract_g1_technical
 
 
-def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = False) -> dict:
+def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = False,
+                    deep_technical: bool = False) -> dict:
     """Classify before reading. Do not force every PDF to use G1.xxx."""
     result = {"documents": [], "rows": [], "warnings": [],
               "pdf_reports": [], "notices": [], "structured_tables": []}
@@ -67,6 +69,12 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
 
             if role == "BANG_EHSMT_PDF":
                 report = inspect_ehsmt_pdf(data)
+                deep_report = extract_g1_technical(data, report) if deep_technical else None
+                deep_by_code = ({r["MA_THUOC"]: r for r in deep_report["rows"]}
+                                if deep_report else {})
+                if deep_report:
+                    result["warnings"].extend(
+                        f"{filename}: kỹ thuật {finding}" for finding in deep_report["findings"])
                 result["pdf_reports"].append({
                     "Tệp": filename, "Số trang": report["total_pages"],
                     "Trang đã đọc": report["pages_processed"],
@@ -75,9 +83,13 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
                     "Chưa tách được": len(report["missing_summary"]),
                     "Mã chưa tách": ", ".join(report["missing_summary"][:20]),
                     "SHA256": report["sha256"],
+                    "Dòng kỹ thuật": deep_report["found_rows"] if deep_report else None,
+                    "Khớp tiền": deep_report["financial_crosschecked"] if deep_report else None,
+                    "Khớp mã phần": deep_report["part_crosschecked"] if deep_report else None,
                 })
                 result["warnings"].extend(f"{filename}: {w}" for w in report["warnings"])
                 for lot in report["lots"]:
+                    tech = deep_by_code.get(lot["MA_THUOC"])
                     result["rows"].append({
                         "FILE_NGUON": filename, "MA_GOI_THAU": "",
                         "MA_THUOC": lot["MA_THUOC"],
@@ -89,6 +101,19 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
                         "TRICH_DAN": lot.get("CHUNG_CU_BANG_TONG_HOP")
                                        or lot.get("TRICH_DOAN", ""),
                         "TRANG_THAI": lot.get("TRANG_THAI", "CAN_XAC_MINH"),
+                        **({
+                            "NONG_DO_HAM_LUONG": tech["NONG_DO_HAM_LUONG"],
+                            "DUONG_DUNG": tech["DUONG_DUNG"],
+                            "DANG_BAO_CHE": tech["DANG_BAO_CHE"],
+                            "DON_VI_TINH": tech["DON_VI_TINH"],
+                            "NHOM_THUOC": tech["NHOM_THUOC"],
+                            "SO_LUONG_CHINH": tech["SO_LUONG_CHINH"],
+                            "DON_GIA_KE_HOACH": tech["DON_GIA_KE_HOACH"],
+                            "TRANG_BANG_KY_THUAT": tech["TRANG_KY_THUAT"],
+                            "KHOP_SO_HOC": tech["KHOP_TONG_GIA_TRI"],
+                            "KHOP_MA_PHAN_LO": tech["KHOP_MA_PHAN_LO"],
+                            "EVIDENCE_KY_THUAT": tech["EVIDENCE"],
+                        } if tech else {}),
                     })
             else:
                 # Keep original generic evidence intake for Word, CSV, images, non-lot PDFs.
@@ -130,19 +155,23 @@ def render_ehsmt_workbench() -> None:
     ocr = st.checkbox(
         "Bật OCR cục bộ cho ảnh và trang PDF không có chữ (cần kiểm tra lại nguồn)",
         value=False, key="tdv_see_pro_ocr")
+    deep = st.checkbox("Đối chiếu sâu bảng kỹ thuật PDF G1 theo vị trí cột (chỉ áp dụng khi nhận diện đúng mẫu)",
+                       value=True, key="tdv_see_pro_deep")
     if files:
         digest = hashlib.sha256()
         for f in files:
             digest.update(f.name.encode("utf-8"))
             digest.update(f.getvalue())
         digest.update(str(ocr).encode())
+        digest.update(str(deep).encode())
         signature = digest.hexdigest()
         if st.session_state.get("tdv_see_pro_signature") != signature:
             st.session_state.pop("tdv_see_pro_analysis", None)
         if st.button("Đọc và kiểm toán bộ hồ sơ", key="tdv_see_pro_execute", type="primary"):
             with st.spinner("Đang đọc tài liệu và lập danh mục chứng cứ..."):
                 result = analyze_uploads(
-                    [(f.name, f.getvalue()) for f in files], enable_ocr=ocr)
+                    [(f.name, f.getvalue()) for f in files], enable_ocr=ocr,
+                    deep_technical=deep)
             st.session_state["tdv_see_pro_signature"] = signature
             st.session_state["tdv_see_pro_analysis"] = result
     else:
@@ -176,7 +205,7 @@ def render_ehsmt_workbench() -> None:
         st.markdown("**Kiểm kê bảng tổng hợp PDF E-HSMT**")
         st.dataframe(pdfs, hide_index=True, use_container_width=True)
     if not rows.empty:
-        evidence_rows = rows.drop(columns=["EVIDENCE", "verified"], errors="ignore")
+        evidence_rows = rows.drop(columns=["EVIDENCE", "EVIDENCE_KY_THUAT", "verified"], errors="ignore")
         term = st.text_input("Tìm theo mã G1, mã PP, hoạt chất hoặc chứng cứ", key="tdv_see_pro_keyword")
         if term.strip():
             mask = evidence_rows.fillna("").astype(str).apply(
