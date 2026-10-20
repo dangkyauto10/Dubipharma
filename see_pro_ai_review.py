@@ -290,6 +290,7 @@ def export_review_xlsx(report: dict) -> bytes:
     """Traceable human-review workbook; strings never become Excel formulas."""
     from io import BytesIO
     from openpyxl import Workbook
+    from see_pro_traceability import _format
 
     def safe(value: Any) -> str | int | float | None:
         if value is None:
@@ -343,6 +344,9 @@ def export_review_xlsx(report: dict) -> bytes:
         ("Cảnh báo", report.get("warnings")),
     ):
         metadata.append([safe(k), safe(value)])
+    for sheet in wb.worksheets:
+        sheet.freeze_panes = "D2" if sheet == findings else "A2"
+        _format(sheet, status_field="Trạng thái kiểm chứng" if sheet == findings else None)
     result = BytesIO()
     wb.save(result)
     return result.getvalue()
