@@ -107,11 +107,19 @@ def classify_document(filename: str, raw: bytes, *, enable_ocr: bool = False) ->
     # "hồ sơ sản phẩm" title or key:value rows. Inspect semantic column
     # headings to discover the category, not filenames or user selection.
     catalogue_count = 0
+    quote_table_present = False
     if source["type"] in ("xlsx", "xls", "csv", "docx"):
         catalogue = extract_product_rows(filename, raw)
         catalogue_count = catalogue["total_candidates"]
+        quote_table_present = bool(_table_items(
+            filename, raw, source["sha256"], "QUOTE"
+        ))
         if catalogue_count:
             scores["PRODUCT"] += 12
+        if quote_table_present:
+            # Price-per-drug table: QUOTE is the document role, even when the
+            # same table includes ingredient/strength/manufacturer columns.
+            scores["QUOTE"] += 18
     if scores["GMP_EXPLANATION"] >= 12:
         scores["GMP_CERT"] = 0
     # Quotation tables can contain ingredient/strength; explicit quote wins.
@@ -136,6 +144,7 @@ def classify_document(filename: str, raw: bytes, *, enable_ocr: bool = False) ->
         "role_candidates": candidates,
         "score": best, "reasons": reasons,
         "catalogue_products_found": catalogue_count,
+        "quotation_table_found": quote_table_present,
         "_extracted_source": source,
         "verified": False,
     }
@@ -248,6 +257,7 @@ def _match(product: dict, proof: dict) -> dict:
         "match_fields": agreed, "conflict_fields": different,
         "status": status,
         "source_sha256": proof["sha256"],
+        "evidence": dict(proof.get("evidence") or {}),
         "reason": ("Trường định danh không khớp: " + ", ".join(different))
                   if different else ("Trùng định danh nguồn, vẫn cần xác minh chứng cứ gốc"
                   if status == STATUS_MATCH else "Thiếu định danh chung xác thực"),
@@ -350,6 +360,17 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
                 "origin": "", "status": "CAN_PHAN_LOAI_LAI",
                 "candidate_products": [], "reason": "; ".join(c["reasons"]),
             })
+    if not products:
+        warnings.append(
+            "Không có danh mục/sản phẩm đủ định danh để liên kết chứng cứ; "
+            "không tự tạo thuốc hoặc ghép GMP/báo giá"
+        )
+        outstanding.append({
+            "file": "", "kind": "PRODUCT", "origin": "",
+            "status": "CHUA_NHAN_DIEN_DANH_MUC",
+            "candidate_products": [],
+            "reason": "Chưa có sản phẩm được nhận diện có nguồn kiểm chứng.",
+        })
     hashes = defaultdict(list)
     for meta in classified:
         hashes[meta["sha256"]].append(meta["filename"])
@@ -426,6 +447,14 @@ def export_auto_xlsx(report: dict) -> bytes:
             trace.append([safe_cell(x) for x in (
                 d["filename"], d["kind"], field, item["value"], item["source"],
                 item["sha256"], item["raw"],
+            )])
+    # Multi-line quotation prices belong to individual drug rows, not to a
+    # document-level scalar field. Preserve each exact quote cell as evidence.
+    for link in report["links"]:
+        for field, item in link.get("evidence", {}).items():
+            trace.append([safe_cell(x) for x in (
+                link["source_evidence"], link["evidence_kind"], field,
+                item["value"], item["source"], item["sha256"], item["raw"],
             )])
     disclaim = wb.create_sheet("GIOI_HAN_KIEM_TOAN")
     disclaim.append(["Giới hạn", "Ý nghĩa"])
