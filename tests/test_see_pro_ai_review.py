@@ -10,7 +10,7 @@ from io import BytesIO
 from openpyxl import Workbook
 
 from see_pro_ai_review import (
-    prepare_context, verify_model_output, review_with_gemini, AIReviewSchema,
+    prepare_context, verify_model_output, review_with_gemini, export_review_xlsx, AIReviewSchema,
     SUPPORTED_MODELS,
 )
 
@@ -36,9 +36,9 @@ def context():
     return {"lot_code": "G1.362", "context_sha256": "testhash", "documents": docs,
             "matching_lines": 2, "warnings": [], "context_truncated": False,
             "excerpts": [
-                {"source_id": "S0001", "filename": "ehsmt.pdf", "sha256": "abc",
+                {"source_id": "S0001", "file_id": "F001", "filename": "ehsmt.pdf", "sha256": "abc",
                  "locator": "Trang 25", "text": "G1.362 yêu cầu 4 mg"},
-                {"source_id": "S0002", "filename": "hdst.pdf", "sha256": "def",
+                {"source_id": "S0002", "file_id": "F002", "filename": "hdst.pdf", "sha256": "def",
                  "locator": "Trang 18", "text": "G1.362 cung cấp 4 mg"},
             ]}
 
@@ -148,6 +148,20 @@ class EvidenceAITests(unittest.TestCase):
         self.assertTrue(any("một phần trích đoạn" in w for w in report["warnings"]))
         self.assertFalse(report["is_full_document_review"])
         self.assertFalse(report["verified"])
+
+    def test_excel_export_formula_is_text_not_executed(self):
+        from openpyxl import load_workbook
+        c = context()
+        f = response_dict()
+        f["comparisons"][0]["explanation"] = "=HYPERLINK(\"https://example.net\", \"x\")"
+        review = verify_model_output(c, f)
+        excel = export_review_xlsx(review)
+        book = load_workbook(BytesIO(excel), read_only=True, data_only=False)
+        try:
+            value = book["DE_XUAT_AI_CAN_DUYET"]["M2"].value
+            self.assertTrue(value.startswith("'="))
+        finally:
+            book.close()
 
     def test_schema_refuses_made_up_status_and_extra_fields(self):
         invalid = response_dict()
