@@ -130,10 +130,12 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
     candidates: list[dict] = []
     chosen_index = None
     selection_required = False
+    catalogue_complete = True
     if kind == "PRODUCT" and source["type"] in ("xlsx", "xls", "csv", "docx"):
         from tdv_nsx_adaptive import extract_product_rows
         catalogue = extract_product_rows(filename, raw)
         candidates = catalogue["candidates"]
+        catalogue_complete = bool(catalogue["complete"])
         warnings.extend(catalogue["warnings"])
         if len(candidates) > 1 and selected_product_index is None:
             selection_required = True
@@ -161,7 +163,7 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
     return {
         "kind": kind, "kind_label": KINDS[kind], "filename": filename,
         "sha256": source["sha256"], "type": source["type"], "pages": source["pages"],
-        "complete_read": source["complete"] and not truncated,
+        "complete_read": source["complete"] and not truncated and catalogue_complete,
         "fields": fields, "evidence": evidence, "conflicts": dict(conflicts),
         "catalogue_candidates": candidates,
         "catalogue_selected_index": chosen_index,
