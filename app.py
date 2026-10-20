@@ -15,6 +15,8 @@ except ImportError:
     Image = None  # Fall back to original brand asset if Pillow is not installed.
 
 
+from tdv_demo_core import make_synthetic_pdf, read_pdf_pages, demo_audit, match_fields, legal_evidence
+
 st.set_page_config(
     page_title="TDV QC7 ONLINE | DUBIPHARMA DŨNG BÍCH",
     page_icon="💊", layout="wide", initial_sidebar_state="expanded"
@@ -624,25 +626,96 @@ with st.container(key="tdv_main_scroll"):
             unsafe_allow_html=True,
         )
     elif page == PAGES[3]:
-        st.markdown('<div class="tdv-page-title">🔬 TDV-IDP 3.0 · Kiểm chứng dữ liệu</div>',
+        st.markdown('<div class="tdv-page-title">🔬 TDV-IDP 3.0 · Bộ đọc – kiểm chứng hoạt động</div>',
                     unsafe_allow_html=True)
-        st.info("Chế độ trình diễn một quy tắc nhỏ; không phải bộ đọc PDF/OCR hoàn chỉnh.")
-        left,right=st.columns(2)
-        with left:
-            a=st.text_input("Hoạt chất E-HSMT (dữ liệu mẫu)",value="Acenocoumarol")
-            x=st.text_input("Hàm lượng E-HSMT",value="1 mg")
-        with right:
-            b=st.text_input("Hoạt chất NSX (dữ liệu mẫu)",value="Acenocoumarol")
-            y=st.text_input("Hàm lượng NSX",value="4 mg")
-        if st.button("Kiểm tra mẫu",type="primary"):
-            dx,dy=exact_simple_dose(x),exact_simple_dose(y)
-            if not a.strip() or not b.strip() or dx is None or dy is None:
-                st.warning("Không đủ dữ liệu/đơn vị chưa hỗ trợ — cần xác minh.")
-            elif normalized(a)==normalized(b) and dx==dy:
-                st.success("Hai trường mẫu khớp; chưa đủ để kết luận đáp ứng E-HSMT.")
+        st.warning("Bài thử dùng **PDF nhân tạo tạo ngay trong bộ nhớ**. Không phải E-HSMT thật, "
+                   "không gửi tệp lên dịch vụ AI, không lưu vào cơ sở dữ liệu và không ghi Google Sheets.")
+        with st.expander("1. Đọc hai trang PDF mẫu bằng hai bộ trích xuất", expanded=True):
+            try:
+                result = read_pdf_pages(make_synthetic_pdf(), maximum=4)
+                a, b, c = st.columns(3)
+                a.metric("Trang trong PDF mẫu", result["total_pages"])
+                b.metric("Trang đã đọc", result["pages_read"])
+                c.metric("Trường được xác minh chuyên môn", "0")
+                for record in result["pages"]:
+                    with st.expander(f"Trang {record['trang']} · Xem hai bộ đọc và chứng cứ", expanded=False):
+                        c1,c2 = st.columns(2)
+                        with c1:
+                            st.caption("PyMuPDF · lớp chữ PDF")
+                            st.code(record["PyMuPDF"], language="text")
+                        with c2:
+                            st.caption("pdfplumber · cách trích xuất thứ hai")
+                            st.code(record["pdfplumber"] or "CHƯA TRÍCH XUẤT", language="text")
+                        st.caption("CHƯA XÁC MINH: hai bộ đọc có thể cùng phụ thuộc lớp chữ PDF.")
+                if result["warnings"]:
+                    for w in result["warnings"]:
+                        st.warning(w)
+                else:
+                    st.info("Không phát hiện sai khác token số ở trang mẫu. Đây KHÔNG phải chứng nhận đọc đúng.")
+            except Exception as exc:
+                st.error(f"Bộ đọc mẫu chưa chạy được: {type(exc).__name__}: {exc}")
+                st.caption("Hãy xem nhật ký ứng dụng và kiểm tra PyMuPDF/pdfplumber; không tự thay bằng số liệu suy đoán.")
+        with st.expander("2. Kiểm tra hoạt chất – hàm lượng – nhà máy", expanded=True):
+            checks = demo_audit()
+            st.table([
+                {"Phép kiểm": "Acenocoumarol 1 mg so với 1 mg",
+                 "Kết quả": checks["same_strength"]["status"],
+                 "Ý nghĩa": "Chỉ trùng 4 trường mẫu; KHÔNG xác nhận đủ điều kiện thầu"},
+                {"Phép kiểm": "Acenocoumarol 4 mg so với 1 mg",
+                 "Kết quả": checks["different_strength"]["status"],
+                 "Ý nghĩa": "Bắt buộc phát hiện khác hàm lượng"},
+                {"Phép kiểm": "GMP Mỹ Thới cho thuốc nhà máy Bình Hòa",
+                 "Kết quả": checks["wrong_gmp_factory"]["status"],
+                 "Ý nghĩa": "Không được lấy giấy khác nhà máy"},
+                {"Phép kiểm": "Công văn giải trình Mỹ Thới",
+                 "Kết quả": checks["gmp_explanation"]["status"],
+                 "Ý nghĩa": "Không được suy luận thành chứng nhận GMP gia hạn"},
+            ])
+            if (checks["different_strength"]["status"] == "KHONG_KHOP"
+                and checks["wrong_gmp_factory"]["status"] == "CHAN_LIEN_KET"
+                and checks["gmp_explanation"]["status"] == "CHUNG_CU_BO_SUNG"):
+                st.success("Các chốt kiểm soát trong bộ dữ liệu mẫu đang cho kết quả mong đợi.")
             else:
-                st.error("Sai khác hoạt chất hoặc hàm lượng — không tự ghép ứng viên.")
-        st.caption("Chưa xử lý tên muối, phối hợp hoạt chất, dạng bào chế, đường dùng và pháp lý GMP.")
+                st.error("Bộ dữ liệu mẫu có sai khác ngoài dự kiến: cần dừng nghiệm thu.")
+        st.info("Bước kế tiếp: tiếp nhận E-HSMT thật có phân quyền, lưu bản gốc/chứng cứ bền vững, "
+                "đọc toàn bộ trang và kiểm thử với đáp án chuẩn trước khi ghi dữ liệu chính thức.")
+    elif page == PAGES[5]:
+        st.markdown('<div class="tdv-page-title">⚖️ So sánh kỹ thuật · Kiểm chứng bằng dữ liệu mẫu</div>',
+                    unsafe_allow_html=True)
+        st.caption("Không lấy dữ liệu thật từ nhà sản xuất. Các trường mẫu dưới đây chỉ minh họa quy tắc an toàn.")
+        drug = st.selectbox("Mẫu ứng viên nhà sản xuất", ["Acenocoumarol 1 mg", "Acenocoumarol 4 mg"])
+        dose = drug.rsplit(" ", 2)[-2] + " " + drug.rsplit(" ", 1)[-1]
+        lot = {"hoat_chat": "Acenocoumarol", "ham_luong": "4 mg",
+               "dang_bao_che": "Viên nén", "duong_dung": "Uống"}
+        product = dict(lot, ham_luong=dose)
+        result = match_fields(lot, product)
+        st.table([
+            {"Thông tin": "Hoạt chất", "E-HSMT (mẫu)": lot["hoat_chat"], "NSX (mẫu)": product["hoat_chat"]},
+            {"Thông tin": "Hàm lượng", "E-HSMT (mẫu)": lot["ham_luong"], "NSX (mẫu)": product["ham_luong"]},
+            {"Thông tin": "Dạng bào chế", "E-HSMT (mẫu)": lot["dang_bao_che"], "NSX (mẫu)": product["dang_bao_che"]},
+            {"Thông tin": "Đường dùng", "E-HSMT (mẫu)": lot["duong_dung"], "NSX (mẫu)": product["duong_dung"]},
+        ])
+        if result["status"] == "KHONG_KHOP":
+            st.error("KHÔNG KHỚP: " + "; ".join(result["mismatches"]))
+        elif result["status"] == "CAN_XAC_MINH":
+            st.warning("CẦN XÁC MINH: " + "; ".join(result["uncertainties"]))
+        else:
+            st.info("Khớp 4 trường mẫu nhưng vẫn CHƯA XÁC MINH SĐK, nhóm thầu, GMP và chứng cứ.")
+        st.warning("Không được tự chuyển kết quả kiểm tra mẫu thành kết luận 'đáp ứng thầu'.")
+    elif page == PAGES[4]:
+        st.markdown('<div class="tdv-page-title">🛡️ Chứng cứ nhà sản xuất · Kiểm tra nhà máy và loại văn bản</div>',
+                    unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        with c1:
+            factory = st.selectbox("Nhà máy ghi trong văn bản (mẫu)", ["Mỹ Thới", "Bình Hòa", "Chưa rõ"])
+            kind = st.selectbox("Loại văn bản (mẫu)", ["Giấy chứng nhận GMP", "Công văn giải trình", "Quyết định đánh giá"])
+        with c2:
+            target = st.selectbox("Nhà máy sản xuất sản phẩm (mẫu)", ["Bình Hòa", "Mỹ Thới", "Chưa rõ"])
+        x = legal_evidence(kind, "" if factory == "Chưa rõ" else factory,
+                           "" if target == "Chưa rõ" else target)
+        st.write("**Kết quả quy tắc:**", x["status"])
+        st.info(x["note"])
+        st.caption("Không có giấy GMP thật được lưu hoặc xác nhận trên trang này.")
     elif page == PAGES[-1]:
         st.markdown('<div class="tdv-page-title">☁️ Tiến độ Online</div>',unsafe_allow_html=True)
         st.table([
@@ -652,7 +725,7 @@ with st.container(key="tdv_main_scroll"):
             {"Hạng mục":"Đăng nhập và phân quyền nghiệp vụ","Trạng thái":"CHƯA TÍCH HỢP"},
             {"Hạng mục":"Google Sheets","Trạng thái":"CHƯA KẾT NỐI / KHÔNG GHI"},
             {"Hạng mục":"Dữ liệu và kho chứng cứ","Trạng thái":"CHƯA KẾT NỐI"},
-            {"Hạng mục":"Bộ đọc đa tầng IDP 3.0","Trạng thái":"CHƯA TÍCH HỢP BẢN CLOUD"},
+            {"Hạng mục":"Bộ đọc đa tầng IDP 3.0","Trạng thái":"ĐANG THỬ TRÊN PDF NHÂN TẠO; hồ sơ thật chưa kết nối"},
         ])
         st.warning("Không cho phép vận hành hồ sơ thật khi chưa hoàn thành dữ liệu, xác thực và kiểm thử an toàn.")
     else:
