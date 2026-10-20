@@ -463,7 +463,6 @@ PAGES = [
     "📊 Báo cáo lãnh đạo",
     "🔗 Google Sheets",
     "☁️ Tình trạng Online",
-    "🧪 SEE PRO · Test tích hợp",
 ]
 
 if "tdv_section" not in st.session_state:
@@ -654,57 +653,57 @@ with st.container(key="tdv_main_scroll"):
             ' Hiện chưa tạo hoặc ghi dữ liệu DEMO vào Google Sheets.</div>',
             unsafe_allow_html=True,
         )
-    elif page == "🧪 SEE PRO · Test tích hợp":
-        from see_pro_streamlit import render_see_pro
-        render_see_pro()
     elif page == PAGES[1]:
-        st.markdown("### E-HSMT · Tiếp nhận và đọc hồ sơ")
-        st.caption("Tải hồ sơ E-HSMT thật để đọc và kiểm kê các mã danh mục kèm trang chứng cứ. Chưa kết luận đáp ứng thầu.")
-        from tdv_ehsmt_intake import inspect_ehsmt_pdf, export_ehsmt_csv
-        real_file = st.file_uploader("Chọn PDF E-HSMT thật (tối đa 40 MB, 1.200 trang)",
-                                     type=["pdf"], key="tdv_real_ehsmt_pdf")
-        if real_file is not None:
-            import hashlib
-            digest = hashlib.sha256(real_file.getvalue()).hexdigest()
-            if st.session_state.get("tdv_real_ehsmt_sha") != digest:
-                st.session_state.pop("tdv_real_ehsmt_result", None)
-            if st.button("Đọc toàn bộ trang E-HSMT và kiểm kê mã thuốc", key="tdv_real_ehsmt_run"):
-                try:
-                    with st.spinner("Đang đọc toàn bộ trang và kiểm kê mã thuốc..."):
-                        parsed = inspect_ehsmt_pdf(real_file.getvalue())
-                    st.session_state["tdv_real_ehsmt_result"] = parsed
-                    st.session_state["tdv_real_ehsmt_sha"] = digest
-                except (ValueError, RuntimeError, OSError) as exc:
-                    st.error(f"Chưa đọc được hồ sơ: {exc}")
-            parsed = st.session_state.get("tdv_real_ehsmt_result")
-            if parsed and st.session_state.get("tdv_real_ehsmt_sha") == digest:
-                a, b, c = st.columns(3)
-                a.metric("Trang đã đọc", f"{parsed['pages_processed']}/{parsed['total_pages']}")
-                b.metric("Mã thuốc ứng viên", parsed["lot_count"])
-                st.caption(f"Đã tách chắc chắn {parsed.get('summary_rows', 0)}/{parsed['lot_count']} dòng bảng tổng hợp; dòng thiếu phải kiểm tra.")
-                c.metric("Trang thiếu lớp chữ", len(parsed["pages_without_text"]))
-                st.warning(parsed["note"])
-                if parsed.get("missing_summary"):
-                    st.error("Mã chưa tách được dòng bảng tổng hợp: " + ", ".join(parsed["missing_summary"][:30]))
-                for warning in parsed["warnings"]:
-                    st.warning(warning)
-                import pandas as pd
-                frame = pd.DataFrame(parsed["lots"])
-                display_cols = ["MA_THUOC", "MA_PHAN_LO", "HOAT_CHAT_CHUAN", "GIA_TRI_UOC_TINH", "BAO_DAM_DU_THAU", "TRANG_BANG_TONG_HOP", "TRANG_NGUON", "TRICH_DOAN", "TRANG_THAI"]
-                frame = frame.reindex(columns=display_cols)
-                if not frame.empty:
-                    frame["TRANG_NGUON"] = frame["TRANG_NGUON"].map(lambda v: ", ".join(map(str, v)))
-                    term = st.text_input("Lọc mã thuốc hoặc đoạn chứng cứ", key="tdv_real_ehsmt_filter")
-                    if term:
-                        frame = frame[frame.astype(str).apply(
-                            lambda col: col.str.contains(term, case=False, regex=False)).any(axis=1)]
-                    st.dataframe(frame, hide_index=True, use_container_width=True)
-                st.download_button("Tải báo cáo kiểm tra JSON", json.dumps(parsed, ensure_ascii=False, indent=2).encode("utf-8"),
-                                   file_name="TDV_EHSMT_BAO_CAO_KIEM_TRA.json", mime="application/json",
-                                   key="tdv_real_ehsmt_json")
-                st.download_button("Tải bảng kiểm kê CSV", export_ehsmt_csv(parsed),
-                                   file_name="TDV_EHSMT_KIEM_KE_CHUA_XAC_MINH.csv", mime="text/csv",
-                                   key="tdv_real_ehsmt_export")
+        from see_pro_workbench import render_ehsmt_workbench
+        render_ehsmt_workbench()
+        with st.expander("Bộ đọc PDF trước nâng cấp – đối chiếu dự phòng", expanded=False):
+            st.markdown("### E-HSMT · Tiếp nhận và đọc hồ sơ")
+            st.caption("Tải hồ sơ E-HSMT thật để đọc và kiểm kê các mã danh mục kèm trang chứng cứ. Chưa kết luận đáp ứng thầu.")
+            from tdv_ehsmt_intake import inspect_ehsmt_pdf, export_ehsmt_csv
+            real_file = st.file_uploader("Chọn PDF E-HSMT thật (tối đa 40 MB, 1.200 trang)",
+                                         type=["pdf"], key="tdv_real_ehsmt_pdf")
+            if real_file is not None:
+                import hashlib
+                digest = hashlib.sha256(real_file.getvalue()).hexdigest()
+                if st.session_state.get("tdv_real_ehsmt_sha") != digest:
+                    st.session_state.pop("tdv_real_ehsmt_result", None)
+                if st.button("Đọc toàn bộ trang E-HSMT và kiểm kê mã thuốc", key="tdv_real_ehsmt_run"):
+                    try:
+                        with st.spinner("Đang đọc toàn bộ trang và kiểm kê mã thuốc..."):
+                            parsed = inspect_ehsmt_pdf(real_file.getvalue())
+                        st.session_state["tdv_real_ehsmt_result"] = parsed
+                        st.session_state["tdv_real_ehsmt_sha"] = digest
+                    except (ValueError, RuntimeError, OSError) as exc:
+                        st.error(f"Chưa đọc được hồ sơ: {exc}")
+                parsed = st.session_state.get("tdv_real_ehsmt_result")
+                if parsed and st.session_state.get("tdv_real_ehsmt_sha") == digest:
+                    a, b, c = st.columns(3)
+                    a.metric("Trang đã đọc", f"{parsed['pages_processed']}/{parsed['total_pages']}")
+                    b.metric("Mã thuốc ứng viên", parsed["lot_count"])
+                    st.caption(f"Đã tách chắc chắn {parsed.get('summary_rows', 0)}/{parsed['lot_count']} dòng bảng tổng hợp; dòng thiếu phải kiểm tra.")
+                    c.metric("Trang thiếu lớp chữ", len(parsed["pages_without_text"]))
+                    st.warning(parsed["note"])
+                    if parsed.get("missing_summary"):
+                        st.error("Mã chưa tách được dòng bảng tổng hợp: " + ", ".join(parsed["missing_summary"][:30]))
+                    for warning in parsed["warnings"]:
+                        st.warning(warning)
+                    import pandas as pd
+                    frame = pd.DataFrame(parsed["lots"])
+                    display_cols = ["MA_THUOC", "MA_PHAN_LO", "HOAT_CHAT_CHUAN", "GIA_TRI_UOC_TINH", "BAO_DAM_DU_THAU", "TRANG_BANG_TONG_HOP", "TRANG_NGUON", "TRICH_DOAN", "TRANG_THAI"]
+                    frame = frame.reindex(columns=display_cols)
+                    if not frame.empty:
+                        frame["TRANG_NGUON"] = frame["TRANG_NGUON"].map(lambda v: ", ".join(map(str, v)))
+                        term = st.text_input("Lọc mã thuốc hoặc đoạn chứng cứ", key="tdv_real_ehsmt_filter")
+                        if term:
+                            frame = frame[frame.astype(str).apply(
+                                lambda col: col.str.contains(term, case=False, regex=False)).any(axis=1)]
+                        st.dataframe(frame, hide_index=True, use_container_width=True)
+                    st.download_button("Tải báo cáo kiểm tra JSON", json.dumps(parsed, ensure_ascii=False, indent=2).encode("utf-8"),
+                                       file_name="TDV_EHSMT_BAO_CAO_KIEM_TRA.json", mime="application/json",
+                                       key="tdv_real_ehsmt_json")
+                    st.download_button("Tải bảng kiểm kê CSV", export_ehsmt_csv(parsed),
+                                       file_name="TDV_EHSMT_KIEM_KE_CHUA_XAC_MINH.csv", mime="text/csv",
+                                       key="tdv_real_ehsmt_export")
     elif page == PAGES[2]:
         st.markdown('<div class="tdv-page-title">💊 Hồ sơ nhà sản xuất · Nạp và gắn chứng cứ</div>',
                     unsafe_allow_html=True)
