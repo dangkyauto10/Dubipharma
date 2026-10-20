@@ -93,7 +93,8 @@ def _evidence_pair(raw: str) -> list[tuple[str, str]]:
     return pairs
 
 
-def _read_one(filename: str, kind: str, raw: bytes, ocr: bool) -> dict:
+def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
+              selected_product_index: int | None = None) -> dict:
     if kind not in KINDS:
         raise ValueError("Loại tài liệu không hợp lệ")
     if not filename or filename.rsplit(".", 1)[-1].lower() not in ACCEPTED:
@@ -126,6 +127,34 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool) -> dict:
             elif field not in fields:
                 fields[field] = value
                 evidence[field] = citation
+    candidates: list[dict] = []
+    chosen_index = None
+    selection_required = False
+    if kind == "PRODUCT" and source["type"] in ("xlsx", "xls", "csv", "docx"):
+        from tdv_nsx_adaptive import extract_product_rows
+        catalogue = extract_product_rows(filename, raw)
+        candidates = catalogue["candidates"]
+        warnings.extend(catalogue["warnings"])
+        if len(candidates) > 1 and selected_product_index is None:
+            selection_required = True
+            warnings.append(
+                f"Có {len(candidates)} sản phẩm trong bảng; phải chọn đúng một dòng trước khi liên kết GMP/báo giá")
+        if selected_product_index is not None:
+            if type(selected_product_index) is not int or not 0 <= selected_product_index < len(candidates):
+                raise ValueError("Chỉ số sản phẩm được chọn không còn hợp lệ, vui lòng đọc lại hồ sơ")
+            chosen_index = selected_product_index
+        elif len(candidates) == 1:
+            chosen_index = 0
+        if chosen_index is not None:
+            picked = candidates[chosen_index]
+            for name, value in picked["fields"].items():
+                citation = picked["evidence"][name]
+                if name in fields and normalize(fields[name]) != normalize(value):
+                    conflicts[name].append(citation)
+                elif name not in fields:
+                    fields[name] = value
+                    evidence[name] = citation
+            warnings.append("Bảng sản phẩm đọc theo tiêu đề cột; thông tin CHƯA XÁC MINH với tệp gốc")
     if conflicts:
         warnings.append("Có trường ghi nhiều giá trị không thống nhất: " +
                         ", ".join(sorted(conflicts)))
@@ -134,6 +163,9 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool) -> dict:
         "sha256": source["sha256"], "type": source["type"], "pages": source["pages"],
         "complete_read": source["complete"] and not truncated,
         "fields": fields, "evidence": evidence, "conflicts": dict(conflicts),
+        "catalogue_candidates": candidates,
+        "catalogue_selected_index": chosen_index,
+        "catalogue_selection_required": selection_required,
         "warnings": warnings, "verified": False,
         "gmp_confirmed": False, "registration_confirmed": False,
         "quote_approved": False, "authorization_confirmed": False,
@@ -155,6 +187,16 @@ def _link(product: dict, document: dict) -> dict:
     kind = document["kind"]
     anchors = ANCHORS[kind]
     p_fields, d_fields = product["fields"], document["fields"]
+    if product.get("catalogue_selection_required"):
+        return {
+            "filename": document["filename"], "kind": kind,
+            "status": "CHUA_CHON_SAN_PHAM",
+            "matching_fields": [], "conflicting_fields": [],
+            "unavailable_fields": list(anchors),
+            "reasons": ["Danh mục có nhiều sản phẩm; chưa chọn dòng được đối chiếu"],
+            "source_sha256": document["sha256"], "verified": False,
+            "gmp_confirmed": False, "quote_approved": False, "bid_eligible": False,
+        }
     ambiguous = set(product["conflicts"]) | set(document["conflicts"])
     conflict, matches, missing = [], [], []
     for field in anchors:
@@ -215,6 +257,7 @@ def _link(product: dict, document: dict) -> dict:
 
 def analyze_nsx_documents(
     files: list[tuple[str, str, bytes]], *, enable_ocr: bool = False,
+    selected_product_index: int | None = None,
 ) -> dict:
     """One product dossier + zero/many independent evidence documents.
 
@@ -229,7 +272,10 @@ def analyze_nsx_documents(
     warnings = []
     for kind, filename, data in files:
         try:
-            parsed = _read_one(filename, kind, data, enable_ocr)
+            parsed = _read_one(
+                filename, kind, data, enable_ocr,
+                selected_product_index=selected_product_index if kind == "PRODUCT" else None,
+            )
             records.append(parsed)
             warnings.extend(f"{filename}: {w}" for w in parsed["warnings"])
         except Exception as exc:
@@ -272,6 +318,7 @@ def analyze_nsx_documents(
         warnings.append("Có tệp trùng nội dung SHA256: " + str(duplicates))
     return {
         "mode": "NSX_REAL_SOURCE_READ_ONLY",
+        "selected_product_index": selected_product_index,
         "product": product, "documents": attachments, "links": links,
         "warnings": warnings,
         "summary": {
