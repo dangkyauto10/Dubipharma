@@ -1,0 +1,29 @@
+name: TDV Streamlit External Health Diagnostics
+on:
+  push:
+    branches: [tdv-see-pro-nsx-public-corpus-20261021]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check Streamlit endpoint independently of GitHub tests
+        shell: bash
+        run: |
+          set +e
+          URL="https://dangkyauto10-dubipharma-app-tdv-qc7-online-preview-20261-k4zpor.streamlit.app"
+          for PATHNAME in "/" "/_stcore/health" "/_stcore/host-config"; do
+            echo "=== TEST: ${PATHNAME} ==="
+            curl -sSL --http1.1 --max-time 25 --connect-timeout 10 \
+              -o /tmp/streamlit_response -D /tmp/streamlit_headers \
+              -w 'curl_response_http=%{http_code} content_type=%{content_type} total_sec=%{time_total} bytes=%{size_download} remote_ip=%{remote_ip}\n' \
+              "${URL}${PATHNAME}"
+            echo "curl_exit=$?"
+            head -n 18 /tmp/streamlit_headers 2>/dev/null
+            head -c 200 /tmp/streamlit_response 2>/dev/null | tr '\n' ' '
+            echo
+          done
+          echo "NO USER DOCUMENTS OR CREDENTIALS ACCESSED"
