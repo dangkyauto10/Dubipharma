@@ -463,6 +463,7 @@ PAGES = [
     "📊 Báo cáo lãnh đạo",
     "🔗 Google Sheets",
     "☁️ Tình trạng Online",
+    "🧪 SEE PRO · Test tích hợp",
 ]
 
 if "tdv_section" not in st.session_state:
@@ -653,6 +654,9 @@ with st.container(key="tdv_main_scroll"):
             ' Hiện chưa tạo hoặc ghi dữ liệu DEMO vào Google Sheets.</div>',
             unsafe_allow_html=True,
         )
+    elif page == "🧪 SEE PRO · Test tích hợp":
+        from see_pro_streamlit import render_see_pro
+        render_see_pro()
     elif page == PAGES[1]:
         st.markdown("### E-HSMT · Tiếp nhận và đọc hồ sơ")
         st.caption("Tải hồ sơ E-HSMT thật để đọc và kiểm kê các mã danh mục kèm trang chứng cứ. Chưa kết luận đáp ứng thầu.")
