@@ -6,7 +6,7 @@ import re
 
 def _summary_rows(raw: str, page_no: int) -> list:
     """Parse only unambiguous same-line table records; never invent missing values."""
-    pattern = re.compile(r"^\\s*(\\d{1,4})\\s+(PP\\d{10})\\s+(G1\\.\\d{3})\\s+(.+?)\\s{2,}(\\d[\\d.]*)\\s+(\\d[\\d.]*)\\s*$")
+    pattern = re.compile(r"^\s*(\d{1,4})\s+(PP\d{10})\s+(G1\.\d{3})\s+(.+?)\s{2,}(\d[\d.]*)\s+(\d[\d.]*)\s*$")
     rows = []
     for line in raw.splitlines():
         match = pattern.fullmatch(line)
