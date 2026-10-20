@@ -237,3 +237,149 @@ def render_ehsmt_workbench() -> None:
         data=json.dumps(analysis, ensure_ascii=False, indent=2, default=str).encode("utf-8"),
         file_name="TDV_SEE_PRO_AUDIT.json", mime="application/json",
         key="tdv_see_pro_json")
+
+    render_ai_evidence_review(files, ocr=ocr, upload_signature=signature)
+
+
+def render_ai_evidence_review(files, *, ocr: bool, upload_signature: str) -> None:
+    """Optional second-stage analysis within the EXISTING E-HSMT page.
+
+    Source snippets are previewed locally before user-triggered external request.
+    No raw file is sent to Google and no model output is marked verified.
+    """
+    from see_pro_ai_review import (
+        SUPPORTED_MODELS, prepare_context, review_with_gemini, export_review_xlsx,
+    )
+    import os
+
+    with st.expander("🧠 SEE PRO · Đối chiếu chứng cứ bằng AI (tùy chọn)", expanded=False):
+        st.info(
+            "Bộ đọc PDF/Excel/Word vẫn hoạt động độc lập, không cần Gemini. "
+            "AI chỉ gợi ý đối chiếu cho MỘT mã thuốc hoặc phần/lô mỗi lượt; "
+            "không quyết định đạt thầu, không tự ghi Sheets."
+        )
+        st.warning(
+            "Nếu bật Gemini, các ĐOẠN TRÍCH hiển thị bên dưới sẽ được gửi đến "
+            "Google để phân tích và có thể phát sinh chi phí API. "
+            "Không dùng dữ liệu bí mật trên dịch vụ miễn phí: theo điều khoản Google, "
+            "dữ liệu API miễn phí có thể được dùng để cải thiện dịch vụ. "
+            "Bộ đọc cục bộ không gửi hồ sơ ra ngoài."
+        )
+        code = st.text_input(
+            "Mã thuốc hoặc mã phần/lô cần đối chiếu (ví dụ: G1.362, GE841.001, PP2600428741)",
+            key="tdv_see_pro_ai_lot",
+        ).strip()
+        model = st.selectbox("Mô hình Gemini", SUPPORTED_MODELS,
+                             key="tdv_see_pro_ai_model")
+        packet = st.session_state.get("tdv_see_pro_ai_packet")
+        selection = (upload_signature, code.lower())
+        if packet and packet.get("selection") != selection:
+            packet = None
+            st.session_state.pop("tdv_see_pro_ai_packet", None)
+            st.session_state.pop("tdv_see_pro_ai_result", None)
+
+        if st.button("1. Xem trước các đoạn trích sẽ gửi", disabled=not bool(code),
+                     key="tdv_see_pro_ai_prepare"):
+            try:
+                candidate = prepare_context(
+                    [(f.name, f.getvalue()) for f in files],
+                    lot_code=code, enable_ocr=ocr,
+                )
+                packet = {"selection": selection, "context": candidate}
+                st.session_state["tdv_see_pro_ai_packet"] = packet
+                st.session_state.pop("tdv_see_pro_ai_result", None)
+            except (ValueError, RuntimeError, OSError, ImportError) as exc:
+                st.error(f"Chưa tạo được trích đoạn: {type(exc).__name__}: {exc}")
+                packet = None
+
+        if packet:
+            context = packet["context"]
+            st.caption(
+                f"{len(context['excerpts'])} đoạn được chọn · "
+                f"{context['matching_lines']} dòng chứa mã · "
+                f"SHA256 gói bằng chứng: {context['context_sha256'][:20]}…"
+            )
+            if context["context_truncated"]:
+                st.warning(
+                    "Trích đoạn đã bị giới hạn để kiểm soát chi phí. "
+                    "Đây KHÔNG phải kiểm tra toàn bộ hồ sơ."
+                )
+            for warning in context["warnings"]:
+                st.warning(warning)
+            st.dataframe([{
+                "ID": e["source_id"],
+                "Tệp": e["filename"],
+                "Trang/Sheet/Dòng": e["locator"],
+                "Đúng nguyên văn sẽ gửi": e["text"],
+            } for e in context["excerpts"]], use_container_width=True, hide_index=True)
+            consent = st.checkbox(
+                "Tôi đã xem các đoạn trích, được phép chia sẻ dữ liệu này với Google Gemini "
+                "và chấp nhận khả năng phát sinh chi phí API.",
+                value=False,
+                key=f"tdv_see_pro_ai_approve_{context['context_sha256'][:16]}",
+            )
+            if st.button(
+                "2. Gửi đoạn trích cho Gemini và kiểm chứng nguồn",
+                disabled=not consent or context["matching_lines"] == 0,
+                key="tdv_see_pro_ai_execute",
+            ):
+                try:
+                    try:
+                        key = st.secrets.get("GEMINI_API_KEY", "")
+                    except Exception:
+                        key = ""
+                    key = key or os.getenv("GEMINI_API_KEY", "")
+                    if not key:
+                        st.error(
+                            "Chưa cấu hình GEMINI_API_KEY ở Streamlit Secrets hoặc "
+                            "biến môi trường. Không gửi dữ liệu."
+                        )
+                    else:
+                        with st.spinner("Gemini đang đề xuất đối chiếu; Python kiểm tra lại trích dẫn…"):
+                            report = review_with_gemini(
+                                context, api_key=key, model=model,
+                                explicitly_authorized=True,
+                            )
+                        st.session_state["tdv_see_pro_ai_result"] = {
+                            "selection": selection, "model": model, "report": report,
+                        }
+                except Exception:
+                    # Do not echo exception text: provider errors can expose request content.
+                    st.error("Lần gọi Gemini chưa hoàn tất. Không ghi nhận kết quả; hãy kiểm tra API/giới hạn và thử lại.")
+
+            stored = st.session_state.get("tdv_see_pro_ai_result")
+            if stored and stored["selection"] == selection and stored["model"] == model:
+                report = stored["report"]
+                st.warning(
+                    "Đây là GỢI Ý của AI. 'Trích dẫn khớp' chỉ xác nhận đoạn chữ "
+                    "có thật trong nguồn, KHÔNG chứng minh yêu cầu kỹ thuật đã đạt."
+                )
+                st.caption(report.get("model_note", ""))
+                grid = [{
+                    "Mã": f["MA_THUOC_HOAC_LO"],
+                    "Trường": f["TRUONG"],
+                    "Gợi ý AI": f["AI_DE_XUAT"],
+                    "Bộ kiểm tra độc lập": f["TRANG_THAI"],
+                    "Trích dẫn HSMT": f["CHUNG_CU_YEU_CAU"].get("locator", ""),
+                    "Trích dẫn hồ sơ đáp ứng": f["CHUNG_CU_DE_XUAT"].get("locator", ""),
+                } for f in report["findings"]]
+                if grid:
+                    st.dataframe(grid, use_container_width=True, hide_index=True)
+                else:
+                    st.info("Chưa có đủ cặp chứng cứ để đề xuất đối chiếu cho mã này.")
+                for warning in report["warnings"]:
+                    st.warning(warning)
+                st.download_button(
+                    "Tải Excel gợi ý và nguồn chứng cứ (chưa xác minh)",
+                    data=export_review_xlsx(report),
+                    file_name="SEE_PRO_AI_CAN_DUYET.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="tdv_see_pro_ai_excel",
+                )
+                st.download_button(
+                    "Tải JSON truy xuất nguồn của AI (chưa xác minh)",
+                    data=json.dumps(report, ensure_ascii=False, indent=2, default=str).encode("utf-8"),
+                    file_name="SEE_PRO_AI_CAN_DUYET.json",
+                    mime="application/json",
+                    key="tdv_see_pro_ai_json",
+                )
