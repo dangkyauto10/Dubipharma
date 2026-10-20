@@ -16,6 +16,7 @@ except ImportError:
 
 
 from tdv_demo_core import make_synthetic_pdf, read_pdf_pages, demo_audit, match_fields, legal_evidence
+from tdv_idp3_rules import synthetic_evidence_cases
 
 st.set_page_config(
     page_title="TDV QC7 ONLINE | DUBIPHARMA DŨNG BÍCH",
@@ -699,6 +700,12 @@ with st.container(key="tdv_main_scroll"):
                 st.success("Các chốt kiểm soát trong bộ dữ liệu mẫu đang cho kết quả mong đợi.")
             else:
                 st.error("Bộ dữ liệu mẫu có sai khác ngoài dự kiến: cần dừng nghiệm thu.")
+        with st.expander("3. Chốt liên kết chứng cứ: sản phẩm – nhà máy – loại văn bản", expanded=True):
+            st.caption("Bảy tình huống GIẢ LẬP. Có SHA-256, mã nguồn, trang; "
+                       "không phải chứng nhận GMP hay báo giá thật.")
+            st.table(synthetic_evidence_cases())
+            st.warning("Bộ quy tắc chỉ sàng lọc liên kết. Không duyệt GMP, giá, "
+                       "giấy ủy quyền hoặc điều kiện dự thầu.")
         st.info("Bước kế tiếp: tiếp nhận E-HSMT thật có phân quyền, lưu bản gốc/chứng cứ bền vững, "
                 "đọc toàn bộ trang và kiểm thử với đáp án chuẩn trước khi ghi dữ liệu chính thức.")
     elif page == PAGES[5]:

@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
+import hashlib
+from tdv_idp3_rules import analyze_page_layers
 import re
 import unicodedata
 
@@ -113,18 +115,19 @@ def read_pdf_pages(pdf: bytes, *, first: int = 1, maximum: int = 4) -> dict:
                 warnings.append(f"Trang {idx+1}: bộ đọc thứ hai chưa khả dụng")
             if not text_a.strip():
                 warnings.append(f"Trang {idx+1}: lớp chữ trống, cần OCR hoặc xem ảnh gốc")
-            if text_a and text_b:
-                num_a = re.findall(r"\d+(?:[.,]\d+)?", text_a)
-                num_b = re.findall(r"\d+(?:[.,]\d+)?", text_b)
-                if sorted(num_a) != sorted(num_b):
-                    warnings.append(f"Trang {idx+1}: hai cách đọc khác token số")
+            layer_review = analyze_page_layers(text_a, text_b)
+            if layer_review["status"] in {"SAI_KHAC_SO", "CAN_DOI_CHIEU"}:
+                warnings.append(f"Trang {idx+1}: " + "; ".join(layer_review["warnings"]))
             rows.append({"trang": idx+1, "PyMuPDF": text_a[:900],
                          "pdfplumber": text_b[:900],
-                         "cần_OCR": not bool(text_a.strip()),
+                         "cần_OCR": layer_review["status"] == "CAN_OCR",
+                         "trạng_thái_đọc": layer_review["status"],
+                         "đã_OCR": False,
                          "kết_luận": "CHƯA XÁC MINH"})
         if len(rows) < doc.page_count:
             warnings.append(f"Đã xử lý {len(rows)}/{doc.page_count} trang — chưa đọc toàn bộ")
         return {"total_pages": doc.page_count, "pages_read": len(rows),
+                "source_sha256": hashlib.sha256(pdf).hexdigest(), "ocr_executed": False,
                 "pages": rows, "warnings": warnings, "verified": False}
 
 
