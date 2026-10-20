@@ -10,20 +10,35 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - name: Check Streamlit endpoint independently of GitHub tests
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test Streamlit login flow with persistent cookies (no secret logging)
         shell: bash
         run: |
-          set +e
-          URL="https://dangkyauto10-dubipharma-app-tdv-qc7-online-preview-20261-k4zpor.streamlit.app"
-          for PATHNAME in "/" "/_stcore/health" "/_stcore/host-config"; do
-            echo "=== TEST: ${PATHNAME} ==="
-            curl -sSL --http1.1 --max-time 25 --connect-timeout 10 \
-              -o /tmp/streamlit_response -D /tmp/streamlit_headers \
-              -w 'curl_response_http=%{http_code} content_type=%{content_type} total_sec=%{time_total} bytes=%{size_download} remote_ip=%{remote_ip}\n' \
-              "${URL}${PATHNAME}"
-            echo "curl_exit=$?"
-            head -n 18 /tmp/streamlit_headers 2>/dev/null
-            head -c 200 /tmp/streamlit_response 2>/dev/null | tr '\n' ' '
-            echo
-          done
-          echo "NO USER DOCUMENTS OR CREDENTIALS ACCESSED"
+          python -m pip install -q requests
+          python - <<'PY'
+          import requests
+          from urllib.parse import urljoin, urlparse
+          base="https://dangkyauto10-dubipharma-app-tdv-qc7-online-preview-20261-k4zpor.streamlit.app"
+          for suffix in ("/", "/_stcore/health"):
+              session=requests.Session()
+              url=base+suffix
+              print(f"--- {suffix} ---")
+              for attempt in range(12):
+                  try:
+                      resp=session.get(url, timeout=10, allow_redirects=False)
+                  except requests.RequestException as exc:
+                      print("request_error",type(exc).__name__);break
+                  u=urlparse(resp.url)
+                  print(f"hop={attempt+1} code={resp.status_code} host={u.netloc} path={u.path} content_type={resp.headers.get('content-type','')}")
+                  if resp.is_redirect:
+                      next_url=urljoin(resp.url,resp.headers['location'])
+                      url=next_url
+                  else:
+                      print("end_code",resp.status_code)
+                      break
+              else:
+                  print("REDIRECTS_EXCEEDED_WITH_COOKIES")
+          print("DIAGNOSTIC ONLY - no Streamlit administrator tokens or user data")
+          PY
