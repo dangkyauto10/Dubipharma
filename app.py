@@ -1,4 +1,4 @@
-"""TDV QC7 Online — giao diện lãnh đạo, bản thử KHÔNG CHỨA DỮ LIỆU THẬT."""
+"""TDV QC7 Online — module-based Preview; real records require source review and authorization."""
 from __future__ import annotations
 import re
 import unicodedata
@@ -547,9 +547,11 @@ def tdv_open_section(destination: str) -> None:
     st.session_state["tdv_sidebar_nav"] = destination
 
 with st.container(key="tdv_main_scroll"):
-    st.markdown('<div class="tdv-notice">🛡️ <b>TDV QC7 ONLINE — BẢN DEMO ĐANG NGHIỆM THU.</b>'
-                ' Chưa có xác thực nghiệp vụ, kho dữ liệu dùng chung hoặc đồng bộ Google Sheets.'
-                ' Tuyệt đối không tải hồ sơ đấu thầu, GMP hay báo giá thật vào bản này.</div>',
+    st.markdown('<div class="tdv-notice">🛡️ <b>TDV QC7 ONLINE — PREVIEW NGHIỆM THU THEO PHÂN HỆ.</b>'
+                ' SEE PRO đã qua các bài kiểm tra đã xác nhận; phần NSX đang thử nghiệm nghiệp vụ.'
+                ' Chưa có đăng nhập doanh nghiệp hoặc kho Drive được phê duyệt.'
+                ' Chỉ nạp tài liệu công khai hoặc đã được phép và ẩn dữ liệu nhạy cảm;'
+                ' chức năng tự ghi Drive/Sheets vẫn khóa.</div>',
                 unsafe_allow_html=True)
     st.markdown(f'<div class="tdv-crumb">🏠 TDV QC7 &nbsp;›&nbsp; {page}</div>',
                 unsafe_allow_html=True)
