@@ -56,7 +56,9 @@ def classify_document(filename: str, raw: bytes, *, enable_ocr: bool = False) ->
     source = extract_file(filename, raw, ocr=enable_ocr)
     text = norm(" ".join(str(line["text"]) for line in source["lines"][:1500]))
     # Use a separate evidence reader to detect labeled field/value pairs.
-    parsed = _read_one(filename, "OTHER", raw, enable_ocr)
+    parsed = _read_one(
+        filename, "OTHER", raw, enable_ocr, source_document=source,
+    )
     f = parsed["fields"]
     # Single strong titles take precedence over incidental GMP / product words
     # in a long company document.
@@ -101,6 +103,15 @@ def classify_document(filename: str, raw: bytes, *, enable_ocr: bool = False) ->
     # Do not treat a plain product catalogue with SĐK as registration certificate.
     if scores["PRODUCT"] >= 7 and scores["REGISTRATION"] < 12:
         scores["REGISTRATION"] = 0
+    # Real drug catalogues are commonly rectangular tables with no
+    # "hồ sơ sản phẩm" title or key:value rows. Inspect semantic column
+    # headings to discover the category, not filenames or user selection.
+    catalogue_count = 0
+    if source["type"] in ("xlsx", "xls", "csv", "docx"):
+        catalogue = extract_product_rows(filename, raw)
+        catalogue_count = catalogue["total_candidates"]
+        if catalogue_count:
+            scores["PRODUCT"] += 12
     if scores["GMP_EXPLANATION"] >= 12:
         scores["GMP_CERT"] = 0
     # Quotation tables can contain ingredient/strength; explicit quote wins.
@@ -124,6 +135,8 @@ def classify_document(filename: str, raw: bytes, *, enable_ocr: bool = False) ->
         "role_confidence": "GỢI_Ý_CẦN_XÁC_MINH" if confident else "CHƯA_PHÂN_LOẠI",
         "role_candidates": candidates,
         "score": best, "reasons": reasons,
+        "catalogue_products_found": catalogue_count,
+        "_extracted_source": source,
         "verified": False,
     }
 
@@ -243,12 +256,10 @@ def _match(product: dict, proof: dict) -> dict:
     }
 
 
-def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = False,
-                 overrides: dict[str, str] | None = None) -> dict:
+def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> dict:
     """One click: detect roles; discover products; link proofs only when unique."""
     if not files or len(files) > MAX_FILES:
         raise ValueError("Chọn từ 1 đến 24 tệp trong một bộ hồ sơ")
-    overrides = overrides or {}
     classified = []; detailed = []; original = []
     warnings = []
     for i, (name, raw) in enumerate(files):
@@ -256,14 +267,15 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = False,
             raise ValueError("Tệp tải lên không có dạng nhị phân hợp lệ")
         try:
             meta = classify_document(name, raw, enable_ocr=enable_ocr)
-            kind = overrides.get(meta["sha256"], meta["kind"])
-            if kind not in ROLES:
-                raise ValueError("Loại tài liệu sửa thủ công không hợp lệ")
-            meta["kind"] = kind
+            kind = meta["kind"]
+            # Never require users to pre-label types or choose product rows.
+            # Uncertain labels go to the review queue, not arbitrary guesses.
             meta["kind_label"] = KINDS[kind]
-            if meta["sha256"] in overrides:
-                meta["role_confidence"] = "NGƯỜI_DÙNG_CHỈNH_NHÃN_CHƯA_XÁC_MINH"
-            details = _read_one(name, kind, raw, enable_ocr)
+            extracted_source = meta.pop("_extracted_source")
+            details = _read_one(
+                name, kind, raw, enable_ocr,
+                source_document=extracted_source,
+            )
             meta["complete_read"] = details["complete_read"]
             original.append((name, raw))
             detailed.append(details)
@@ -316,13 +328,20 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = False,
                 "reason": "Nhiều thuốc có cùng định danh trong tài liệu chứng cứ.",
             })
         else:
-            conflicts = [x for x in assessments if x["status"] == STATUS_CONFLICT]
+            # Mismatching identifiers of unrelated products are EXPECTED in
+            # a multi-product dossier. They are not automatically data errors.
+            # Only surface "conflict" if a common anchor agrees but another
+            # identifying anchor contradicts it, or for the sole product.
+            conflicting = [
+                a for a in assessments if a["status"] == STATUS_CONFLICT
+                and (a["match_fields"] or len(products) == 1)
+            ]
             outstanding.append({
                 "file": proof["filename"], "kind": proof["kind"],
                 "origin": proof.get("origin", ""),
-                "status": STATUS_CONFLICT if conflicts else STATUS_UNKNOWN,
+                "status": STATUS_CONFLICT if conflicting else STATUS_UNKNOWN,
                 "candidate_products": [],
-                "reason": "Không có liên kết duy nhất đủ chắc chắn.",
+                "reason": "Không tìm được liên kết duy nhất có chứng cứ đủ mạnh.",
             })
     for c in classified:
         if c["role_confidence"] in ("CHƯA_PHÂN_LOẠI", "KHÔNG_ĐỌC_ĐƯỢC"):
