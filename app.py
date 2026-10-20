@@ -11,6 +11,7 @@ from pathlib import Path
 import streamlit as st
 import hmac
 from tdv_real_intake import extract_document, candidate_lots
+from tdv_leadership_prices import compare_prices
 
 try:
     from PIL import Image
@@ -878,6 +879,48 @@ with st.container(key="tdv_main_scroll"):
         st.info(x["note"])
         st.caption("Không có giấy GMP thật được lưu hoặc xác nhận trên trang này.")
     elif page == PAGES[6]:
+        st.subheader("Bảng giá dành cho lãnh đạo · E-HSMT ↔ NSX ↔ Giá chào thầu")
+        st.info("Ba cột giá đặt cạnh nhau. Giá định mức và giá NSX phải có nguồn chứng cứ; "
+                "cột Giá chào thầu do lãnh đạo tự nhập. Không tự đề xuất hoặc phê duyệt giá.")
+        if "tdv_leadership_price_rows" not in st.session_state:
+            st.session_state["tdv_leadership_price_rows"] = [
+                {"Mã lô E-HSMT": "", "Thuốc / mã NSX": "",
+                 "Giá định mức E-HSMT": None, "Giá báo NSX": None,
+                 "Giá chào thầu (LĐ nhập)": None,
+                 "Nguồn giá E-HSMT (tệp/trang/ô)": "",
+                 "Nguồn giá NSX (tệp/trang/ô)": "",
+                 "Xác minh giá": "CHƯA XÁC MINH"}]
+        _prices = st.data_editor(
+            st.session_state["tdv_leadership_price_rows"],
+            num_rows="dynamic", use_container_width=True, hide_index=True,
+            column_config={
+                "Giá định mức E-HSMT": st.column_config.NumberColumn(
+                    "Giá định mức E-HSMT (VND)", min_value=0, step=1, format="%d"),
+                "Giá báo NSX": st.column_config.NumberColumn(
+                    "Giá báo NSX (VND)", min_value=0, step=1, format="%d"),
+                "Giá chào thầu (LĐ nhập)": st.column_config.NumberColumn(
+                    "Giá chào thầu (LĐ nhập) (VND)", min_value=0, step=1, format="%d"),
+                "Xác minh giá": st.column_config.SelectboxColumn(
+                    "Xác minh giá", options=["CHƯA XÁC MINH", "ĐÃ XÁC MINH"]),
+            }, key="tdv_leadership_price_editor")
+        st.session_state["tdv_leadership_price_rows"] = _prices
+        _checked = compare_prices(_prices)
+        st.dataframe(_checked, hide_index=True, use_container_width=True)
+        st.caption("Giá trong bảng này hiện cần V đối chiếu với chứng cứ gốc; "
+                   "chưa có bộ trích xuất giá tự động đã nghiệm thu. "
+                   "Bảng nằm trong phiên làm việc, không lưu vào kho dữ liệu bền vững.")
+        import csv as _csv
+        import io as _io
+        _buffer = _io.StringIO()
+        if _checked:
+            _writer = _csv.DictWriter(_buffer, fieldnames=list(_checked[0].keys()))
+            _writer.writeheader()
+            _writer.writerows(_checked)
+        st.download_button("⬇️ Xuất bảng 3 cột giá (.csv)", "\ufeff".encode("utf-8") + _buffer.getvalue().encode("utf-8"),
+                           file_name="TDV_BAO_CAO_LD_BA_COT_GIA_CHUA_DUYET.csv",
+                           mime="text/csv", key="tdv_ld_prices_csv")
+        st.divider()
+        st.caption("Phần báo cáo DEMO cũ bên dưới được giữ để đối chiếu, không dùng thay dữ liệu thật.")
         st.markdown('<div class="tdv-page-title">📊 Báo cáo lãnh đạo · Đối chiếu E-HSMT – NSX</div>',
                     unsafe_allow_html=True)
         tender = st.session_state.get("tdv_ehsmt_read")
