@@ -498,17 +498,17 @@ with st.sidebar:
             "Chọn chức năng",
             PAGES, key="tdv_sidebar_nav", label_visibility="collapsed"
         )
-        st.markdown('<div class="tdv-left-note">🔒 BẢN XEM TRƯỚC RIÊNG TƯ.'
-                    ' Chưa nhập hồ sơ NSX, GMP, báo giá hoặc thông tin mật.</div>',
+        st.markdown('<div class="tdv-left-note">🔒 PREVIEW CHƯA TÍCH HỢP ĐĂNG NHẬP.'
+                    ' Không nhập hồ sơ mật hoặc báo giá nội bộ vào môi trường chưa có phân quyền.</div>',
                     unsafe_allow_html=True)
         st.divider()
         st.caption("Ứng dụng: Streamlit Preview")
         st.caption("Dữ liệu nghiệp vụ: CHƯA KẾT NỐI")
         st.caption("Tài khoản nội bộ: CHƯA TÍCH HỢP")
-        st.caption("Báo cáo: chỉ để xem cấu trúc giao diện")
+        st.caption("Báo cáo: dữ liệu trích xuất chưa thay thế thẩm định")
 
 with st.container(key="tdv_main_fixed"):
-    st.markdown('<div class="tdv-globalbar"><div class="tdv-globalbar-search">🔎 Tìm kiếm dự án, gói thầu, thuốc… (đang tích hợp)</div><div class="tdv-globalbar-status">🔒 TDV QC7 · PRIVATE PREVIEW</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="tdv-globalbar"><div class="tdv-globalbar-search">🔎 Tìm kiếm dự án, gói thầu, thuốc… (đang tích hợp)</div><div class="tdv-globalbar-status">🔒 TDV QC7 · PREVIEW CHƯA PHÂN QUYỀN</div></div>', unsafe_allow_html=True)
     st.markdown(
         '<section class="tdv-main-hero">' + art + art_small +
         '<div class="tdv-main-logo">' + logo + '</div>'
