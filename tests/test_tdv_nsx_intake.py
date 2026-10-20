@@ -66,6 +66,7 @@ def pdf_lines(lines: list[str]) -> bytes:
 
 class NSXSourceIntakeTests(unittest.TestCase):
     def test_mixed_docx_xlsx_pdf_quote_no_gmp_auto_approval(self):
+        product_data = product_file()
         quote = pdf_lines([
             "Product ID: SP-100",
             "Registration Number: VN-123-26",
@@ -73,7 +74,7 @@ class NSXSourceIntakeTests(unittest.TestCase):
             "Currency: VND",
         ])
         report = analyze_nsx_documents([
-            ("PRODUCT", "product.docx", product_file()),
+            ("PRODUCT", "product.docx", product_data),
             ("GMP_CERT", "gmp.xlsx", gmp_file()),
             ("QUOTE", "bao_gia.pdf", quote),
         ])
@@ -88,7 +89,7 @@ class NSXSourceIntakeTests(unittest.TestCase):
         self.assertEqual(p["fields"]["MANUFACTURER"], "NSX A")
         self.assertEqual(p["fields"]["FACTORY"], "Nhà máy số 1")
         ev = p["evidence"]["PRODUCT_ID"]
-        self.assertEqual(ev["sha256"], hashlib.sha256(product_file()).hexdigest())
+        self.assertEqual(ev["sha256"], hashlib.sha256(product_data).hexdigest())
         self.assertIn("Bảng", ev["source"])
         self.assertFalse(ev["verified"])
         quote_report = report["documents"][-1]
