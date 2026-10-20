@@ -8,37 +8,44 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     steps:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Test Streamlit login flow with persistent cookies (no secret logging)
+      - name: Verify streamlit HTML, runtime health and websocket
         shell: bash
         run: |
-          python -m pip install -q requests
+          python -m pip install -q requests websocket-client
           python - <<'PY'
           import requests
-          from urllib.parse import urljoin, urlparse
+          import websocket
+          from urllib.parse import urlparse
           base="https://dangkyauto10-dubipharma-app-tdv-qc7-online-preview-20261-k4zpor.streamlit.app"
-          for suffix in ("/", "/_stcore/health"):
-              session=requests.Session()
-              url=base+suffix
-              print(f"--- {suffix} ---")
-              for attempt in range(12):
-                  try:
-                      resp=session.get(url, timeout=10, allow_redirects=False)
-                  except requests.RequestException as exc:
-                      print("request_error",type(exc).__name__);break
-                  u=urlparse(resp.url)
-                  print(f"hop={attempt+1} code={resp.status_code} host={u.netloc} path={u.path} content_type={resp.headers.get('content-type','')}")
-                  if resp.is_redirect:
-                      next_url=urljoin(resp.url,resp.headers['location'])
-                      url=next_url
-                  else:
-                      print("end_code",resp.status_code)
-                      break
-              else:
-                  print("REDIRECTS_EXCEEDED_WITH_COOKIES")
-          print("DIAGNOSTIC ONLY - no Streamlit administrator tokens or user data")
+          s=requests.Session()
+          for suffix in ["/", "/_stcore/health", "/_stcore/host-config"]:
+              try:
+                  r=s.get(base+suffix,timeout=12)
+                  print("path",suffix,"http",r.status_code,"type",r.headers.get('content-type'),
+                        "bytes",len(r.content),"ended_at",urlparse(r.url).path,
+                        "html_bootstrap",b"<html" in r.content[:2000],
+                        "health_ok",r.text.strip()=="ok","title",r.text.split('<title>')[-1].split('</title>')[0][:80] if '<title>' in r.text else "")
+              except requests.RequestException as exc:
+                  print("path",suffix,"request_error",type(exc).__name__)
+          cookies="; ".join(f"{c.name}={c.value}" for c in s.cookies if c.domain.endswith("streamlit.app"))
+          try:
+              ws=websocket.create_connection(
+                  base.replace("https://","wss://")+"/_stcore/stream",
+                  timeout=12,
+                  subprotocols=["streamlit"],
+                  cookie=cookies,
+                  origin=base,
+              )
+              print("STREAMLIT_WEBSOCKET_UPGRADE_OK","subprotocol",ws.subprotocol)
+              ws.close()
+          except Exception as exc:
+              message=str(exc).splitlines()[0][:180]
+              print("STREAMLIT_WEBSOCKET_NOT_CONFIRMED",type(exc).__name__,
+                    "error",message)
+          print("DIAGNOSTIC COMPLETE; NO DATA WRITE")
           PY
