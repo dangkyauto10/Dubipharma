@@ -211,6 +211,34 @@ h1,h2,h3 {color:#0b316b;}
  .tdv-workflow-card{min-height:150px;}
 }
 
+
+/* Approved mockups: compact toolbar and navigation highlight. */
+.tdv-globalbar{display:flex;align-items:center;justify-content:space-between;
+ min-height:44px;padding:5px 16px;margin-bottom:8px;border:1px solid #e1eaf5;
+ border-radius:12px;background:#fff;}
+.tdv-globalbar-search{width:min(58%,480px);border-radius:11px;background:#f0f5fc;
+ color:#6b849d;padding:8px 13px;font-size:.83rem;}
+.tdv-globalbar-status{border-radius:10px;background:#eaf8f1;color:#227653;
+ font-size:.78rem;font-weight:800;padding:7px 12px;}
+.st-key-tdv_sidebar_scroll [data-testid="stRadio"] [role="radiogroup"] > label{
+ padding:9px 11px!important;margin:0 0 3px!important;border-radius:11px!important;
+ border:1px solid transparent!important;cursor:pointer;}
+.st-key-tdv_sidebar_scroll [data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked){
+ background:#d7e9ff!important;border-color:#c2dcff!important;color:#075fc3!important;
+ font-weight:750!important;}
+.tdv-demo-project{background:#fff;border:1px solid #dae8f8;border-radius:15px;
+ padding:19px 20px;min-height:138px;margin-bottom:7px;}
+.tdv-demo-project .title{color:#163e77;font-size:1.16rem;font-weight:850;margin-bottom:8px;}
+.tdv-demo-project .desc{font-size:.86rem;color:#5c7791;line-height:1.5;}
+.tdv-demo-security{background:#f0faf5;border:1px solid #d4ece0;padding:16px;
+ border-radius:15px;margin-bottom:7px;font-size:.85rem;color:#216d4e;}
+.tdv-demo-warning{background:#fff9ea;border:1px solid #f2e2be;padding:16px;
+ border-radius:15px;font-size:.85rem;color:#906d2b;}
+@media(max-width:899px){
+ .tdv-globalbar{min-height:32px;padding:3px 6px;}
+ .tdv-globalbar-search{display:none;}
+ .tdv-globalbar-status{font-size:.7rem;}
+}
 </style>
 """
 st.markdown(STYLE, unsafe_allow_html=True)
@@ -264,6 +292,7 @@ with st.sidebar:
         st.caption("Báo cáo: chỉ để xem cấu trúc giao diện")
 
 with st.container(key="tdv_main_fixed"):
+    st.markdown('<div class="tdv-globalbar"><div class="tdv-globalbar-search">🔎 Tìm kiếm dự án, gói thầu, thuốc… (đang tích hợp)</div><div class="tdv-globalbar-status">🔒 TDV QC7 · PRIVATE PREVIEW</div></div>', unsafe_allow_html=True)
     st.markdown(
         '<section class="tdv-main-hero">' + art +
         '<div class="tdv-main-logo">' + logo + '</div>'
@@ -342,6 +371,23 @@ with st.container(key="tdv_main_scroll"):
                         button_text+" →", key=f"tdv_go_{i}", use_container_width=True,
                         on_click=tdv_open_section, args=(destination,)
                     )
+        project_left, project_right = st.columns([1.45,1], gap="small")
+        with project_left:
+            st.markdown(
+                '<div class="tdv-demo-project"><div class="title">📦 Chưa kết nối dữ liệu dự án</div>'
+                '<div class="desc">Bản trình diễn Online hiện chưa có kho hồ sơ nghiệp vụ. '
+                'Giao diện sẽ hướng dẫn tiếp nhận E-HSMT để mở dự án sau khi xác thực '
+                'và lưu trữ bền vững được nghiệm thu.</div></div>',
+                unsafe_allow_html=True,
+            )
+        with project_right:
+            st.markdown(
+                '<div class="tdv-demo-security"><b>🛡️ Chế độ QC7 Online đang kiểm thử</b>'
+                '<div>Không ghi Google Sheets, không tự duyệt GMP hoặc giá dự thầu.</div></div>'
+                '<div class="tdv-demo-warning"><b>🔐 Lưu ý bảo mật</b>'
+                '<div>Chưa đưa hồ sơ thật vào bản Preview.</div></div>',
+                unsafe_allow_html=True,
+            )
         st.markdown('<div class="tdv-section-label">📊 Tổng quan điều hành & thống kê lãnh đạo</div>',
                     unsafe_allow_html=True)
         st.caption("Các ô đang hiển thị dấu — vì chưa có kết nối dữ liệu đã xác minh. Không dùng số liệu giả để trình lãnh đạo.")
