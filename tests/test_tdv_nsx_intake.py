@@ -155,7 +155,12 @@ class NSXSourceIntakeTests(unittest.TestCase):
         dest = BytesIO()
         sheet.parent.save(dest)
         report = analyze_nsx_documents([("PRODUCT", "listing.xlsx", dest.getvalue())])
-        self.assertNotIn("PRODUCT_ID", report["product"]["fields"])
+        # The heading is never interpreted as a product value; the one actual
+        # product row is now detected by its semantic table headings.
+        self.assertEqual(report["product"]["fields"]["PRODUCT_ID"], "SP-200")
+        self.assertEqual(report["product"]["fields"]["PRODUCT_NAME"], "Drug 2")
+        self.assertIn("hàng 2, cột 1",
+                      report["product"]["evidence"]["PRODUCT_ID"]["source"])
         self.assertFalse(report["verified"])
 
     def test_authorization_from_other_manufacturer_not_accepted(self):
