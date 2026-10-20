@@ -116,6 +116,24 @@ h1,h2,h3 {color:#0b316b;}
  .tdv-main-art,.tdv-tags{display:none;}
  .tdv-main-subtitle{font-size:.72rem;}
 }
+
+/* Some Streamlit releases wrap each keyed container in an element container.
+   Allocate height/scroll to that FLEX CHILD too, not just its nested block. */
+@media (min-width:900px) and (min-height:570px) {
+ [data-testid="stSidebarUserContent"] > [data-testid="stVerticalBlock"] > div:has(.st-key-tdv_sidebar_brand) {
+   flex:0 0 auto!important;min-height:0!important;z-index:3;position:relative;
+ }
+ [data-testid="stSidebarUserContent"] > [data-testid="stVerticalBlock"] > div:has(.st-key-tdv_sidebar_scroll) {
+   flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;
+ }
+ [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] > div:has(.st-key-tdv_main_fixed) {
+   flex:0 0 auto!important;min-height:0!important;position:relative;z-index:5;
+ }
+ [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] > div:has(.st-key-tdv_main_scroll) {
+   flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;
+   overscroll-behavior:contain;
+ }
+}
 </style>
 """
 st.markdown(STYLE, unsafe_allow_html=True)
