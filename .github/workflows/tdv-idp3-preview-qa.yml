@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - tdv-qc7-online-preview-20261020
+      - tdv-see-pro-repair-20261020
   workflow_dispatch:
 
 permissions:
