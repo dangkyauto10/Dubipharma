@@ -134,6 +134,83 @@ h1,h2,h3 {color:#0b316b;}
    overscroll-behavior:contain;
  }
 }
+
+/* Approved executive dashboard visual restoration (19/10 reference). */
+.tdv-left-head {background:#edf6ff!important;padding:9px 12px 15px!important;}
+.tdv-left-brand img {width:156px!important;max-height:130px!important;object-fit:contain!important;}
+.tdv-sidebar-name {font-size:1.05rem!important;margin-top:2px!important;}
+.tdv-main-hero {min-height:221px!important;gap:20px!important;padding:17px 22px!important;
+ background:linear-gradient(106deg,#f3faff 0%,#eaf6ff 58%,#cde9f9 100%)!important;
+ border-color:#c9e2f2!important;}
+.tdv-main-logo {width:218px!important;min-width:218px!important;min-height:162px!important;
+ padding-right:19px!important;}
+.tdv-main-logo img {width:193px!important;max-height:160px!important;object-fit:contain!important;}
+.tdv-main-body {width:calc(100% - 228px);max-width:980px;}
+.tdv-main-title {font-size:clamp(1.4rem,2.4vw,2.21rem)!important;text-align:center;
+ letter-spacing:0!important;line-height:1.14!important;}
+.tdv-main-subtitle {font-size:.97rem!important;text-align:center;}
+.tdv-main-hero .tdv-pill {font-size:.74rem;padding:5px 12px;}
+.tdv-main-hero .tdv-tags {justify-content:center;gap:10px;margin-top:12px;}
+.tdv-main-hero .tdv-tags span {background:#fffc;border:1px solid #d9e5f1;padding:6px 10px;}
+.tdv-main-art {width:23%;opacity:.52;pointer-events:none;}
+.tdv-main-art:before {content:"" !important;}
+.tdv-section-label {font-size:1.3rem;font-weight:850;color:#103669;margin:10px 0 12px;}
+.tdv-subhead {font-size:.84rem;color:#56718c;margin-bottom:9px;}
+.tdv-workflow-card {min-height:181px;border:1px solid #d9e8fa;border-radius:17px;
+ padding:16px 15px 8px;background:#eff6ff;box-shadow:0 3px 11px #2469a70b;}
+.tdv-workflow-card.stage2{background:#effcf5;border-color:#d5eedf;}
+.tdv-workflow-card.stage3{background:#fff8ed;border-color:#f5e3c6;}
+.tdv-workflow-card.stage4{background:#f6f2ff;border-color:#e5d8fc;}
+.tdv-workflow-top {display:flex;gap:11px;align-items:center;margin-bottom:8px;}
+.tdv-workflow-number {width:39px;height:39px;min-width:39px;display:grid;place-items:center;
+ border-radius:50%;background:#277eea;color:#fff;font-size:1.25rem;font-weight:850;}
+.stage2 .tdv-workflow-number{background:#1ca968;}
+.stage3 .tdv-workflow-number{background:#ec971f;}
+.stage4 .tdv-workflow-number{background:#8459e7;}
+.tdv-workflow-icon{font-size:2.5rem;line-height:1;}
+.tdv-workflow-card h3{font-size:1rem;font-weight:850;color:#153867;margin:8px 0 7px;}
+.tdv-workflow-card p{font-size:.85rem;min-height:62px;line-height:1.42;color:#57718d;margin:0;}
+.st-key-tdv_action_1 button,.st-key-tdv_action_2 button,.st-key-tdv_action_3 button,
+.st-key-tdv_action_4 button {width:100%!important;border-radius:10px!important;
+ color:white!important;font-weight:750!important;min-height:42px!important;border:0!important;}
+.st-key-tdv_action_1 button{background:#2a7de6!important;}
+.st-key-tdv_action_2 button{background:#18a46b!important;}
+.st-key-tdv_action_3 button{background:#e99320!important;}
+.st-key-tdv_action_4 button{background:#7c56df!important;}
+.tdv-dashboard-card{background:#fff;border:1px solid #dce8f5;border-radius:16px;
+ padding:17px 15px;min-height:114px;}
+.tdv-dashboard-card .name{font-size:.8rem;font-weight:730;color:#375779;margin:8px 0 6px;}
+.tdv-dashboard-card .num{font-size:1.65rem;font-weight:850;color:#8ca3b9;}
+.tdv-dashboard-card .ico{font-size:1.5rem;line-height:1.2;}
+.tdv-bottom-panel{background:#fff;border:1px solid #dae6f2;border-radius:15px;
+ padding:17px 18px;min-height:150px;}
+.tdv-bottom-panel h4{color:#163e71;font-size:1.02rem;font-weight:820;margin:0 0 11px;}
+.tdv-bottom-panel p{font-size:.86rem;color:#557390;line-height:1.55;}
+.tdv-bottom-panel table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.tdv-bottom-panel th{background:#eff6ff;color:#3b5b7f;text-align:left;padding:8px;}
+.tdv-bottom-panel td{border-bottom:1px solid #e7eef7;padding:10px 8px;color:#5e7890;}
+.tdv-summary-note{background:#edf6ff;border:1px solid #d4e7f9;border-radius:12px;
+ padding:13px 16px;color:#315c8b;font-size:.88rem;}
+.tdv-approval{background:#f0faf6;border:1px solid #d1e9dc;border-radius:12px;
+ padding:15px 16px;font-size:.85rem;color:#24654d;}
+.tdv-pending{background:#fff8eb;border:1px solid #f0ddb4;border-radius:12px;
+ padding:15px 16px;font-size:.85rem;color:#775b23;}
+.st-key-tdv_main_scroll [data-testid="stVerticalBlock"] {gap:.65rem;}
+@media (max-width:1220px){
+ .tdv-main-logo{width:138px!important;min-width:138px!important;padding-right:8px!important;}
+ .tdv-main-logo img{width:125px!important;}
+ .tdv-main-title{font-size:1.42rem!important;}
+ .tdv-main-body{width:auto;}
+}
+@media (max-width:899px), (max-height:569px) {
+ .tdv-main-hero{min-height:104px!important;padding:10px!important;gap:10px!important;}
+ .tdv-main-logo{width:72px!important;min-width:72px!important;min-height:70px!important;}
+ .tdv-main-logo img{width:66px!important;}
+ .tdv-main-title{font-size:1.04rem!important;}
+ .tdv-main-art,.tdv-main-hero .tdv-tags{display:none!important;}
+ .tdv-workflow-card{min-height:150px;}
+}
+
 </style>
 """
 st.markdown(STYLE, unsafe_allow_html=True)
@@ -191,7 +268,8 @@ with st.container(key="tdv_main_fixed"):
         '<section class="tdv-main-hero">' + art +
         '<div class="tdv-main-logo">' + logo + '</div>'
         '<div class="tdv-main-body">'
-        '<span class="tdv-pill">HỆ THỐNG QUẢN LÝ ĐẤU THẦU CHUYÊN NGHIỆP</span>'
+        '<div style="text-align:center">'
+        '<span class="tdv-pill">HỆ THỐNG QUẢN LÝ ĐẤU THẦU CHUYÊN NGHIỆP</span></div>'
         '<div class="tdv-main-title">TRUNG TÂM ĐIỀU HÀNH ĐẤU THẦU'
         '<br>DUBIPHARMA DŨNG BÍCH</div>'
         '<div class="tdv-main-subtitle">Quản lý tập trung · Minh bạch · Hiệu quả · Vì sức khỏe cộng đồng</div>'
@@ -227,24 +305,87 @@ with st.container(key="tdv_main_scroll"):
     st.markdown(f'<div class="tdv-crumb">🏠 TDV QC7 &nbsp;›&nbsp; {page}</div>',
                 unsafe_allow_html=True)
     if page == PAGES[0]:
-        st.markdown('<div class="tdv-page-title">🏛️ Tổng quan điều hành · Dữ liệu của dự án</div>',
+        st.markdown('<div class="tdv-section-label">🏛️ Trang chủ · Quy trình điều hành dự án</div>',
                     unsafe_allow_html=True)
-        cols = st.columns(4)
-        for col, name in zip(cols,
-            ["Mã E-HSMT xác minh","Sản phẩm NSX","Chứng cứ GMP","Ứng viên đã duyệt"]):
-            col.metric(name,"—",help="Chưa kết nối dữ liệu nghiệp vụ đã kiểm chứng")
-        a,b=st.columns(2)
+        st.markdown('<div class="tdv-subhead">Bốn bước nghiệp vụ của TDV QC7 — từ tiếp nhận hồ sơ đến báo cáo lãnh đạo.</div>',
+                    unsafe_allow_html=True)
+        stages = [
+            ("stage1", "1", "📁", "Tiếp nhận E-HSMT",
+             "Nhận hồ sơ mời thầu; phân tích danh mục, kiểm chứng mã thuốc, hàm lượng, số lượng và giá.",
+             "Mở E-HSMT", PAGES[1]),
+            ("stage2", "2", "🏭", "Hồ sơ nhà sản xuất",
+             "Tiếp nhận thuốc, GMP, giấy ủy quyền, báo giá và liên kết chứng cứ đúng nhà máy.",
+             "Hồ sơ NSX", PAGES[2]),
+            ("stage3", "3", "🔬", "Đọc – lọc – đối chiếu",
+             "IDP 3.0 kiểm tra dữ liệu nhiều tầng; chỉ các kết quả đủ căn cứ mới được đề xuất.",
+             "Kiểm chứng", PAGES[3]),
+            ("stage4", "4", "📊", "Báo cáo lãnh đạo",
+             "Tổng hợp đáp ứng, pháp lý, giá và trạng thái xác minh; phê duyệt theo thẩm quyền.",
+             "Báo cáo", PAGES[6]),
+        ]
+        cols = st.columns(4, gap="small")
+        for i, (cl, number, emoji, heading, description, button_text, destination) in enumerate(stages):
+            with cols[i]:
+                st.markdown(
+                    '<div class="tdv-workflow-card '+cl+'"><div class="tdv-workflow-top">'
+                    '<span class="tdv-workflow-number">'+number+'</span>'
+                    '<span class="tdv-workflow-icon">'+emoji+'</span></div>'
+                    '<h3>'+heading+'</h3><p>'+description+'</p></div>',
+                    unsafe_allow_html=True,
+                )
+                with st.container(key=f"tdv_action_{i+1}"):
+                    if st.button(button_text+" →", key=f"tdv_go_{i}", use_container_width=True):
+                        st.session_state["tdv_sidebar_nav"] = destination
+                        st.rerun()
+        st.markdown('<div class="tdv-section-label">📊 Tổng quan điều hành & thống kê lãnh đạo</div>',
+                    unsafe_allow_html=True)
+        st.caption("Các ô đang hiển thị dấu — vì chưa có kết nối dữ liệu đã xác minh. Không dùng số liệu giả để trình lãnh đạo.")
+        for col, ico, label in zip(
+            st.columns(4, gap="small"),
+            ["📄", "💊", "🛡️", "✅"],
+            ["Mã E-HSMT đã xác minh", "Sản phẩm NSX có chứng cứ",
+             "GMP đã kiểm tra", "Ứng viên được phê duyệt"]
+        ):
+            with col:
+                st.markdown(
+                    '<div class="tdv-dashboard-card"><div class="ico">'+ico+'</div>'
+                    '<div class="name">'+label+'</div><div class="num">—</div></div>',
+                    unsafe_allow_html=True,
+                )
+        left, right = st.columns([1.1, 1], gap="medium")
+        with left:
+            st.markdown(
+                '<div class="tdv-bottom-panel"><h4>📋 Danh sách dự án và gói thầu</h4>'
+                '<table><tr><th>Dự án</th><th>Trạng thái</th><th>Ghi chú</th></tr>'
+                '<tr><td>Chưa kết nối</td><td>Chờ xác minh</td>'
+                '<td>Không đọc trực tiếp dữ liệu mật từ bản Preview</td></tr></table>'
+                '<p>Các dự án đã lưu sẽ hiển thị sau khi phân quyền,'
+                ' lưu trữ tập trung và đồng bộ được nghiệm thu.</p></div>',
+                unsafe_allow_html=True,
+            )
+        with right:
+            st.markdown(
+                '<div class="tdv-bottom-panel"><h4>📣 Thông báo điều hành</h4>'
+                '<p>🔒 Ứng dụng Online đang ở giai đoạn thử nghiệm giao diện.</p>'
+                '<p>🔍 Dữ liệu E-HSMT và GMP cần được xác minh từ chứng cứ nguồn.</p>'
+                '<p>✍️ Giá dự thầu và kết luận tham gia thầu chỉ được sử dụng sau phê duyệt.</p>'
+                '</div>', unsafe_allow_html=True,
+            )
+        a,b = st.columns(2)
         with a:
-            panel("📄 E-HSMT và danh mục thầu",
-                  "Đọc đa tầng; kiểm chứng hoạt chất, hàm lượng, nhóm, số lượng, đơn giá và chứng cứ nguồn.")
-            panel("🔬 TDV-IDP 3.0",
-                  "Phát hiện mâu thuẫn; lưu vị trí trang/ô; đưa trường chưa chắc chắn vào luồng xác minh.")
+            st.markdown('<div class="tdv-approval"><strong>🛡️ Kiểm soát chất lượng</strong>'
+                        '<div>Kiểm chứng từng trường dữ liệu, có nguồn và lịch sử trước khi đưa vào nghiệp vụ.</div>'
+                        '</div>', unsafe_allow_html=True)
         with b:
-            panel("🏭 Hồ sơ NSX, GMP và báo giá",
-                  "Liên kết đúng pháp nhân, nhà máy, dây chuyền, SĐK và lịch sử văn bản.")
-            panel("🛡️ Phê duyệt và báo cáo lãnh đạo",
-                  "Phân quyền duyệt, nhật ký thay đổi; giá dự thầu chỉ do người có thẩm quyền quyết định.")
-        st.info("Các số liệu E-HSMT và NSX sẽ chỉ hiện sau khi kết nối kho nghiệp vụ và nghiệm thu phân quyền.")
+            st.markdown('<div class="tdv-pending"><strong>⏳ Trạng thái triển khai</strong>'
+                        '<div>Giao diện Online: Preview · Chưa có cơ sở dữ liệu và tài khoản nội bộ.</div>'
+                        '</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="tdv-summary-note">📁 <b>Dự án DEMO độc lập:</b> dự kiến '
+            'cho phép kiểm thử riêng với dữ liệu giả lập sau khi thiết lập kho an toàn.'
+            ' Hiện chưa tạo hoặc ghi dữ liệu DEMO vào Google Sheets.</div>',
+            unsafe_allow_html=True,
+        )
     elif page == PAGES[3]:
         st.markdown('<div class="tdv-page-title">🔬 TDV-IDP 3.0 · Kiểm chứng dữ liệu</div>',
                     unsafe_allow_html=True)
