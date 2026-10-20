@@ -16,6 +16,7 @@ from typing import Any
 from see_pro_multiformat import ACCEPTED, extract_file
 from tdv_nsx_adaptive import extract_product_rows, _read_grid, FIELD, normalize as norm
 from tdv_nsx_intake import KINDS, _read_one
+from tdv_nsx_public_guard import detect_nonprimary_document
 from see_pro_traceability import safe_cell, _format
 
 MAX_FILES = 24
@@ -55,6 +56,24 @@ def classify_document(filename: str, raw: bytes, *, enable_ocr: bool = False) ->
     if filename.rsplit(".", 1)[-1].lower() not in ACCEPTED:
         raise ValueError("Định dạng không được hỗ trợ")
     source = extract_file(filename, raw, ocr=enable_ocr)
+    nonprimary = detect_nonprimary_document(source["lines"])
+    if nonprimary:
+        # A government GMP list, a registration decision, a quote invitation
+        # or a blank quotation template is not a supplier's original proof.
+        # Preserve the source, but never turn it into a positive link.
+        return {
+            "kind": "OTHER", "kind_label": KINDS["OTHER"],
+            "filename": filename, "sha256": source["sha256"],
+            "content_type": source["type"], "complete_read": bool(source["complete"]),
+            "role_confidence": "KHÔNG_PHẢI_CHỨNG_CỨ_TRỰC_TIẾP",
+            "role_candidates": [], "score": 0,
+            "public_document_class": nonprimary["class"],
+            "reasons": [nonprimary["reason"]],
+            "catalogue_products_found": 0,
+            "quotation_table_found": False,
+            "_extracted_source": source,
+            "verified": False,
+        }
     text = norm(" ".join(str(line["text"]) for line in source["lines"][:1500]))
     # Use a separate evidence reader to detect labeled field/value pairs.
     parsed = _read_one(
@@ -386,6 +405,14 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
                 "reason": "Không tìm được liên kết duy nhất có chứng cứ đủ mạnh.",
             })
     for c in classified:
+        if c.get("public_document_class"):
+            outstanding.append({
+                "file": c["filename"], "kind": c["kind"],
+                "origin": "", "status": "TAI_LIEU_THAM_KHAO",
+                "candidate_products": [],
+                "reason": "Phân loại " + c["public_document_class"] + ": "
+                          + "; ".join(c["reasons"]),
+            })
         if not c.get("complete_read", False) and c["role_confidence"] != "KHÔNG_ĐỌC_ĐƯỢC":
             outstanding.append({
                 "file": c["filename"], "kind": c["kind"],
@@ -424,6 +451,7 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
         "summary": {
             "files": len(files),
             "parsed": sum(x["role_confidence"] != "KHÔNG_ĐỌC_ĐƯỢC" for x in classified),
+            "reference_documents": sum(bool(x.get("public_document_class")) for x in classified),
             "products": len(products),
             "linked": len(links),
             "review": len(outstanding),
