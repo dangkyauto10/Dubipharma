@@ -12,7 +12,8 @@ import pandas as pd
 import streamlit as st
 from tdv_ehsmt_intake import inspect_ehsmt_pdf, export_ehsmt_csv
 from see_pro_multiformat import ACCEPTED, extract_file, identify_codes
-from see_pro_structured import identify_document, parse_excel_lots, reconcile_notice
+from see_pro_structured import identify_document
+from see_pro_adapters import parse_tabular_document
 
 
 def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = False) -> dict:
@@ -40,8 +41,8 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
                 # Absence of G1.xxx in a notice is NORMAL; never raise a lot warning.
                 continue
 
-            if filename.lower().endswith(".xlsx"):
-                parsed = parse_excel_lots(filename, data)
+            if filename.lower().endswith((".xlsx", ".xls", ".csv", ".docx")):
+                parsed = parse_tabular_document(filename, data)
                 result["structured_tables"].append({
                     "Tệp": filename, "Mã gói BP": parsed["package_id"],
                     "Số lô": parsed["total_lots"], "Nhận diện cấu trúc": parsed["complete"],
@@ -51,6 +52,8 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
                 if not parsed["complete"]:
                     result["warnings"].append(
                         f"{filename}: không nhận diện đầy đủ bảng nghiệp vụ; cần đối chiếu tên cột")
+                for note in parsed.get("warnings", []):
+                    result["warnings"].append(f"{filename}: {note}")
                 for issue in parsed["issues"]:
                     result["warnings"].append(f"{filename}: {issue['type']}: {issue}")
                 for row in parsed["rows"]:
@@ -59,7 +62,8 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
                         "TRANG_VI_TRI": f"{row['SHEET']} – dòng {row['DONG_NGUON']}",
                         "TRICH_DAN": str(row.get("HOAT_CHAT_HSMT") or "")[:350],
                     })
-                continue
+                if parsed["rows"]:
+                    continue
 
             if role == "BANG_EHSMT_PDF":
                 report = inspect_ehsmt_pdf(data)
