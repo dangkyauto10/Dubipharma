@@ -456,6 +456,7 @@ st.markdown(STYLE, unsafe_allow_html=True)
 PAGES = [
     "🏠 Trang chủ / Dự án",
     "📄 E-HSMT",
+    "🧪 SEE PRO · Test tích hợp",
     "💊 Báo giá & hồ sơ NSX",
     "🔬 TDV-IDP 3.0 · Đọc đa tầng",
     "🛡️ Chứng cứ nhà sản xuất",
@@ -653,6 +654,9 @@ with st.container(key="tdv_main_scroll"):
             ' Hiện chưa tạo hoặc ghi dữ liệu DEMO vào Google Sheets.</div>',
             unsafe_allow_html=True,
         )
+    elif page == "🧪 SEE PRO · Test tích hợp":
+        from see_pro_streamlit import render_see_pro
+        render_see_pro()
     elif page == PAGES[1]:
         st.markdown("### E-HSMT · Tiếp nhận và đọc hồ sơ")
         st.caption("Tải hồ sơ E-HSMT thật để đọc và kiểm kê các mã danh mục kèm trang chứng cứ. Chưa kết luận đáp ứng thầu.")
