@@ -654,6 +654,47 @@ with st.container(key="tdv_main_scroll"):
             unsafe_allow_html=True,
         )
     elif page == PAGES[1]:
+        st.markdown("### E-HSMT · Kiểm thử đọc hồ sơ thật (chỉ đọc)")
+        st.caption("Chỉ kiểm kê mã danh mục và trang nguồn; không tự kết luận đáp ứng hoặc ghi dữ liệu ra ngoài.")
+        from tdv_ehsmt_intake import inspect_ehsmt_pdf, export_ehsmt_csv
+        real_file = st.file_uploader("Chọn PDF E-HSMT thật (tối đa 40 MB, 1.200 trang)",
+                                     type=["pdf"], key="tdv_real_ehsmt_pdf")
+        if real_file is not None:
+            import hashlib
+            digest = hashlib.sha256(real_file.getvalue()).hexdigest()
+            if st.session_state.get("tdv_real_ehsmt_sha") != digest:
+                st.session_state.pop("tdv_real_ehsmt_result", None)
+            if st.button("Đọc toàn bộ trang E-HSMT và kiểm kê mã thuốc", key="tdv_real_ehsmt_run"):
+                try:
+                    with st.spinner("Đang đọc toàn bộ trang và kiểm kê mã thuốc..."):
+                        parsed = inspect_ehsmt_pdf(real_file.getvalue())
+                    st.session_state["tdv_real_ehsmt_result"] = parsed
+                    st.session_state["tdv_real_ehsmt_sha"] = digest
+                except (ValueError, RuntimeError, OSError) as exc:
+                    st.error(f"Chưa đọc được hồ sơ: {exc}")
+            parsed = st.session_state.get("tdv_real_ehsmt_result")
+            if parsed and st.session_state.get("tdv_real_ehsmt_sha") == digest:
+                a, b, c = st.columns(3)
+                a.metric("Trang đã đọc", f"{parsed['pages_processed']}/{parsed['total_pages']}")
+                b.metric("Mã thuốc ứng viên", parsed["lot_count"])
+                c.metric("Trang thiếu lớp chữ", len(parsed["pages_without_text"]))
+                st.warning(parsed["note"])
+                for warning in parsed["warnings"]:
+                    st.warning(warning)
+                import pandas as pd
+                frame = pd.DataFrame(parsed["lots"])
+                if not frame.empty:
+                    frame["TRANG_NGUON"] = frame["TRANG_NGUON"].map(lambda v: ", ".join(map(str, v)))
+                    term = st.text_input("Lọc mã thuốc hoặc đoạn chứng cứ", key="tdv_real_ehsmt_filter")
+                    if term:
+                        frame = frame[frame.astype(str).apply(
+                            lambda col: col.str.contains(term, case=False, regex=False)).any(axis=1)]
+                    st.dataframe(frame, hide_index=True, use_container_width=True)
+                st.download_button("Tải bảng kiểm kê CSV", export_ehsmt_csv(parsed),
+                                   file_name="TDV_EHSMT_KIEM_KE_CHUA_XAC_MINH.csv", mime="text/csv",
+                                   key="tdv_real_ehsmt_export")
+        st.divider()
+        st.markdown("#### Chế độ DEMO cũ (giữ nguyên để đối chiếu)")
         st.markdown('<div class="tdv-page-title">📄 E-HSMT · Tiếp nhận và đọc đa tầng</div>',
                     unsafe_allow_html=True)
         st.warning("MÔI TRƯỜNG DEMO. Chỉ dùng PDF nhân tạo hoặc tài liệu thử KHÔNG chứa thông tin thật. "
