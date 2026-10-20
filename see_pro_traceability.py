@@ -70,6 +70,11 @@ def _sheet(wb: Workbook, name: str, headings: list[str]):
 def _format(ws, *, status_field: str | None = None):
     ws.auto_filter.ref = ws.dimensions
     ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.row_dimensions[1].height = 36
+    for cell in ws[1]:
+        cell.fill = PatternFill("solid", fgColor=NAVY)
+        cell.font = Font(name="Calibri", size=10, bold=True, color=WHITE)
+        cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
     headers = {str(cell.value): i for i, cell in enumerate(ws[1], 1)}
     status_idx = headers.get(status_field) if status_field else None
     wide = ("HOAT_CHAT", "TRICH", "CANH_BAO", "CHUNG_CU", "GIẢI", "GIAI_THICH", "NGUYEN_VAN", "DỮ LIỆU")
