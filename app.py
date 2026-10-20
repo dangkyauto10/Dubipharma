@@ -9,6 +9,8 @@ from collections import deque
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 import streamlit as st
+import hmac
+from tdv_real_intake import extract_document, candidate_lots
 
 try:
     from PIL import Image
@@ -27,6 +29,25 @@ st.set_page_config(
     page_title="TDV QC7 ONLINE | DUBIPHARMA DŨNG BÍCH",
     page_icon="💊", layout="wide", initial_sidebar_state="expanded"
 )
+
+# Fail closed: a missing server-side secret must never enable real uploads.
+try:
+    _access_secret = st.secrets.get("TDV_ACCESS_PASSWORD", "")
+except (FileNotFoundError, KeyError):
+    _access_secret = ""
+if not isinstance(_access_secret, str) or len(_access_secret) < 16:
+    st.error("Chưa cấu hình quyền truy cập an toàn. Không tiếp nhận hồ sơ thật.")
+    st.stop()
+if not st.session_state.get("tdv_authenticated", False):
+    st.title("TDV QC7 ONLINE – Xác thực truy cập")
+    _entered = st.text_input("Mật khẩu truy cập do V cấp", type="password")
+    if st.button("Đăng nhập"):
+        if hmac.compare_digest(_entered.encode("utf-8"), _access_secret.encode("utf-8")):
+            st.session_state["tdv_authenticated"] = True
+            st.rerun()
+        else:
+            st.error("Không có quyền truy cập")
+    st.stop()
 
 ROOT = Path(__file__).resolve().parent
 
@@ -462,6 +483,7 @@ PAGES = [
     "⚖️ So sánh kỹ thuật",
     "📊 Báo cáo lãnh đạo",
     "🔗 Google Sheets",
+    "📥 Tiếp nhận hồ sơ thật · Xem trước",
     "☁️ Tình trạng Online",
 ]
 
@@ -908,6 +930,87 @@ with st.container(key="tdv_main_scroll"):
                                mime="application/json", key="tdv_report_json")
             st.caption("Báo cáo được tạo trong bộ nhớ phiên, không tự ghi Google Sheets, "
                        "không cập nhật giá và không xuất dữ liệu thật.")
+    elif page == "📥 Tiếp nhận hồ sơ thật · Xem trước":
+        st.markdown('<div class="tdv-page-title">📥 Tiếp nhận E-HSMT và hồ sơ NSX · Kiểm chứng nguồn</div>',
+                    unsafe_allow_html=True)
+        st.warning("Môi trường kiểm tra: chỉ xử lý trong bộ nhớ phiên. KHÔNG có kho lưu hồ sơ bền vững, "
+                   "không tự duyệt GMP/giá hoặc xác nhận đáp ứng thầu. "
+                   "Chỉ dùng khi V đã xác nhận quyền truy cập và môi trường triển khai riêng tư.")
+        tab_e, tab_n, tab_compare = st.tabs(["1 · E-HSMT", "2 · Hồ sơ NSX / GMP / báo giá",
+                                             "3 · Đối chiếu và chứng cứ"])
+        with tab_e:
+            st.caption("Nhận Word .docx, Excel .xlsx, PDF, CSV, ảnh; .xls cũ cần chuyển .xlsx. "
+                       "Ảnh và PDF scan phải OCR, kiểm tra thủ công. Tối đa 30 MB/tệp.")
+            tender_files = st.file_uploader("Chọn E-HSMT / phụ lục", type=[
+                "pdf","docx","xlsx","xls","csv","png","jpg","jpeg","tif","tiff"],
+                accept_multiple_files=True, key="tdv_real_tender_files")
+            if st.button("🔎 Đọc E-HSMT · CHƯA GHI", key="tdv_real_tender_run"):
+                outputs = []
+                for uploaded in tender_files or []:
+                    try:
+                        outputs.append(extract_document(uploaded.name, uploaded.getvalue()))
+                    except Exception as exc:
+                        st.error(f"{uploaded.name}: không thể đọc ({type(exc).__name__}: {exc})")
+                st.session_state["tdv_real_tenders"] = outputs
+            for doc in st.session_state.get("tdv_real_tenders", []):
+                with st.expander(f"{doc['name']} · {len(doc['lines'])} đoạn · SHA256 {doc['sha256'][:12]}"):
+                    st.write("Đã đọc hết phần có thể xử lý:", "CÓ" if doc["complete"] else "CHƯA")
+                    for warning in doc["warnings"][:15]:
+                        st.warning(warning)
+                    codes = candidate_lots(doc)
+                    st.write(f"Mã lô G1.* nhận dạng sơ bộ: {len(codes)} (chưa xác minh)")
+                    if codes:
+                        st.dataframe(codes[:150], use_container_width=True, hide_index=True)
+                    st.dataframe(doc["lines"][:150], use_container_width=True, hide_index=True)
+        with tab_n:
+            st.caption("Tải riêng từng phiên bản GMP, công văn duy trì/gia hạn, hồ sơ thuốc, "
+                       "báo giá và ủy quyền. Không tự kết luận hiệu lực pháp lý.")
+            kind = st.selectbox("Loại hồ sơ", ["Hồ sơ sản phẩm", "Giấy GMP",
+                "Văn bản duy trì / gia hạn GMP", "Báo giá", "Giấy ủy quyền", "Khác"],
+                key="tdv_real_nsx_kind")
+            factory = st.text_input("Tên nhà máy ghi trong hồ sơ (V xác nhận)", key="tdv_real_factory")
+            version = st.text_input("Số giấy / phiên bản / ngày văn bản (V xác nhận)",
+                                    key="tdv_real_version")
+            nsx_files = st.file_uploader("Chọn tài liệu NSX", type=[
+                "pdf","docx","xlsx","xls","csv","png","jpg","jpeg","tif","tiff"],
+                accept_multiple_files=True, key="tdv_real_nsx_files")
+            if st.button("🔎 Đọc hồ sơ NSX · CHƯA GHI", key="tdv_real_nsx_run"):
+                docs = st.session_state.get("tdv_real_nsx_docs", [])
+                for uploaded in nsx_files or []:
+                    try:
+                        item = extract_document(uploaded.name, uploaded.getvalue())
+                        item.update({"document_kind": kind, "factory_declared": factory,
+                                     "version_declared": version, "legal_status": "CHƯA XÁC MINH"})
+                        if not any(x["sha256"] == item["sha256"] and
+                                   x["document_kind"] == kind for x in docs):
+                            docs.append(item)
+                    except Exception as exc:
+                        st.error(f"{uploaded.name}: không thể đọc ({type(exc).__name__}: {exc})")
+                st.session_state["tdv_real_nsx_docs"] = docs
+            for item in st.session_state.get("tdv_real_nsx_docs", []):
+                with st.expander(f"{item['document_kind']} · {item['name']} · {item['version_declared']}"):
+                    st.write("Nhà máy V khai báo:", item["factory_declared"] or "CHƯA CÓ")
+                    st.write("Tình trạng pháp lý:", item["legal_status"])
+                    st.write("SHA-256:", item["sha256"])
+                    for warning in item["warnings"][:15]:
+                        st.warning(warning)
+                    st.dataframe(item["lines"][:100], use_container_width=True, hide_index=True)
+        with tab_compare:
+            tenders = st.session_state.get("tdv_real_tenders", [])
+            nsx = st.session_state.get("tdv_real_nsx_docs", [])
+            st.metric("Nguồn E-HSMT trong phiên", len(tenders))
+            st.metric("Tài liệu NSX trong phiên", len(nsx))
+            if tenders and nsx:
+                st.info("Đã tiếp nhận hai nhóm nguồn. CHƯA được kết luận khớp: cần "
+                        "ánh xạ từng mã lô với sản phẩm, hàm lượng, dạng bào chế, "
+                        "nhà máy và chứng cứ GMP theo từng thời điểm.")
+                st.table([{"Nguồn": x["name"], "Loại": x.get("document_kind","E-HSMT"),
+                           "SHA-256": x["sha256"][:16], "Trạng thái": "CHỜ XÁC MINH"}
+                          for x in tenders + nsx])
+            else:
+                st.warning("Cần đọc cả E-HSMT và hồ sơ NSX trong cùng phiên để bắt đầu soi chiếu.")
+            st.caption("Đóng hoặc khởi động lại phiên có thể mất dữ liệu xem trước. "
+                       "Tệp gốc của V không bị sửa; chưa có chức năng lưu/update cơ sở dữ liệu.")
     elif page == PAGES[-1]:
         st.markdown('<div class="tdv-page-title">☁️ Tiến độ Online</div>',unsafe_allow_html=True)
         st.table([
