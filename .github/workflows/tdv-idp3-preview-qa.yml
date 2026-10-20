@@ -25,5 +25,7 @@ jobs:
       - name: Syntax checks
         run: python -m py_compile app.py tdv_real_intake.py tdv_leadership_prices.py tdv_demo_core.py tdv_idp3_rules.py tdv_idp3_workflow.py tests/test_tdv_demo_core.py tests/test_tdv_idp3_rules.py tests/test_tdv_idp3_workflow.py
       - name: Read-only regression tests
-        run: python -m unittest discover -s tests -p 'test_*.py' -v
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py' -v
+          python -m unittest test_tdv_leadership_prices -v
 
