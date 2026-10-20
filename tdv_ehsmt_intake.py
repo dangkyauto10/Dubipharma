@@ -3,8 +3,8 @@ from __future__ import annotations
 import hashlib
 import re
 
-LOT = re.compile(r'(?<!\\w)G\\s*1\\s*[.．]\\s*(\\d{1,4})(?!\\d)', re.I)
-PART = re.compile(r'(?<!\\w)PP\\s*(\\d{10})(?!\\d)', re.I)
+LOT = re.compile(r'(?<!\w)G\s*1\s*[.．]\s*(\d{1,4})(?!\d)', re.I)
+PART = re.compile(r'(?<!\w)PP\s*(\d{10})(?!\d)', re.I)
 
 def inspect_ehsmt_pdf(data: bytes, *, max_bytes: int = 40 * 1024 * 1024,
                       max_pages: int = 1200) -> dict:
@@ -34,7 +34,7 @@ def inspect_ehsmt_pdf(data: bytes, *, max_bytes: int = 40 * 1024 * 1024,
                 if page_no not in entry['TRANG_NGUON']:
                     entry['TRANG_NGUON'].append(page_no)
                 if not entry['TRICH_DOAN']:
-                    entry['TRICH_DOAN'] = re.sub(r'\\s+', ' ', raw[max(0, m.start()-90):m.end()+220])[:320]
+                    entry['TRICH_DOAN'] = re.sub(r'\s+', ' ', raw[max(0, m.start()-90):m.end()+220])[:320]
                 # Only use immediately adjacent PP code; never assign an unrelated code.
                 before = raw[max(0, m.start()-25):m.start()]
                 pm = list(PART.finditer(before))
