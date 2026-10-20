@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - tdv-qc7-online-preview-20261020
+      - tdv-qc7-recovery-intake-20261020
   workflow_dispatch:
 
 permissions:
@@ -22,6 +23,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
       - name: Syntax checks
-        run: python -m py_compile app.py tdv_demo_core.py tdv_idp3_rules.py tdv_idp3_workflow.py tests/test_tdv_demo_core.py tests/test_tdv_idp3_rules.py tests/test_tdv_idp3_workflow.py
+        run: python -m py_compile app.py tdv_real_intake.py tdv_demo_core.py tdv_idp3_rules.py tdv_idp3_workflow.py tests/test_tdv_demo_core.py tests/test_tdv_idp3_rules.py tests/test_tdv_idp3_workflow.py
       - name: Read-only regression tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
