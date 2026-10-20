@@ -232,12 +232,18 @@ def analyze_nsx_documents(
             parsed = _read_one(filename, kind, data, enable_ocr)
             records.append(parsed)
             warnings.extend(f"{filename}: {w}" for w in parsed["warnings"])
-        except (ValueError, OSError, RuntimeError, ImportError) as exc:
+        except Exception as exc:
+            # Untrusted documents can fail with parser-specific exceptions
+            # such as zipfile.BadZipFile. One corrupt file must not crash
+            # ingestion of the remaining evidence. Do not echo the raw
+            # exception message because it can contain document content.
+            error_code = type(exc).__name__
             records.append({
-                "kind": kind, "filename": filename, "sha256": hashlib.sha256(data).hexdigest(),
-                "error": f"{type(exc).__name__}: {exc}", "verified": False,
+                "kind": kind, "filename": filename,
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "error": error_code, "verified": False,
             })
-            warnings.append(f"{filename}: KHÔNG ĐỌC ĐƯỢC: {type(exc).__name__}: {exc}")
+            warnings.append(f"{filename}: KHÔNG ĐỌC ĐƯỢC ({error_code}); cần kiểm tra tệp gốc")
     product = next(r for r in records if r["kind"] == "PRODUCT")
     attachments = [r for r in records if r["kind"] != "PRODUCT"]
     if "error" in product:
