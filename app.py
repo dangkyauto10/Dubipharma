@@ -707,63 +707,10 @@ with st.container(key="tdv_main_scroll"):
                                        file_name="TDV_EHSMT_KIEM_KE_CHUA_XAC_MINH.csv", mime="text/csv",
                                        key="tdv_real_ehsmt_export")
     elif page == PAGES[2]:
-        st.markdown('<div class="tdv-page-title">💊 Hồ sơ nhà sản xuất · Nạp và gắn chứng cứ</div>',
+        st.markdown('<div class="tdv-page-title">💊 Hồ sơ nhà sản xuất · SEE PRO tự động</div>',
                     unsafe_allow_html=True)
         from tdv_nsx_workbench import render_nsx_workbench
         render_nsx_workbench()
-        st.divider()
-        if st.checkbox("🧪 Hiển thị bộ DEMO NSX cũ (chỉ để kiểm thử hồi quy)",
-                       value=False, key="tdv_nsx_demo_show"):
-            st.warning("Chỉ dùng PDF DEMO không có dữ liệu thầu/NSX thật. Mọi chứng cứ đều ở "
-                       "trạng thái cần kiểm chứng và không sinh quyết định giá/GMP.")
-            if st.button("▶️ Tạo và nạp bộ NSX mẫu (sản phẩm + GMP + báo giá + ủy quyền)",
-                         key="tdv_nsx_demo_run", use_container_width=True):
-                try:
-                    product_pdf, docs = make_demo_nsx()
-                    st.session_state["tdv_nsx_read"] = read_nsx_package(product_pdf, docs)
-                    st.success("Đã đọc bộ hồ sơ NSX nhân tạo; chưa phê duyệt bất kỳ tài liệu nào.")
-                except (ValueError, RuntimeError) as exc:
-                    st.error(f"Không thể xử lý bộ NSX mẫu: {type(exc).__name__}")
-            consent = st.checkbox("Tôi xác nhận toàn bộ tài liệu NSX tải lên là GIẢ LẬP",
-                                  key="tdv_nsx_demo_only")
-            product_file = st.file_uploader("PDF sản phẩm NSX DEMO", type=["pdf"],
-                                            disabled=not consent, key="tdv_nsx_product_upload")
-            other_files = []
-            for kind, title in (("GMP_CERT", "Giấy GMP DEMO"),
-                                ("GMP_EXPLANATION", "Công văn giải trình DEMO"),
-                                ("QUOTE", "Báo giá DEMO"),
-                                ("AUTHORIZATION", "Giấy ủy quyền DEMO")):
-                upload = st.file_uploader(title, type=["pdf"], disabled=not consent,
-                                          key=f"tdv_nsx_{kind}_upload")
-                if upload is not None:
-                    other_files.append((kind, upload))
-            if st.button("🔍 Đọc và gắn chứng cứ bộ hồ sơ NSX DEMO", key="tdv_nsx_read_upload",
-                         disabled=not consent or product_file is None):
-                try:
-                    attachments = [(kind, handle.getvalue()) for kind, handle in other_files]
-                    st.session_state["tdv_nsx_read"] = read_nsx_package(
-                        product_file.getvalue(), attachments, ocr=True)
-                    st.success("Đã đọc và liên kết hồ sơ thử. Mọi kết quả cần người kiểm tra.")
-                except (ValueError, RuntimeError) as exc:
-                    st.error(f"Không đọc được bộ hồ sơ: {type(exc).__name__}")
-            current = st.session_state.get("tdv_nsx_read")
-            if current:
-                p = current["product"]
-                st.write("**Định danh sản phẩm:**", p.get("product_id", "CHƯA CÓ"))
-                st.write("**Nhà máy:**", p.get("factory_id", "CHƯA CÓ"),
-                         "  |  **Nhà sản xuất:**", p.get("manufacturer_id", "CHƯA CÓ"))
-                st.table([{"Tài liệu": d["document_type"],
-                           "Liên kết": d["link_status"], "Nguồn SHA": d["sha256"][:12],
-                           "Số trang": f"{d['pages_processed']}/{d['total_pages']}",
-                           "Phê duyệt": "CHƯA"} for d in current["documents"]])
-                if current["product_missing"]:
-                    st.warning("Thiếu trường hồ sơ NSX: " + ", ".join(current["product_missing"]))
-                if current["warnings"]:
-                    with st.expander(f"Cảnh báo ({len(current['warnings'])})"):
-                        for w in current["warnings"][:30]:
-                            st.warning(w)
-                st.info("Đã có hồ sơ mẫu trong phiên làm việc. Mở 'Báo cáo lãnh đạo' "
-                        "để đối chiếu với E-HSMT (nếu đã nạp).")
     elif page == PAGES[3]:
         st.markdown('<div class="tdv-page-title">🔬 TDV-IDP 3.0 · Bộ đọc – kiểm chứng hoạt động</div>',
                     unsafe_allow_html=True)
