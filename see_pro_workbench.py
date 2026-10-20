@@ -15,6 +15,8 @@ from see_pro_multiformat import ACCEPTED, extract_file, identify_codes
 from see_pro_structured import identify_document
 from see_pro_adapters import parse_tabular_document
 from see_pro_pdf_geometry import extract_g1_technical
+from see_pro_traceability import build_audit_workbook
+from see_pro_pdf_viewer import render_original_pdf_viewer
 
 
 def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = False,
@@ -192,6 +194,7 @@ def render_ehsmt_workbench() -> None:
     if not docs.empty:
         st.markdown("**Tệp và nguồn chứng cứ**")
         st.dataframe(docs, hide_index=True, use_container_width=True)
+    render_original_pdf_viewer(files, analysis)
     if analysis.get("structured_tables"):
         st.markdown("**Danh sách phần/lô theo từng mã gói thầu**")
         st.dataframe(pd.DataFrame(analysis["structured_tables"]), hide_index=True, use_container_width=True)
@@ -218,14 +221,9 @@ def render_ehsmt_workbench() -> None:
                            data=evidence_rows.fillna("").to_csv(index=False).encode("utf-8-sig"),
                            file_name="TDV_SEE_PRO_KIEM_KE.csv", mime="text/csv",
                            key="tdv_see_pro_csv")
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            evidence_rows.fillna("").to_excel(writer, sheet_name="DANH_MUC_UNG_VIEN", index=False)
-            docs.fillna("").to_excel(writer, sheet_name="NGUON_TAI_LIEU", index=False)
-            pd.DataFrame({"CANH_BAO": analysis["warnings"]}).to_excel(
-                writer, sheet_name="CANH_BAO", index=False)
-        st.download_button("Tải Excel kiểm toán sơ bộ", data=output.getvalue(),
-                           file_name="TDV_SEE_PRO_KIEM_TOAN.xlsx",
+        st.download_button("Tải Excel kiểm toán có chứng cứ (5 Sheet)",
+                           data=build_audit_workbook(analysis),
+                           file_name="TDV_SEE_PRO_KIEM_TOAN_CHUNG_CU.xlsx",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                            key="tdv_see_pro_excel")
     if analysis["warnings"]:
