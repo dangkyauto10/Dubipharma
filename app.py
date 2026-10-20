@@ -427,6 +427,22 @@ h1,h2,h3 {color:#0b316b;}
  .tdv-main-logo::before,.tdv-main-logo::after{display:none!important;}
  .tdv-main-art{display:none!important;}
 }
+
+/* Final approved continuous corporate banner: smaller medication vignette
+   between brand and headline, not a '+' marker; keep right photo prominent. */
+.tdv-main-logo::before,.tdv-main-logo::after{display:none!important;content:none!important;}
+.tdv-left-photo{
+ position:absolute;left:14.5%;top:4%;height:91%;width:21%;z-index:1;
+ background-position:center!important;background-size:cover!important;
+ opacity:.58;filter:saturate(1.22) contrast(1.1);
+ -webkit-mask-image:radial-gradient(ellipse at 50% 55%,#000 12%,rgba(0,0,0,.5) 52%,transparent 77%);
+ mask-image:radial-gradient(ellipse at 50% 55%,#000 12%,rgba(0,0,0,.5) 52%,transparent 77%);
+ pointer-events:none;
+}
+.tdv-main-art{filter:saturate(1.18) contrast(1.15)!important;opacity:1!important;}
+.tdv-main-logo,.tdv-main-body{z-index:3!important;}
+@media(max-width:1150px){.tdv-left-photo{left:12%;width:19%;opacity:.34;}}
+@media(max-width:899px){.tdv-left-photo{display:none!important;}}
 </style>
 """
 st.markdown(STYLE, unsafe_allow_html=True)
@@ -455,6 +471,12 @@ art = (f'<div class="tdv-main-art" style="opacity:.77;'
        f'background-size:cover;background-position:center"></div>' if ART_DATA else
        '<div class="tdv-main-art" aria-hidden="true"></div>')
 
+art_small = (
+    f'<div class="tdv-left-photo" aria-hidden="true" '
+    f'style="background-image:url(data:image/webp;base64,{ART_DATA})"></div>'
+    if ART_DATA else ""
+)
+
 with st.sidebar:
     with st.container(key="tdv_sidebar_brand"):
         st.markdown(
@@ -482,7 +504,7 @@ with st.sidebar:
 with st.container(key="tdv_main_fixed"):
     st.markdown('<div class="tdv-globalbar"><div class="tdv-globalbar-search">🔎 Tìm kiếm dự án, gói thầu, thuốc… (đang tích hợp)</div><div class="tdv-globalbar-status">🔒 TDV QC7 · PRIVATE PREVIEW</div></div>', unsafe_allow_html=True)
     st.markdown(
-        '<section class="tdv-main-hero">' + art +
+        '<section class="tdv-main-hero">' + art + art_small +
         '<div class="tdv-main-logo">' + logo + '</div>'
         '<div class="tdv-main-body">'
         '<div style="text-align:center">'
