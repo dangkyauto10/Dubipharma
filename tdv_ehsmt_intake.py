@@ -10,8 +10,8 @@ def _summary_rows(raw: str, page_no: int) -> list:
     Native text often has single spaces between ingredient and monetary
     columns. Match two dot-grouped monetary values at the END, not spacing.
     """
-    header = re.compile(r"^\\s*(\\d{1,4})\\s+(PP\\d{10})\\s+(G1\\.\\d{3})\\b")
-    money = re.compile(r"^(.+?)\\s+(\\d{1,3}(?:\\.\\d{3})+)\\s+(\\d{1,3}(?:\\.\\d{3})+)\\s*$")
+    header = re.compile(r"^\s*(\d{1,4})\s+(PP\d{10})\s+(G1\.\d{3})\b")
+    money = re.compile(r"^(.+?)\s+(\d{1,3}(?:\.\d{3})+)\s+(\d{1,3}(?:\.\d{3})+)\s*$")
     lines = [line.strip() for line in raw.splitlines() if line.strip()]
     rows = []
     for i, line in enumerate(lines):
