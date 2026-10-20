@@ -52,6 +52,46 @@ class SeeProMultiFormatTests(unittest.TestCase):
         result = extract_file("bang.xlsx", out.getvalue())
         self.assertEqual({x["Mã lô"] for x in identify_codes(result)}, {"G1.011", "G1.012"})
 
+    def test_xlsx_blank_numeric_text_and_code_cells(self):
+        from openpyxl import Workbook
+        book = Workbook()
+        sheet = book.active
+        sheet.title = "Lots"
+        sheet["A1"] = "G1.036"
+        sheet["B1"] = 0
+        sheet["C1"] = 1250
+        sheet["D1"] = "   "
+        sheet["E1"] = "Acenocoumarol"
+        sheet["A3"] = "G1.037"
+        output = BytesIO()
+        book.save(output)
+        result = extract_file("lots.xlsx", output.getvalue())
+        self.assertEqual({x["Mã lô"] for x in identify_codes(result)}, {"G1.036", "G1.037"})
+        self.assertTrue(result["complete"])
+        self.assertFalse(result["verified"])
+        first = next(x["text"] for x in result["lines"] if x["source"] == "Sheet Lots, dòng 1")
+        self.assertIn("1:G1.036", first)
+        self.assertIn("2:0", first)
+        self.assertIn("3:1250", first)
+        self.assertIn("5:Acenocoumarol", first)
+        self.assertNotIn("ReadOnlyCell", first)
+        self.assertNotIn("4:   ", first)
+        self.assertFalse(any(x["source"] == "Sheet Lots, dòng 2" for x in result["lines"]))
+
+    def test_xlsx_formula_without_cached_result_is_not_invented(self):
+        from openpyxl import Workbook
+        book = Workbook()
+        sheet = book.active
+        sheet["A1"] = "G1.038"
+        sheet["B1"] = "=100+200"
+        output = BytesIO()
+        book.save(output)
+        result = extract_file("formula.xlsx", output.getvalue())
+        self.assertEqual({x["Mã lô"] for x in identify_codes(result)}, {"G1.038"})
+        combined = " ".join(x["text"] for x in result["lines"])
+        self.assertNotIn("300", combined)
+        self.assertNotIn("=100+200", combined)
+
     def test_csv(self):
         result = extract_file("items.csv", "Mã,Hoạt chất\nG1.021,Acenocoumarol".encode("utf-8"))
         self.assertEqual(identify_codes(result)[0]["Mã lô"], "G1.021")
