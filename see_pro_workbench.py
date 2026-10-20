@@ -135,16 +135,18 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
         bp = notice.get("package_id")
         # Only link tables with the same identified BP; never combine unrelated packages.
         related = [t for t in result["structured_tables"] if t["Mã gói BP"] == bp]
-        if not related:
-            result["warnings"].append(
-                f"{notice['file']}: chưa có bảng phần/lô khớp gói {bp}")
-            continue
         expected = (notice.get("evidence", {}).get("SO_PHAN_LO") or {}).get("value")
-        if expected and expected.isdigit():
-            actual = sum(t["Số lô"] for t in related)
-            if int(expected) != actual:
-                result["warnings"].append(
-                    f"{notice['file']}: số lô thông báo {expected}, bảng khớp {actual}; cần kiểm tra")
+        if not related:
+            # A tender notice is a legitimate standalone document. No lot sheet
+            # was supplied for this BP: status, not an extraction failure.
+            notice["lot_list_status"] = "Chưa có bảng danh mục đúng mã gói"
+            continue
+        actual = sum(t["Số lô"] for t in related)
+        notice["lot_list_status"] = f"Đã đọc {actual} lô của gói {bp}"
+        if expected and expected.isdigit() and int(expected) != actual:
+            notice["lot_list_status"] = "CẦN KIỂM TRA: số lô không khớp"
+            result["warnings"].append(
+                f"{notice['file']}: số lô thông báo {expected}, bảng khớp {actual}; cần kiểm tra")
     return result
 
 
@@ -201,9 +203,11 @@ def render_ehsmt_workbench() -> None:
     if analysis.get("notices"):
         st.markdown("**Thông báo mời thầu đã nhận diện**")
         meta = [{"Tệp": notice["file"], "Mã gói BP": notice["package_id"],
-                 **{key: info["value"] for key, info in notice["evidence"].items()}}
+                 **{key: info["value"] for key, info in notice["evidence"].items()},
+                 "Trạng thái danh mục": notice.get("lot_list_status", "Chưa kiểm tra")}
                 for notice in analysis["notices"]]
         st.dataframe(pd.DataFrame(meta), hide_index=True, use_container_width=True)
+        st.caption("Số lô công bố trong thông báo không phải số lô đã trích xuất. Chỉ liên kết các tài liệu cùng mã BP.")
     if not pdfs.empty:
         st.markdown("**Kiểm kê bảng tổng hợp PDF E-HSMT**")
         st.dataframe(pdfs, hide_index=True, use_container_width=True)
