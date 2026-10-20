@@ -1,0 +1,83 @@
+name: TDV Preview Runtime Browser QA - isolated
+on:
+  push:
+    branches: [tdv-see-pro-nsx-public-corpus-20261021]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 87e8e8947d6aad62969160d877ad9c69bb04f3cb
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install exact application runtime dependencies
+        run: |
+          python -m pip install --upgrade pip -q
+          python -m pip install -r requirements.txt -q
+          python -m pip install playwright -q
+          python -m playwright install --with-deps chromium > /tmp/chromium-install.log 2>&1 || (tail -n 30 /tmp/chromium-install.log; exit 1)
+          python -m pip check
+      - name: Start a disposable local Streamlit server
+        shell: bash
+        run: |
+          (python -m streamlit run app.py --server.port 8501 --server.address 127.0.0.1 --server.headless true --browser.gatherUsageStats false > /tmp/tdv_streamlit_runtime.log 2>&1 & echo $! >/tmp/tdv_streamlit.pid)
+          python - <<'PY'
+          import time,urllib.request,urllib.error,sys
+          for i in range(50):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8501/_stcore/health",timeout=3) as resp:
+                      payload=resp.read(200).decode("utf-8",errors="replace")
+                      if resp.status==200:
+                          print("LOCAL_SERVER_READY",resp.status,repr(payload));sys.exit(0)
+              except Exception:
+                  time.sleep(1)
+          print("LOCAL_SERVER_NOT_READY")
+          sys.exit(1)
+          PY
+      - name: Verify app renders, navigate NSX, and collect session errors
+        shell: bash
+        run: |
+          python - <<'PY'
+          import asyncio
+          from playwright.async_api import async_playwright
+          async def check():
+              async with async_playwright() as p:
+                  browser=await p.chromium.launch(headless=True,args=["--no-sandbox"])
+                  page=await browser.new_page(viewport={"width":1440,"height":900})
+                  issues=[]
+                  page.on("pageerror",lambda e:issues.append(str(e)[:200]))
+                  page.on("console",lambda m:issues.append("js:"+m.text[:200]) if m.type=="error" else None)
+                  response=await page.goto("http://127.0.0.1:8501/",wait_until="domcontentloaded",timeout=25000)
+                  await page.wait_for_selector('[data-testid="stAppViewContainer"]',timeout=35000)
+                  await page.wait_for_timeout(3500)
+                  text=await page.locator('body').inner_text()
+                  print("APP_HTTP",response.status,"INITIAL_BODY",repr(text[:500]))
+                  print("STREAMLIT_APP_ERRORS",issues[:7])
+                  if "TDV QC7" not in text and "DUBIPHARMA" not in text:
+                      raise AssertionError("TDV home did not render")
+                  await page.get_by_text("Báo giá & hồ sơ NSX",exact=False).first.click()
+                  await page.wait_for_timeout(3500)
+                  text=await page.locator('body').inner_text()
+                  print("NSX_BODY",repr(text[:1050]))
+                  if "Nạp cả bộ hồ sơ" not in text and "Xác nhận bộ hồ sơ" not in text:
+                      raise AssertionError("NSX automatic page did not render")
+                  if "Hồ sơ sản phẩm tân dược (mỗi lần một sản phẩm)" in text:
+                      raise AssertionError("Legacy seven-field manual intake leaked into production page")
+                  if issues:
+                      print("CONSOLE_ISSUES_PRESENT",len(issues))
+                  print("LOCAL_BROWSER_SMOKE_PASS")
+                  await browser.close()
+          asyncio.run(check())
+          PY
+      - name: Report server diagnostics if failed
+        if: failure()
+        shell: bash
+        run: |
+          echo "=== SANITIZED LOCAL STREAMLIT LOG TAIL ==="
+          tail -n 120 /tmp/tdv_streamlit_runtime.log 2>/dev/null | sed -E 's/(password|token|secret|key)([^A-Za-z0-9]|$)/[REDACTED]\2/Ig' || true
