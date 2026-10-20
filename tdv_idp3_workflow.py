@@ -21,7 +21,7 @@ MAX_TEXT_PER_PAGE = 25000
 
 LABELS = {
     "lot": "lot_id", "ma thuoc": "lot_id", "ma danh muc": "lot_id",
-    "ma hang": "lot_id", "ma phan": "lot_id",
+    "ma hang": "lot_id", "ma phan": "lot_id", "ma mat hang": "lot_id",
     "ingredient": "hoat_chat", "hoat chat": "hoat_chat", "ten hoat chat": "hoat_chat",
     "strength": "ham_luong", "ham luong": "ham_luong",
     "dosage form": "dang_bao_che", "dang bao che": "dang_bao_che",
@@ -38,7 +38,7 @@ DOC_TYPES = {"GMP_CERT", "GMP_EXPLANATION", "QUOTE", "AUTHORIZATION", "NSX"}
 
 
 def _fold(text: str) -> str:
-    base = unicodedata.normalize("NFKD", text).casefold()
+    base = unicodedata.normalize("NFKD", text.replace("Đ", "D").replace("đ", "d")).casefold()
     return re.sub(r"\s+", " ", "".join(c for c in base if not unicodedata.combining(c))).strip()
 
 
@@ -137,7 +137,7 @@ def read_ehsmt(data: bytes, *, ocr: bool = False) -> dict:
         if current is not None:
             missing = [k for k in LOTS_REQUIRED if not current["fields"].get(k)]
             current["missing"] = missing
-            current["status"] = "CAN_BO_SUNG" if missing else "CAN_XAC_MINH"
+            current["status"] = "CAN_BO_SUNG" if missing or current.get("issue") else "CAN_XAC_MINH"
             lots.append(current)
 
     for p in source["pages"]:
@@ -147,11 +147,12 @@ def read_ehsmt(data: bytes, *, ocr: bool = False) -> dict:
             if key == "lot_id":
                 finish()
                 current = {"lot_id": value, "fields": {}, "evidence": {},
-                           "status": "CAN_XAC_MINH", "missing": []}
+                           "status": "CAN_XAC_MINH", "missing": [], "issue": False}
             elif current is not None and key in LOTS_REQUIRED:
                 if key in current["fields"]:
                     warnings.append(f"Mã {current['lot_id']}: lặp trường {key}; cần đối chiếu thủ công")
                     current["status"] = "CAN_BO_SUNG"
+                    current["issue"] = True
                     continue
                 current["fields"][key] = value
                 current["evidence"][key] = _page_evidence(source, p, excerpt, key, value)
@@ -288,16 +289,16 @@ def leadership_report(tender: dict | None, supplier: dict | None) -> dict:
 
 def report_text(report: dict) -> str:
     s = report["summary"]
-    lines = ["DUBIPHARMA DUNG BICH - TDV QC7 ONLINE",
-             "BAO CAO SO BO - CHUA PHE DUYET - DU LIEU DEMO",
-             "", f"So ma E-HSMT doc duoc: {s['lots']}",
-             f"So ma khop ky thuat so bo: {s['technical_prelim_match']}",
-             f"So ma co xung dot ky thuat: {s['technical_conflict']}", ""]
+    lines = ["DUBIPHARMA DŨNG BÍCH - TDV QC7 ONLINE",
+             "BÁO CÁO SƠ BỘ - CHƯA PHÊ DUYỆT - DỮ LIỆU DEMO",
+             "", f"Số mã E-HSMT đã trích xuất: {s['lots']}",
+             f"Số mã khớp kỹ thuật sơ bộ: {s['technical_prelim_match']}",
+             f"Số mã có xung đột kỹ thuật: {s['technical_conflict']}", ""]
     for i in report["items"]:
-        lines.extend([f"Ma {i['lot_id']} / San pham {i['product_id']}: {i['technical']}",
-                      "Nguon chung cu: " + ", ".join(d["source_id"] for d in i["document_sources"]),
-                      "Can xu ly: " + "; ".join(i["reasons"]), ""])
-    lines.append("Khong ket luan GMP. Khong tu phe duyet gia. Khong xac nhan du dieu kien du thau.")
+        lines.extend([f"Mã {i['lot_id']} / Sản phẩm {i['product_id']}: {i['technical']}",
+                      "Nguồn chứng cứ: " + ", ".join(d["source_id"] for d in i["document_sources"]),
+                      "Cần xử lý: " + "; ".join(i["reasons"]), ""])
+    lines.append("Không kết luận GMP. Không tự phê duyệt giá. Không xác nhận đủ điều kiện dự thầu.")
     return "\n".join(lines)
 
 

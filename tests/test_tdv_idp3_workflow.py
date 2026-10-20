@@ -92,8 +92,32 @@ class EhsmtNsxLeadershipPipelineTests(unittest.TestCase):
     def test_report_text_is_safe_preliminary(self):
         r = leadership_report(read_ehsmt(self.ehsmt), read_nsx_package(self.product_pdf, self.attachments))
         txt = report_text(r)
-        self.assertIn("CHUA PHE DUYET", txt)
+        self.assertIn("CHƯA PHÊ DUYỆT", txt)
         self.assertIn("LOT-DEMO-02", txt)
+
+    def test_vietnamese_accented_labels_are_recognized(self):
+        from tdv_idp3_workflow import _pairs
+        fields = dict((k, v) for k, v, _ in _pairs(
+            "Mã thuốc: L-01\nHoạt chất: Acenocoumarol\nHàm lượng: 1 mg\n"
+            "Dạng bào chế: Viên nén\nĐường dùng: Uống\nSố lượng: 100"))
+        self.assertEqual(fields["lot_id"], "L-01")
+        self.assertEqual(fields["hoat_chat"], "Acenocoumarol")
+        self.assertEqual(fields["duong_dung"], "Uống")
+
+    def test_empty_pdf_page_does_not_claim_coverage(self):
+        from tdv_idp3_workflow import _pdf
+        result = extract_pdf(_pdf([]), ocr=False)
+        self.assertFalse(result["complete"])
+        self.assertTrue(result["pages"][0]["needs_ocr"])
+
+    def test_duplicate_field_needs_review(self):
+        from tdv_idp3_workflow import _pdf
+        raw = _pdf(["Lot: L01", "Ingredient: A", "Ingredient: B",
+                    "Strength: 1 mg", "Dosage Form: Tablet",
+                    "Route: Oral", "Quantity: 100"])
+        result = read_ehsmt(raw)
+        self.assertEqual(result["lots"][0]["status"], "CAN_BO_SUNG")
+        self.assertTrue(any("lặp trường" in w for w in result["warnings"]))
 
     def test_gmp_explanation_not_certificate(self):
         from tdv_idp3_workflow import _pdf
