@@ -94,12 +94,13 @@ def _evidence_pair(raw: str) -> list[tuple[str, str]]:
 
 
 def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
-              selected_product_index: int | None = None) -> dict:
+              selected_product_index: int | None = None,
+              source_document: dict | None = None) -> dict:
     if kind not in KINDS:
         raise ValueError("Loại tài liệu không hợp lệ")
     if not filename or filename.rsplit(".", 1)[-1].lower() not in ACCEPTED:
         raise ValueError("Chưa hỗ trợ loại tệp")
-    source = extract_file(filename, raw, ocr=ocr)
+    source = source_document if source_document is not None else extract_file(filename, raw, ocr=ocr)
     fields, evidence, conflicts = {}, {}, defaultdict(list)
     warnings = list(source["warnings"])
     if not source["complete"]:
