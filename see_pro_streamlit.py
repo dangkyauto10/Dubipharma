@@ -49,6 +49,36 @@ def audit_result(result: dict) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
 def render_see_pro() -> None:
     st.markdown("### SEE PRO · Kiểm thử tích hợp")
     st.caption("Bản Preview độc lập về dữ liệu, dùng chung TDV QC7 ONLINE. Chưa tự xác minh kỹ thuật, pháp lý hoặc giá dự thầu.")
+    with st.expander("Đọc đa định dạng · Word / Excel / CSV / ảnh / PDF", expanded=False):
+        from tdv_real_intake import extract_document, candidate_lots
+        st.caption("Chế độ kiểm kê chứng cứ; Word, Excel, CSV đọc nội dung, ảnh chỉ tiếp nhận và báo cần OCR. Không tự kết luận đạt.")
+        documents = st.file_uploader(
+            "Chọn một hoặc nhiều hồ sơ", type=["pdf", "docx", "xlsx", "csv", "jpg", "jpeg", "png", "tif", "tiff"],
+            accept_multiple_files=True, key="see_pro_multi_files")
+        if documents and st.button("Đọc hồ sơ đa định dạng", key="see_pro_multi_run"):
+            previews, candidates, alerts = [], [], []
+            for doc in documents:
+                try:
+                    extracted = extract_document(doc.name, doc.getvalue())
+                    previews.append({
+                        "Tệp": doc.name, "Định dạng": extracted["type"],
+                        "Số đoạn/dòng": len(extracted["lines"]),
+                        "Đầy đủ": extracted["complete"],
+                        "SHA256": extracted["sha256"],
+                    })
+                    candidates.extend([{"Tệp": doc.name, **item} for item in candidate_lots(extracted)])
+                    alerts.extend([f"{doc.name}: {warning}" for warning in extracted["warnings"]])
+                except (ValueError, RuntimeError, OSError, ImportError) as exc:
+                    alerts.append(f"{doc.name}: {exc}")
+            st.session_state["see_pro_multi_preview"] = previews
+            st.session_state["see_pro_multi_candidates"] = candidates
+            st.session_state["see_pro_multi_alerts"] = alerts
+        if st.session_state.get("see_pro_multi_preview"):
+            st.dataframe(pd.DataFrame(st.session_state["see_pro_multi_preview"]), hide_index=True, use_container_width=True)
+        if st.session_state.get("see_pro_multi_candidates"):
+            st.dataframe(pd.DataFrame(st.session_state["see_pro_multi_candidates"]), hide_index=True, use_container_width=True)
+        for alert in st.session_state.get("see_pro_multi_alerts", []):
+            st.warning(alert)
     upload = st.file_uploader("Tải E-HSMT PDF (tối đa 40 MB / 1.200 trang)", type=["pdf"], key="see_pro_upload")
     if upload is None:
         st.info("Chọn PDF để bắt đầu. Hệ thống chỉ đọc, không gửi hồ sơ ra dịch vụ ngoài.")
