@@ -297,6 +297,10 @@ def exact_simple_dose(text: str):
     except (InvalidOperation, ValueError):
         return None
 
+def tdv_open_section(destination: str) -> None:
+    """Streamlit callback runs before widgets are recreated on navigation."""
+    st.session_state["tdv_sidebar_nav"] = destination
+
 with st.container(key="tdv_main_scroll"):
     st.markdown('<div class="tdv-notice">🛡️ <b>TDV QC7 ONLINE — BẢN DEMO ĐANG NGHIỆM THU.</b>'
                 ' Chưa có xác thực nghiệp vụ, kho dữ liệu dùng chung hoặc đồng bộ Google Sheets.'
@@ -334,9 +338,10 @@ with st.container(key="tdv_main_scroll"):
                     unsafe_allow_html=True,
                 )
                 with st.container(key=f"tdv_action_{i+1}"):
-                    if st.button(button_text+" →", key=f"tdv_go_{i}", use_container_width=True):
-                        st.session_state["tdv_sidebar_nav"] = destination
-                        st.rerun()
+                    st.button(
+                        button_text+" →", key=f"tdv_go_{i}", use_container_width=True,
+                        on_click=tdv_open_section, args=(destination,)
+                    )
         st.markdown('<div class="tdv-section-label">📊 Tổng quan điều hành & thống kê lãnh đạo</div>',
                     unsafe_allow_html=True)
         st.caption("Các ô đang hiển thị dấu — vì chưa có kết nối dữ liệu đã xác minh. Không dùng số liệu giả để trình lãnh đạo.")
