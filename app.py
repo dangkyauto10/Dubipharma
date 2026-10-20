@@ -4,6 +4,7 @@ import re
 import unicodedata
 import base64
 import io
+import json
 from collections import deque
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -17,6 +18,10 @@ except ImportError:
 
 from tdv_demo_core import make_synthetic_pdf, read_pdf_pages, demo_audit, match_fields, legal_evidence
 from tdv_idp3_rules import synthetic_evidence_cases
+from tdv_idp3_workflow import (
+    read_ehsmt, read_nsx_package, leadership_report, report_text,
+    make_demo_ehsmt, make_demo_nsx,
+)
 
 st.set_page_config(
     page_title="TDV QC7 ONLINE | DUBIPHARMA DŨNG BÍCH",
@@ -648,6 +653,111 @@ with st.container(key="tdv_main_scroll"):
             ' Hiện chưa tạo hoặc ghi dữ liệu DEMO vào Google Sheets.</div>',
             unsafe_allow_html=True,
         )
+    elif page == PAGES[1]:
+        st.markdown('<div class="tdv-page-title">📄 E-HSMT · Tiếp nhận và đọc đa tầng</div>',
+                    unsafe_allow_html=True)
+        st.warning("MÔI TRƯỜNG DEMO. Chỉ dùng PDF nhân tạo hoặc tài liệu thử KHÔNG chứa thông tin thật. "
+                   "Chưa có phân quyền hồ sơ nghiệp vụ, không lưu file lên Google Sheets/GitHub.")
+        st.caption("Bộ đọc trích xuất lớp chữ, đối chiếu bộ đọc thứ hai, thử OCR cục bộ với trang "
+                   "thiếu chữ. Bảng E-HSMT phức tạp vẫn cần kiểm tra người thật.")
+        if st.button("▶️ Tạo và đọc E-HSMT mẫu 2 trang", key="tdv_demo_tender_run",
+                     use_container_width=True):
+            try:
+                st.session_state["tdv_ehsmt_read"] = read_ehsmt(make_demo_ehsmt())
+                st.success("Đã đọc E-HSMT nhân tạo và đánh dấu chứng cứ nguồn.")
+            except (ValueError, RuntimeError) as exc:
+                st.error(f"Không thể xử lý mẫu PDF: {type(exc).__name__}")
+        consent = st.checkbox("Tôi xác nhận file tải lên chỉ là dữ liệu KIỂM THỬ giả lập, không có hồ sơ thật",
+                              key="tdv_ehsmt_demo_only")
+        uploaded = st.file_uploader("PDF E-HSMT DEMO (≤25 MB)", type=["pdf"],
+                                    key="tdv_ehsmt_upload", disabled=not consent)
+        if st.button("🔍 Đọc và soát PDF DEMO vừa nạp", key="tdv_ehsmt_read_upload",
+                     disabled=not consent or uploaded is None):
+            try:
+                st.session_state["tdv_ehsmt_read"] = read_ehsmt(uploaded.getvalue(), ocr=True)
+                st.success("Đã đọc dữ liệu thử; chưa xác minh chuyên môn.")
+            except (ValueError, RuntimeError) as exc:
+                st.error(f"Không đọc được PDF: {type(exc).__name__}. Hãy kiểm tra bản gốc.")
+        current = st.session_state.get("tdv_ehsmt_read")
+        if current:
+            x, y, z = st.columns(3)
+            x.metric("Trang đã xử lý", f"{current['pages_processed']}/{current['total_pages']}")
+            y.metric("Mã danh mục tạm trích", current["lot_count"])
+            z.metric("Đủ trang/lớp chữ", "CÓ" if current["complete"] else "KHÔNG")
+            rows = []
+            for lot in current["lots"]:
+                rows.append({"Mã E-HSMT": lot["lot_id"],
+                             "Hoạt chất": lot["fields"].get("hoat_chat", ""),
+                             "Hàm lượng": lot["fields"].get("ham_luong", ""),
+                             "Dạng bào chế": lot["fields"].get("dang_bao_che", ""),
+                             "Đường dùng": lot["fields"].get("duong_dung", ""),
+                             "Số lượng": lot["fields"].get("so_luong", ""),
+                             "Chứng cứ": ", ".join(
+                                 str(e["page"]) for e in lot["evidence"].values()),
+                             "Trạng thái": lot["status"]})
+            if rows:
+                st.dataframe(rows, hide_index=True, use_container_width=True)
+            else:
+                st.warning("Chưa tự nhận dạng được mã thuốc; KHÔNG suy đoán từ PDF.")
+            if current["warnings"]:
+                with st.expander(f"Cảnh báo khi đọc ({len(current['warnings'])})"):
+                    for w in current["warnings"][:30]:
+                        st.warning(w)
+            st.caption("SHA-256 hồ sơ: " + current["sha256"])
+            st.info("Kết quả chỉ là TRÍCH XUẤT SƠ BỘ. Tiếp tục nạp hồ sơ NSX mẫu để so sánh.")
+    elif page == PAGES[2]:
+        st.markdown('<div class="tdv-page-title">💊 Hồ sơ nhà sản xuất · Nạp và gắn chứng cứ</div>',
+                    unsafe_allow_html=True)
+        st.warning("Chỉ dùng PDF DEMO không có dữ liệu thầu/NSX thật. Mọi chứng cứ đều ở "
+                   "trạng thái cần kiểm chứng và không sinh quyết định giá/GMP.")
+        if st.button("▶️ Tạo và nạp bộ NSX mẫu (sản phẩm + GMP + báo giá + ủy quyền)",
+                     key="tdv_nsx_demo_run", use_container_width=True):
+            try:
+                product_pdf, docs = make_demo_nsx()
+                st.session_state["tdv_nsx_read"] = read_nsx_package(product_pdf, docs)
+                st.success("Đã đọc bộ hồ sơ NSX nhân tạo; chưa phê duyệt bất kỳ tài liệu nào.")
+            except (ValueError, RuntimeError) as exc:
+                st.error(f"Không thể xử lý bộ NSX mẫu: {type(exc).__name__}")
+        consent = st.checkbox("Tôi xác nhận toàn bộ tài liệu NSX tải lên là GIẢ LẬP",
+                              key="tdv_nsx_demo_only")
+        product_file = st.file_uploader("PDF sản phẩm NSX DEMO", type=["pdf"],
+                                        disabled=not consent, key="tdv_nsx_product_upload")
+        other_files = []
+        for kind, title in (("GMP_CERT", "Giấy GMP DEMO"),
+                            ("GMP_EXPLANATION", "Công văn giải trình DEMO"),
+                            ("QUOTE", "Báo giá DEMO"),
+                            ("AUTHORIZATION", "Giấy ủy quyền DEMO")):
+            upload = st.file_uploader(title, type=["pdf"], disabled=not consent,
+                                      key=f"tdv_nsx_{kind}_upload")
+            if upload is not None:
+                other_files.append((kind, upload))
+        if st.button("🔍 Đọc và gắn chứng cứ bộ hồ sơ NSX DEMO", key="tdv_nsx_read_upload",
+                     disabled=not consent or product_file is None):
+            try:
+                attachments = [(kind, handle.getvalue()) for kind, handle in other_files]
+                st.session_state["tdv_nsx_read"] = read_nsx_package(
+                    product_file.getvalue(), attachments, ocr=True)
+                st.success("Đã đọc và liên kết hồ sơ thử. Mọi kết quả cần người kiểm tra.")
+            except (ValueError, RuntimeError) as exc:
+                st.error(f"Không đọc được bộ hồ sơ: {type(exc).__name__}")
+        current = st.session_state.get("tdv_nsx_read")
+        if current:
+            p = current["product"]
+            st.write("**Định danh sản phẩm:**", p.get("product_id", "CHƯA CÓ"))
+            st.write("**Nhà máy:**", p.get("factory_id", "CHƯA CÓ"),
+                     "  |  **Nhà sản xuất:**", p.get("manufacturer_id", "CHƯA CÓ"))
+            st.table([{"Tài liệu": d["document_type"],
+                       "Liên kết": d["link_status"], "Nguồn SHA": d["sha256"][:12],
+                       "Số trang": f"{d['pages_processed']}/{d['total_pages']}",
+                       "Phê duyệt": "CHƯA"} for d in current["documents"]])
+            if current["product_missing"]:
+                st.warning("Thiếu trường hồ sơ NSX: " + ", ".join(current["product_missing"]))
+            if current["warnings"]:
+                with st.expander(f"Cảnh báo ({len(current['warnings'])})"):
+                    for w in current["warnings"][:30]:
+                        st.warning(w)
+            st.info("Đã có hồ sơ mẫu trong phiên làm việc. Mở 'Báo cáo lãnh đạo' "
+                    "để đối chiếu với E-HSMT (nếu đã nạp).")
     elif page == PAGES[3]:
         st.markdown('<div class="tdv-page-title">🔬 TDV-IDP 3.0 · Bộ đọc – kiểm chứng hoạt động</div>',
                     unsafe_allow_html=True)
@@ -745,6 +855,59 @@ with st.container(key="tdv_main_scroll"):
         st.write("**Kết quả quy tắc:**", x["status"])
         st.info(x["note"])
         st.caption("Không có giấy GMP thật được lưu hoặc xác nhận trên trang này.")
+    elif page == PAGES[6]:
+        st.markdown('<div class="tdv-page-title">📊 Báo cáo lãnh đạo · Đối chiếu E-HSMT – NSX</div>',
+                    unsafe_allow_html=True)
+        tender = st.session_state.get("tdv_ehsmt_read")
+        supplier = st.session_state.get("tdv_nsx_read")
+        if not tender or not supplier:
+            st.warning("Cần thực hiện cả hai bước: đọc E-HSMT DEMO và nạp hồ sơ NSX DEMO "
+                       "trên cùng phiên làm việc để có báo cáo đối chiếu.")
+        else:
+            report = leadership_report(tender, supplier)
+            totals = report["summary"]
+            a, b, c = st.columns(3)
+            a.metric("Mã E-HSMT trích xuất", totals["lots"])
+            b.metric("Khớp kỹ thuật SƠ BỘ", totals["technical_prelim_match"])
+            c.metric("Khác kỹ thuật", totals["technical_conflict"])
+            st.warning("BÁO CÁO THỬ NGHIỆM – CHƯA PHÊ DUYỆT. Không kết luận GMP, "
+                       "không tự duyệt giá, không xác nhận đủ điều kiện dự thầu.")
+            table_rows = []
+            for item in report["items"]:
+                table_rows.append({
+                    "Mã E-HSMT": item["lot_id"], "Mã NSX": item["product_id"],
+                    "Nhà máy": item["factory_id"],
+                    "Đối chiếu kỹ thuật": item["technical"],
+                    "Cần kiểm chứng": "; ".join(item["reasons"]),
+                    "Phê duyệt": "CHƯA"})
+            if table_rows:
+                st.dataframe(table_rows, hide_index=True, use_container_width=True)
+            else:
+                st.error("Không có mã danh mục có chứng cứ để lập báo cáo.")
+            with st.expander("Chi tiết nguồn chứng cứ, trang và trạng thái từng trường"):
+                for item in report["items"]:
+                    st.markdown("**Mã: " + item["lot_id"] + "**")
+                    records = []
+                    for side, key in (("E-HSMT", "tender_field_evidence"),
+                                      ("Sản phẩm NSX", "product_field_evidence")):
+                        for field, citation in item[key].items():
+                            records.append({"Hồ sơ": side, "Trường": field,
+                                            "Giá trị": citation["value"],
+                                            "Mã nguồn": citation["source_id"],
+                                            "Trang": citation["page"],
+                                            "Cách đọc": citation["method"]})
+                    if records:
+                        st.dataframe(records, hide_index=True, use_container_width=True)
+            st.download_button("⬇️ Xuất báo cáo lãnh đạo sơ bộ (.txt)",
+                               report_text(report).encode("utf-8"),
+                               file_name="TDV_QC7_BAO_CAO_SO_BO_DEMO.txt",
+                               mime="text/plain", key="tdv_report_txt")
+            st.download_button("⬇️ Xuất chứng cứ và đối chiếu (.json)",
+                               json.dumps(report, ensure_ascii=False, indent=2).encode("utf-8"),
+                               file_name="TDV_QC7_CHUNG_CU_DEMO.json",
+                               mime="application/json", key="tdv_report_json")
+            st.caption("Báo cáo được tạo trong bộ nhớ phiên, không tự ghi Google Sheets, "
+                       "không cập nhật giá và không xuất dữ liệu thật.")
     elif page == PAGES[-1]:
         st.markdown('<div class="tdv-page-title">☁️ Tiến độ Online</div>',unsafe_allow_html=True)
         st.table([
