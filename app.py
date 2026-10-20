@@ -2,9 +2,18 @@
 from __future__ import annotations
 import re
 import unicodedata
+import base64
+import io
+from collections import deque
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 import streamlit as st
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None  # Fall back to original brand asset if Pillow is not installed.
+
 
 st.set_page_config(
     page_title="TDV QC7 ONLINE | DUBIPHARMA DŨNG BÍCH",
@@ -26,6 +35,73 @@ def asset_base64(filename: str) -> str:
 
 LOGO_DATA = asset_base64("tdv_logo.webp.b64")
 ART_DATA = asset_base64("tdv_art.webp.b64")
+
+
+@st.cache_data(show_spinner=False)
+def transparent_brand_logo(encoded: str) -> tuple[str, str]:
+    """Remove edge-connected pale-blue paper from the genuine DUBI logo.
+
+    Do not recolor white lettering inside the logo. Pillow is a Streamlit
+    dependency; if unavailable, fall back to the original asset.
+    """
+    if not encoded or Image is None:
+        return encoded, "webp"
+    try:
+        original = Image.open(io.BytesIO(base64.b64decode(encoded))).convert("RGBA")
+        width, height = original.size
+        if width * height > 2_000_000:
+            return encoded, "webp"
+        pixels = original.load()
+        samples = [
+            pixels[0, 0], pixels[width - 1, 0],
+            pixels[0, height - 1], pixels[width - 1, height - 1],
+        ]
+        paper = tuple(round(sum(pixel[channel] for pixel in samples) / 4) for channel in range(3))
+        seen = bytearray(width * height)
+        frontier = deque()
+
+        def delta(x: int, y: int) -> int:
+            rgb = pixels[x, y]
+            return max(abs(rgb[channel] - paper[channel]) for channel in range(3))
+
+        for x in range(width):
+            frontier.append((x, 0))
+            frontier.append((x, height - 1))
+        for y in range(height):
+            frontier.append((0, y))
+            frontier.append((width - 1, y))
+
+        while frontier:
+            x, y = frontier.popleft()
+            idx = y * width + x
+            if seen[idx]:
+                continue
+            seen[idx] = 1
+            distance = delta(x, y)
+            if distance > 29:
+                continue
+            r, g, b, _ = pixels[x, y]
+            # Preserve anti-aliased edges as partially transparent pixels.
+            opacity = 0 if distance <= 10 else min(255, round((distance - 10) / 19 * 255))
+            pixels[x, y] = (r, g, b, opacity)
+            if x > 0:
+                frontier.append((x - 1, y))
+            if x + 1 < width:
+                frontier.append((x + 1, y))
+            if y > 0:
+                frontier.append((x, y - 1))
+            if y + 1 < height:
+                frontier.append((x, y + 1))
+
+        output = io.BytesIO()
+        original.save(output, format="PNG", optimize=True)
+        return base64.b64encode(output.getvalue()).decode("ascii"), "png"
+    except Exception:
+        return encoded, "webp"
+
+
+LOGO_DISPLAY_DATA, LOGO_MIME = transparent_brand_logo(LOGO_DATA)
+
 
 STYLE = """
 <style>
@@ -282,6 +358,73 @@ h1,h2,h3 {color:#0b316b;}
 @media(max-width:899px){
  .tdv-main-art{display:none!important;}
 }
+
+/* 20/10: Bright transparent logo, subtle medical focus in left whitespace,
+   and wider clinical illustration reaching the end of the main headline. */
+.tdv-main-hero{
+ background:linear-gradient(104deg,#e6f4ff 0%,#d9effc 22%,#e9f6fe 46%,#d7effb 75%,#93d9f1 100%)!important;
+}
+.tdv-main-hero::after{
+ background:
+   radial-gradient(ellipse at 18% 82%,rgba(43,173,225,.19),transparent 30%),
+   radial-gradient(ellipse at 33% 20%,rgba(255,255,255,.86),transparent 35%),
+   radial-gradient(ellipse at 72% 12%,rgba(255,255,255,.54),transparent 32%),
+   linear-gradient(to top,rgba(37,150,215,.08),transparent 38%)!important;
+}
+.tdv-main-logo{
+ background:none!important;
+ overflow:visible!important;
+ isolation:isolate;
+}
+.tdv-main-logo img,.tdv-left-brand img{
+ background:transparent!important;
+ border:0!important;
+ box-shadow:none!important;
+ filter:drop-shadow(0 2px 2px rgba(11,66,101,.12));
+}
+.tdv-main-logo::before{
+ content:"";
+ position:absolute;
+ width:102px;height:102px;
+ right:-142px;top:30%;
+ border-radius:34px;
+ border:2px solid rgba(47,153,212,.17);
+ transform:rotate(26deg);
+ background:linear-gradient(140deg,rgba(255,255,255,.22),rgba(95,189,232,.075));
+ box-shadow:0 0 0 14px rgba(255,255,255,.06);
+ pointer-events:none;
+}
+.tdv-main-logo::after{
+ content:"+";
+ position:absolute;
+ width:100px;height:100px;display:flex;
+ align-items:center;justify-content:center;
+ right:-140px;top:30%;
+ color:rgba(30,143,207,.19);
+ font-size:5.3rem;font-weight:850;line-height:1;
+ pointer-events:none;
+}
+.tdv-main-art{
+ width:42%!important;
+ background-position:center right!important;
+ background-size:cover!important;
+ opacity:1!important;
+ -webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.16) 12%,rgba(0,0,0,.66) 34%,#000 55%)!important;
+ mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.16) 12%,rgba(0,0,0,.66) 34%,#000 55%)!important;
+}
+.tdv-main-body{position:relative;z-index:3;}
+.tdv-main-title{color:#0b3575!important;}
+@media(max-width:1400px) and (min-width:900px){
+ .tdv-main-art{width:37%!important;}
+ .tdv-main-logo::before,.tdv-main-logo::after{
+   transform:scale(.74);
+   right:-103px;
+ }
+}
+@media(max-width:899px){
+ .tdv-main-logo::before,.tdv-main-logo::after{display:none!important;}
+ .tdv-main-art{display:none!important;}
+}
 </style>
 """
 st.markdown(STYLE, unsafe_allow_html=True)
@@ -302,7 +445,7 @@ if "tdv_section" not in st.session_state:
     st.session_state.tdv_section = PAGES[0]
 
 logo = (f'<img alt="Logo DUBIPHARMA" style="width:110px;max-height:92px;object-fit:contain" '
-        f'src="data:image/webp;base64,{LOGO_DATA}">' if LOGO_DATA else
+        f'src="data:image/{LOGO_MIME};base64,{LOGO_DISPLAY_DATA}">' if LOGO_DISPLAY_DATA else
         '<div class="tdv-logo-word" aria-label="Logo DUBI">DB<br>DUBI</div>')
 art = (f'<div class="tdv-main-art" style="opacity:.77;'
        f'background-image:linear-gradient(to right,#eaf4fd00,#d9ecfa18),'
