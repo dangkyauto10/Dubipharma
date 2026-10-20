@@ -24,6 +24,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
       - name: Syntax checks
-        run: python -m py_compile app.py tdv_demo_core.py tdv_idp3_rules.py tdv_idp3_workflow.py tdv_ehsmt_intake.py tdv_real_intake.py see_pro_core.py see_pro_multiformat.py see_pro_structured.py see_pro_workbench.py see_pro_streamlit.py tests/test_tdv_demo_core.py tests/test_tdv_idp3_rules.py tests/test_tdv_idp3_workflow.py tests/test_tdv_ehsmt_intake.py tests/test_see_pro_multiformat.py tests/test_see_pro_structured.py
+        run: python -m py_compile app.py tdv_demo_core.py tdv_idp3_rules.py tdv_idp3_workflow.py tdv_ehsmt_intake.py tdv_real_intake.py see_pro_core.py see_pro_multiformat.py see_pro_structured.py see_pro_adapters.py see_pro_workbench.py see_pro_streamlit.py tests/test_tdv_demo_core.py tests/test_tdv_idp3_rules.py tests/test_tdv_idp3_workflow.py tests/test_tdv_ehsmt_intake.py tests/test_see_pro_multiformat.py tests/test_see_pro_structured.py tests/test_see_pro_adapters.py
       - name: Read-only regression tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
