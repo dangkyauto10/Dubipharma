@@ -456,7 +456,6 @@ st.markdown(STYLE, unsafe_allow_html=True)
 PAGES = [
     "🏠 Trang chủ / Dự án",
     "📄 E-HSMT",
-    "🧪 SEE PRO · Test tích hợp",
     "💊 Báo giá & hồ sơ NSX",
     "🔬 TDV-IDP 3.0 · Đọc đa tầng",
     "🛡️ Chứng cứ nhà sản xuất",
@@ -464,6 +463,7 @@ PAGES = [
     "📊 Báo cáo lãnh đạo",
     "🔗 Google Sheets",
     "☁️ Tình trạng Online",
+    "🧪 SEE PRO · Test tích hợp",
 ]
 
 if "tdv_section" not in st.session_state:
