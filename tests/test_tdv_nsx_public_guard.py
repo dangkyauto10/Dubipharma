@@ -17,7 +17,7 @@ from openpyxl import Workbook
 from tdv_nsx_auto import analyze_auto, classify_document
 from tdv_nsx_public_guard import (
     detect_nonprimary_document, PUBLIC_GMP_LIST,
-    PUBLIC_GMP_NONCOMPLIANCE, PUBLIC_GMP_GUIDANCE,
+    PUBLIC_GMP_BLANK_TEMPLATE, PUBLIC_GMP_NONCOMPLIANCE, PUBLIC_GMP_GUIDANCE,
     PUBLIC_REGISTRATION_DECISION, QUOTE_INVITATION,
     QUOTE_BLANK_TEMPLATE,
 )
@@ -153,6 +153,36 @@ class PublicEvidenceSafetyTests(unittest.TestCase):
         record = classify_document("guideline.pdf", raw)
         self.assertEqual(record["public_document_class"], PUBLIC_GMP_GUIDANCE)
         self.assertEqual(record["kind"], "OTHER")
+
+    def test_dav_domestic_gmp_list_not_individual_factory_certificate(self):
+        raw = docx([
+            "Danh sách các CSSX trong nước đạt tiêu chuẩn nguyên tắc GMP, "
+            "GMP bao bì dược phẩm (Cập nhật tới ngày 24/10/2025)",
+            "Danh sách cơ sở sản xuất trong nước",
+        ], [("Nhà máy sản xuất", "Nhà máy A")])
+        result = classify_document("dav_domestic_list.docx", raw)
+        self.assertEqual(result["public_document_class"], PUBLIC_GMP_LIST)
+        self.assertEqual(result["kind"], "OTHER")
+
+    def test_ema_blank_union_format_is_not_issued_gmp_certificate(self):
+        raw = english_pdf([
+            "Union format for a GMP certificate",
+            "(LETTERHEAD OF COMPETENT AUTHORITY)",
+            "Certificate No: ____ / ____ / ____",
+            "CERTIFICATE OF GMP COMPLIANCE OF A MANUFACTURER",
+        ])
+        result = classify_document("union_format.pdf", raw)
+        self.assertEqual(result["public_document_class"], PUBLIC_GMP_BLANK_TEMPLATE)
+        self.assertEqual(result["kind"], "OTHER")
+
+    def test_ema_interpretation_guidance_is_not_issued_certificate(self):
+        raw = english_pdf([
+            "Interpretation of the Union format for GMP certificate",
+            "The purpose is to provide guidance for regulators",
+            "This text is not an individual factory's GMP certificate",
+        ])
+        result = classify_document("interpretation.pdf", raw)
+        self.assertEqual(result["public_document_class"], PUBLIC_GMP_GUIDANCE)
 
     def test_genuine_certificate_type_is_still_recognised_provisionally(self):
         raw = docx([
