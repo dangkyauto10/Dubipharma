@@ -239,6 +239,49 @@ h1,h2,h3 {color:#0b316b;}
  .tdv-globalbar-search{display:none;}
  .tdv-globalbar-status{font-size:.7rem;}
 }
+
+/* Banner thống nhất theo yêu cầu Vỹ: nền một khối, không có hai đường phân cách. */
+.tdv-main-hero{
+ background:linear-gradient(102deg,#e9f7ff 0%,#e3f5ff 25%,#ecf9ff 57%,#bfe9fa 85%,#75c9ed 100%)!important;
+ box-shadow:0 5px 17px rgba(26,85,145,.10)!important;
+ border:1px solid #c7e4f9!important;
+ isolation:isolate;
+}
+.tdv-main-hero::after{
+ content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+ background:
+  radial-gradient(circle at 21% 80%,rgba(83,194,242,.19),transparent 26%),
+  radial-gradient(circle at 65% 15%,rgba(255,255,255,.71),transparent 39%),
+  linear-gradient(0deg,rgba(33,159,223,.12),transparent 40%);
+}
+.tdv-main-logo{
+ border-right:0!important;
+ background:transparent!important;
+}
+.tdv-main-logo,.tdv-main-body{
+ position:relative;z-index:3;
+}
+.tdv-main-art{
+ width:24.5%!important;
+ left:auto;right:0;top:0;bottom:0;
+ z-index:1;opacity:1!important;
+ border:0!important;
+ background-repeat:no-repeat!important;
+ background-position:center right!important;
+ background-size:cover!important;
+ /* Chuyển tiếp nhẹ trên chính một nền banner, không có đường thẳng ngăn cách. */
+ -webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.45) 12%,#000 33%);
+ mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.45) 12%,#000 33%);
+}
+.tdv-main-art::before{display:none!important;}
+.tdv-main-title{color:#0a336e!important;text-shadow:0 1px 0 rgba(255,255,255,.65);}
+.tdv-main-subtitle{color:#456b8e!important;}
+@media(max-width:1220px){
+ .tdv-main-art{width:22%!important;opacity:.8!important;}
+}
+@media(max-width:899px){
+ .tdv-main-art{display:none!important;}
+}
 </style>
 """
 st.markdown(STYLE, unsafe_allow_html=True)
