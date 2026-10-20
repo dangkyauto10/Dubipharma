@@ -71,6 +71,11 @@ def identify_document(filename: str, content: bytes) -> dict:
     info = {"type": "UNKNOWN", "package_id": package.group(0).upper() if package else "",
             "evidence": {}, "warnings": []}
     ext = filename.rsplit(".", 1)[-1].lower()
+    if ext in ("xlsx", "docx"):
+        from see_pro_notice import parse_notice
+        identified = parse_notice(filename, content)
+        if identified is not None:
+            return identified
     if ext in ("xlsx", "xls", "csv"):
         info["type"] = "TABULAR_CANDIDATE"
     elif ext == "pdf":
