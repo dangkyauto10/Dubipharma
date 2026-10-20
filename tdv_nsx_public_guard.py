@@ -19,6 +19,7 @@ from tdv_nsx_adaptive import normalize
 
 # Stable category codes for regression, not regulatory conclusions.
 PUBLIC_GMP_LIST = "GMP_PUBLIC_REGISTER"
+PUBLIC_GMP_BLANK_TEMPLATE = "GMP_BLANK_TEMPLATE"
 PUBLIC_REGISTRATION_DECISION = "REGISTRATION_PUBLIC_DECISION"
 PUBLIC_GMP_NONCOMPLIANCE = "GMP_NONCOMPLIANCE_REFERENCE"
 PUBLIC_GMP_GUIDANCE = "GMP_GUIDANCE_REFERENCE"
@@ -29,6 +30,10 @@ CATEGORY_NOTES = {
     PUBLIC_GMP_LIST: (
         "Danh sách công bố về GMP: tài liệu tham khảo, không thay thế việc "
         "xác minh chứng nhận GMP gốc của đúng nhà máy và phạm vi."
+    ),
+    PUBLIC_GMP_BLANK_TEMPLATE: (
+        "Mẫu định dạng chứng nhận GMP chưa điền: không phải chứng chỉ "
+        "được cơ quan có thẩm quyền cấp cho một nhà máy."
     ),
     PUBLIC_REGISTRATION_DECISION: (
         "Quyết định/danh sách cấp hoặc gia hạn SĐK: không tự coi là "
@@ -70,8 +75,18 @@ def detect_nonprimary_document(lines: list[dict[str, Any]]) -> dict | None:
     if _has(head, "danh sách cơ sở sản xuất thuốc nước ngoài đạt tiêu chuẩn gmp",
             "danh sách cơ sở sản xuất thuốc đạt tiêu chuẩn gmp",
             "danh sách cơ sở sản xuất đạt tiêu chuẩn gmp",
-            "danh sách cơ sở sản xuất thuốc nước ngoài đáp ứng gmp"):
+            "danh sách cơ sở sản xuất thuốc nước ngoài đáp ứng gmp",
+            "danh sách các cssx trong nước đạt tiêu chuẩn nguyên tắc gmp",
+            "danh sách cssx trong nước đạt tiêu chuẩn nguyên tắc gmp"):
         chosen = PUBLIC_GMP_LIST
+
+    elif _has(head,
+              "union format for a gmp certificate",
+              "union format for a good manufacturing practice gmp certificate",
+              "union format for good manufacturing practice gmp certificate"):
+        # EMA publishes an unfilled certification *format* for regulators.
+        # Do not mistake the regulator template for an issued certificate.
+        chosen = PUBLIC_GMP_BLANK_TEMPLATE
 
     elif (_has(head, "statement of non-compliance with gmp",
                "statements of non-compliance with gmp",
@@ -84,7 +99,9 @@ def detect_nonprimary_document(lines: list[dict[str, Any]]) -> dict | None:
     elif (_has(head, "the issue and update of gmp certificates",
                "quy trình cấp giấy chứng nhận gmp",
                "hướng dẫn việc cấp giấy chứng nhận gmp",
-               "guideline on gmp certification")):
+               "guideline on gmp certification",
+               "interpretation of the union format for gmp certificate",
+               "interpretation of the union format for good manufacturing practice gmp certificate")):
         chosen = PUBLIC_GMP_GUIDANCE
 
     # Whole procurement notice takes precedence over a blank template contained
