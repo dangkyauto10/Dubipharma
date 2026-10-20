@@ -654,8 +654,8 @@ with st.container(key="tdv_main_scroll"):
             unsafe_allow_html=True,
         )
     elif page == PAGES[1]:
-        st.markdown("### E-HSMT · Kiểm thử đọc hồ sơ thật (chỉ đọc)")
-        st.caption("Chỉ kiểm kê mã danh mục và trang nguồn; không tự kết luận đáp ứng hoặc ghi dữ liệu ra ngoài.")
+        st.markdown("### E-HSMT · Tiếp nhận và đọc hồ sơ")
+        st.caption("Tải hồ sơ E-HSMT thật để đọc và kiểm kê các mã danh mục kèm trang chứng cứ. Chưa kết luận đáp ứng thầu.")
         from tdv_ehsmt_intake import inspect_ehsmt_pdf, export_ehsmt_csv
         real_file = st.file_uploader("Chọn PDF E-HSMT thật (tối đa 40 MB, 1.200 trang)",
                                      type=["pdf"], key="tdv_real_ehsmt_pdf")
@@ -693,59 +693,6 @@ with st.container(key="tdv_main_scroll"):
                 st.download_button("Tải bảng kiểm kê CSV", export_ehsmt_csv(parsed),
                                    file_name="TDV_EHSMT_KIEM_KE_CHUA_XAC_MINH.csv", mime="text/csv",
                                    key="tdv_real_ehsmt_export")
-        st.divider()
-        st.markdown("#### Chế độ DEMO cũ (giữ nguyên để đối chiếu)")
-        st.markdown('<div class="tdv-page-title">📄 E-HSMT · Tiếp nhận và đọc đa tầng</div>',
-                    unsafe_allow_html=True)
-        st.warning("MÔI TRƯỜNG DEMO. Chỉ dùng PDF nhân tạo hoặc tài liệu thử KHÔNG chứa thông tin thật. "
-                   "Chưa có phân quyền hồ sơ nghiệp vụ, không lưu file lên Google Sheets/GitHub.")
-        st.caption("Bộ đọc trích xuất lớp chữ, đối chiếu bộ đọc thứ hai, thử OCR cục bộ với trang "
-                   "thiếu chữ. Bảng E-HSMT phức tạp vẫn cần kiểm tra người thật.")
-        if st.button("▶️ Tạo và đọc E-HSMT mẫu 2 trang", key="tdv_demo_tender_run",
-                     use_container_width=True):
-            try:
-                st.session_state["tdv_ehsmt_read"] = read_ehsmt(make_demo_ehsmt())
-                st.success("Đã đọc E-HSMT nhân tạo và đánh dấu chứng cứ nguồn.")
-            except (ValueError, RuntimeError) as exc:
-                st.error(f"Không thể xử lý mẫu PDF: {type(exc).__name__}")
-        consent = st.checkbox("Tôi xác nhận file tải lên chỉ là dữ liệu KIỂM THỬ giả lập, không có hồ sơ thật",
-                              key="tdv_ehsmt_demo_only")
-        uploaded = st.file_uploader("PDF E-HSMT DEMO (≤25 MB)", type=["pdf"],
-                                    key="tdv_ehsmt_upload", disabled=not consent)
-        if st.button("🔍 Đọc và soát PDF DEMO vừa nạp", key="tdv_ehsmt_read_upload",
-                     disabled=not consent or uploaded is None):
-            try:
-                st.session_state["tdv_ehsmt_read"] = read_ehsmt(uploaded.getvalue(), ocr=True)
-                st.success("Đã đọc dữ liệu thử; chưa xác minh chuyên môn.")
-            except (ValueError, RuntimeError) as exc:
-                st.error(f"Không đọc được PDF: {type(exc).__name__}. Hãy kiểm tra bản gốc.")
-        current = st.session_state.get("tdv_ehsmt_read")
-        if current:
-            x, y, z = st.columns(3)
-            x.metric("Trang đã xử lý", f"{current['pages_processed']}/{current['total_pages']}")
-            y.metric("Mã danh mục tạm trích", current["lot_count"])
-            z.metric("Đủ trang/lớp chữ", "CÓ" if current["complete"] else "KHÔNG")
-            rows = []
-            for lot in current["lots"]:
-                rows.append({"Mã E-HSMT": lot["lot_id"],
-                             "Hoạt chất": lot["fields"].get("hoat_chat", ""),
-                             "Hàm lượng": lot["fields"].get("ham_luong", ""),
-                             "Dạng bào chế": lot["fields"].get("dang_bao_che", ""),
-                             "Đường dùng": lot["fields"].get("duong_dung", ""),
-                             "Số lượng": lot["fields"].get("so_luong", ""),
-                             "Chứng cứ": ", ".join(
-                                 str(e["page"]) for e in lot["evidence"].values()),
-                             "Trạng thái": lot["status"]})
-            if rows:
-                st.dataframe(rows, hide_index=True, use_container_width=True)
-            else:
-                st.warning("Chưa tự nhận dạng được mã thuốc; KHÔNG suy đoán từ PDF.")
-            if current["warnings"]:
-                with st.expander(f"Cảnh báo khi đọc ({len(current['warnings'])})"):
-                    for w in current["warnings"][:30]:
-                        st.warning(w)
-            st.caption("SHA-256 hồ sơ: " + current["sha256"])
-            st.info("Kết quả chỉ là TRÍCH XUẤT SƠ BỘ. Tiếp tục nạp hồ sơ NSX mẫu để so sánh.")
     elif page == PAGES[2]:
         st.markdown('<div class="tdv-page-title">💊 Hồ sơ nhà sản xuất · Nạp và gắn chứng cứ</div>',
                     unsafe_allow_html=True)
