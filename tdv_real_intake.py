@@ -60,8 +60,10 @@ def extract_document(filename: str, data: bytes) -> dict:
                     result["complete"] = False
                     result["warnings"].append("Vượt 10.000 dòng; kết quả chỉ là bản xem trước")
                     break
-                values = [f"{col}:{str(cell).strip()[:350]}" for col, cell in enumerate(row, 1)
-                          if cell is not None and str(cell).strip()]
+                # read_only iter_rows yields ReadOnlyCell objects; read their values,
+                # not their object representations. Preserve numeric zero.
+                values = [f"{col}:{str(cell.value).strip()[:350]}" for col, cell in enumerate(row, 1)
+                          if cell.value is not None and str(cell.value).strip()]
                 if values:
                     add(f"Sheet {sheet.title}, dòng {ri}", " | ".join(values))
                 count += 1
