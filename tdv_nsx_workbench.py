@@ -94,6 +94,50 @@ def render_nsx_workbench() -> None:
     if not report or st.session_state.get("tdv_nsx_real_signature") != signature:
         return
 
+    product_preview = report["product"]
+    candidates = product_preview.get("catalogue_candidates") or []
+    if candidates:
+        st.markdown("**Danh mục sản phẩm nhận diện theo cột – không tự chọn nhầm thuốc**")
+        st.dataframe([{
+            "Dòng": item["row"], "Bảng/Sheet": item["table"],
+            "Mã sản phẩm": item["fields"].get("PRODUCT_ID", ""),
+            "SĐK": item["fields"].get("REGISTRATION_NO", ""),
+            "Tên thuốc": item["fields"].get("PRODUCT_NAME", ""),
+            "Hoạt chất": item["fields"].get("INGREDIENT", ""),
+            "Hàm lượng": item["fields"].get("STRENGTH", ""),
+            "Nhà sản xuất": item["fields"].get("MANUFACTURER", ""),
+            "Nhà máy": item["fields"].get("FACTORY", ""),
+        } for item in candidates], hide_index=True, use_container_width=True)
+        st.caption(
+            "Các mã thuốc lấy từ đúng hàng/cột trong tài liệu; "
+            "chưa được coi là đã xác minh nghiệp vụ.")
+        if len(candidates) > 1:
+            choices = list(range(len(candidates)))
+            chosen = st.selectbox(
+                "Chọn dòng sản phẩm để kiểm tra liên kết GMP/SĐK/báo giá",
+                choices,
+                format_func=lambda i: (
+                    f"{candidates[i]['table']}, dòng {candidates[i]['row']} · "
+                    f"{candidates[i]['fields'].get('PRODUCT_NAME') or candidates[i]['fields'].get('PRODUCT_ID') or candidates[i]['fields'].get('REGISTRATION_NO') or 'Chưa đủ mã'}"
+                ),
+                index=(report["product"].get("catalogue_selected_index") or 0),
+                key=f"tdv_nsx_real_pick_{signature[:14]}",
+            )
+            if st.button(
+                "Xác nhận dòng đã chọn và đối chiếu lại chứng cứ",
+                key="tdv_nsx_real_recheck_selected",
+            ):
+                with st.spinner("Kiểm tra lại đúng sản phẩm được chọn..."):
+                    report = analyze_nsx_documents(
+                        assets, enable_ocr=ocr, selected_product_index=chosen,
+                    )
+                st.session_state["tdv_nsx_real_report"] = report
+                st.session_state["tdv_nsx_real_signature"] = signature
+            if report["product"].get("catalogue_selection_required"):
+                st.warning(
+                    "Chưa chọn sản phẩm cụ thể: mọi chứng cứ GMP/báo giá phải ở trạng thái CHƯA LIÊN KẾT."
+                )
+
     summary = report["summary"]
     a, b, c, d = st.columns(4)
     a.metric("Tài liệu", summary["files_received"])
