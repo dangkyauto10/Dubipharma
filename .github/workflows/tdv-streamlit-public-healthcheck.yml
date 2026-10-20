@@ -47,5 +47,21 @@ jobs:
               message=str(exc).splitlines()[0][:180]
               print("STREAMLIT_WEBSOCKET_NOT_CONFIRMED",type(exc).__name__,
                     "error",message)
+          # Control app: determine whether Community Cloud normally routes
+          # /_stcore/health to its HTML shell under the same egress network.
+          for control in ("https://mcperlin.streamlit.app",
+                          "https://madras-data-app.streamlit.app"):
+              sess=requests.Session()
+              try:
+                  home=sess.get(control+"/",timeout=10)
+                  health=sess.get(control+"/_stcore/health",timeout=10)
+                  print("CONTROL",urlparse(control).netloc,
+                        "home_status",home.status_code,
+                        "health_status",health.status_code,
+                        "health_type",health.headers.get("content-type"),
+                        "health_ok",health.text.strip()=="ok",
+                        "health_html",b"<html" in health.content[:2000])
+              except requests.RequestException as exc:
+                  print("CONTROL",urlparse(control).netloc,type(exc).__name__)
           print("DIAGNOSTIC COMPLETE; NO DATA WRITE")
           PY
