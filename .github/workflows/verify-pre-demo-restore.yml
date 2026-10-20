@@ -1,0 +1,23 @@
+name: Verify restored pre-DEMO baseline
+on:
+  push:
+    branches:
+      - tdv-pre-demo-baseline-20261020
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install baseline dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Verify Python syntax and imports
+        run: |
+          python -m py_compile app.py
+          python -c "import streamlit, pandas, numpy, requests; print('Dependencies OK')"
