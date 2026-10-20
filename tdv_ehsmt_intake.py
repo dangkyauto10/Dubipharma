@@ -5,19 +5,48 @@ import re
 
 
 def _summary_rows(raw: str, page_no: int) -> list:
-    """Parse only unambiguous same-line table records; never invent missing values."""
-    pattern = re.compile(r"^\s*(\d{1,4})\s+(PP\d{10})\s+(G1\.\d{3})\s+(.+?)\s{2,}(\d[\d.]*)\s+(\d[\d.]*)\s*$")
+    """Extract summary rows, including PDF line wraps, without inventing values.
+
+    A record must begin with STT + PP + G1 and end with two monetary
+    columns. Repeated or incomplete records are not silently filled.
+    """
+    header = re.compile(r"^\\s*(\\d{1,4})\\s+(PP\\d{10})\\s+(G1\\.\\d{3})\\b")
+    money = re.compile(r"^(.*?)\\s+(\\d[\\d.]*)\\s+(\\d[\\d.]*)\\s*$")
+    lines = [line.strip() for line in raw.splitlines() if line.strip()]
     rows = []
-    for line in raw.splitlines():
-        match = pattern.fullmatch(line)
-        if match:
-            stt, part, code, ingredient, amount, guarantee = match.groups()
-            rows.append({"MA_THUOC": code, "MA_PHAN_LO": part, "STT": int(stt),
-                         "HOAT_CHAT_CHUAN": ingredient.strip(),
-                         "GIA_TRI_UOC_TINH": int(amount.replace(".", "")),
-                         "BAO_DAM_DU_THAU": int(guarantee.replace(".", "")),
-                         "TRANG_BANG_TONG_HOP": page_no,
-                         "CHUNG_CU_BANG_TONG_HOP": line.strip()})
+    for i, line in enumerate(lines):
+        match = header.match(line)
+        if not match:
+            continue
+        stt, part, code = match.groups()
+        tail = line[match.end():].strip()
+        # Try one physical line first, then at most three wrapped lines.
+        for extra in range(4):
+            if extra:
+                next_idx = i + extra
+                if next_idx >= len(lines) or header.match(lines[next_idx]):
+                    break
+                tail += " " + lines[next_idx]
+            parsed = money.match(tail)
+            if not parsed:
+                continue
+            ingredient, amount, guarantee = parsed.groups()
+            ingredient = ingredient.strip()
+            if not ingredient or not re.search(r"[A-Za-zÀ-ỹ]", ingredient):
+                continue
+            # A monetary column in this document uses thousands separators.
+            if not (re.fullmatch(r"\\d{1,3}(?:\\.\\d{3})+", amount)
+                    and re.fullmatch(r"\\d{1,3}(?:\\.\\d{3})+", guarantee)):
+                continue
+            rows.append({
+                "MA_THUOC": code, "MA_PHAN_LO": part, "STT": int(stt),
+                "HOAT_CHAT_CHUAN": ingredient,
+                "GIA_TRI_UOC_TINH": int(amount.replace(".", "")),
+                "BAO_DAM_DU_THAU": int(guarantee.replace(".", "")),
+                "TRANG_BANG_TONG_HOP": page_no,
+                "CHUNG_CU_BANG_TONG_HOP": " ".join(lines[i:i + extra + 1]),
+            })
+            break
     return rows
 
 LOT = re.compile(r'(?<!\w)G\s*1\s*[.．]\s*(\d{1,4})(?!\d)', re.I)
