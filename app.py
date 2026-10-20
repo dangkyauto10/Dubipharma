@@ -677,12 +677,17 @@ with st.container(key="tdv_main_scroll"):
                 a, b, c = st.columns(3)
                 a.metric("Trang đã đọc", f"{parsed['pages_processed']}/{parsed['total_pages']}")
                 b.metric("Mã thuốc ứng viên", parsed["lot_count"])
+                st.caption(f"Đã tách chắc chắn {parsed.get('summary_rows', 0)}/{parsed['lot_count']} dòng bảng tổng hợp; dòng thiếu phải kiểm tra.")
                 c.metric("Trang thiếu lớp chữ", len(parsed["pages_without_text"]))
                 st.warning(parsed["note"])
+                if parsed.get("missing_summary"):
+                    st.error("Mã chưa tách được dòng bảng tổng hợp: " + ", ".join(parsed["missing_summary"][:30]))
                 for warning in parsed["warnings"]:
                     st.warning(warning)
                 import pandas as pd
                 frame = pd.DataFrame(parsed["lots"])
+                display_cols = ["MA_THUOC", "MA_PHAN_LO", "HOAT_CHAT_CHUAN", "GIA_TRI_UOC_TINH", "BAO_DAM_DU_THAU", "TRANG_BANG_TONG_HOP", "TRANG_NGUON", "TRICH_DOAN", "TRANG_THAI"]
+                frame = frame.reindex(columns=display_cols)
                 if not frame.empty:
                     frame["TRANG_NGUON"] = frame["TRANG_NGUON"].map(lambda v: ", ".join(map(str, v)))
                     term = st.text_input("Lọc mã thuốc hoặc đoạn chứng cứ", key="tdv_real_ehsmt_filter")
