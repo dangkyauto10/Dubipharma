@@ -12,26 +12,59 @@ import pandas as pd
 import streamlit as st
 from tdv_ehsmt_intake import inspect_ehsmt_pdf, export_ehsmt_csv
 from see_pro_multiformat import ACCEPTED, extract_file, identify_codes
+from see_pro_structured import identify_document, parse_excel_lots, reconcile_notice
 
 
 def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = False) -> dict:
-    """Keep original files in memory only while running. Return derived data."""
-    result = {"documents": [], "rows": [], "warnings": [], "pdf_reports": []}
-    for name, content in uploaded:
+    """Classify before reading. Do not force every PDF to use G1.xxx."""
+    result = {"documents": [], "rows": [], "warnings": [],
+              "pdf_reports": [], "notices": [], "structured_tables": []}
+    for filename, data in uploaded:
         try:
-            doc = extract_file(name, content, ocr=enable_ocr)
-            result["documents"].append({
-                "Tệp": name, "Loại": doc["type"].upper(),
-                "Đoạn/dòng đọc": len(doc["lines"]), "Số trang": doc["pages"],
-                "Đọc toàn bộ": doc["complete"], "SHA256": doc["sha256"],
-                "Xác minh": "CHƯA",
-            })
-            result["warnings"].extend(f"{name}: {w}" for w in doc["warnings"])
-            if name.lower().endswith(".pdf"):
-                report = inspect_ehsmt_pdf(content)
+            classification = identify_document(filename, data)
+            role = classification["type"]
+            source = extract_file(filename, data, ocr=enable_ocr)
+            document_info = {
+                "Tệp": filename, "Loại": source["type"].upper(),
+                "Loại nghiệp vụ": role,
+                "Mã gói BP": classification["package_id"],
+                "Đoạn/dòng đọc": len(source["lines"]),
+                "Số trang": source["pages"], "Đọc toàn bộ": source["complete"],
+                "SHA256": source["sha256"], "Xác minh": "CHƯA",
+            }
+            result["documents"].append(document_info)
+            result["warnings"].extend(f"{filename}: {w}" for w in source["warnings"])
+
+            if role == "THONG_BAO_MOI_THAU":
+                result["notices"].append({"file": filename, **classification})
+                # Absence of G1.xxx in a notice is NORMAL; never raise a lot warning.
+                continue
+
+            if filename.lower().endswith(".xlsx"):
+                parsed = parse_excel_lots(filename, data)
+                result["structured_tables"].append({
+                    "Tệp": filename, "Mã gói BP": parsed["package_id"],
+                    "Số lô": parsed["total_lots"], "Nhận diện cấu trúc": parsed["complete"],
+                    "Số cảnh báo": len(parsed["issues"]),
+                    "Các Sheet": ", ".join(x["sheet"] for x in parsed["sheets"]),
+                })
+                if not parsed["complete"]:
+                    result["warnings"].append(
+                        f"{filename}: không nhận diện đầy đủ bảng nghiệp vụ; cần đối chiếu tên cột")
+                for issue in parsed["issues"]:
+                    result["warnings"].append(f"{filename}: {issue['type']}: {issue}")
+                for row in parsed["rows"]:
+                    result["rows"].append({
+                        **row,
+                        "TRANG_VI_TRI": f"{row['SHEET']} – dòng {row['DONG_NGUON']}",
+                        "TRICH_DAN": str(row.get("HOAT_CHAT_HSMT") or "")[:350],
+                    })
+                continue
+
+            if role == "BANG_EHSMT_PDF":
+                report = inspect_ehsmt_pdf(data)
                 result["pdf_reports"].append({
-                    "Tệp": name,
-                    "Số trang": report["total_pages"],
+                    "Tệp": filename, "Số trang": report["total_pages"],
                     "Trang đã đọc": report["pages_processed"],
                     "Mã G1 nhận diện": report["lot_count"],
                     "Dòng tổng hợp": report["summary_rows"],
@@ -39,30 +72,48 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
                     "Mã chưa tách": ", ".join(report["missing_summary"][:20]),
                     "SHA256": report["sha256"],
                 })
-                result["warnings"].extend(f"{name}: {w}" for w in report["warnings"])
-                for row in report["lots"]:
+                result["warnings"].extend(f"{filename}: {w}" for w in report["warnings"])
+                for lot in report["lots"]:
                     result["rows"].append({
-                        "FILE_NGUON": name, "MA_THUOC": row["MA_THUOC"],
-                        "MA_PHAN_LO": row.get("MA_PHAN_LO", ""),
-                        "HOAT_CHAT_HSMT": row.get("HOAT_CHAT_CHUAN"),
-                        "GIA_UOC_TINH_PHAN": row.get("GIA_TRI_UOC_TINH"),
-                        "TIEN_BAO_DAM_DU_THAU": row.get("BAO_DAM_DU_THAU"),
-                        "TRANG_VI_TRI": row.get("TRANG_BANG_TONG_HOP"),
-                        "TRICH_DAN": row.get("CHUNG_CU_BANG_TONG_HOP")
-                                    or row.get("TRICH_DOAN", ""),
-                        "TRANG_THAI": row.get("TRANG_THAI", "CAN_XAC_MINH"),
+                        "FILE_NGUON": filename, "MA_GOI_THAU": "",
+                        "MA_THUOC": lot["MA_THUOC"],
+                        "MA_PHAN_LO": lot.get("MA_PHAN_LO", ""),
+                        "HOAT_CHAT_HSMT": lot.get("HOAT_CHAT_CHUAN"),
+                        "GIA_UOC_TINH_PHAN": lot.get("GIA_TRI_UOC_TINH"),
+                        "TIEN_BAO_DAM_DU_THAU": lot.get("BAO_DAM_DU_THAU"),
+                        "TRANG_VI_TRI": lot.get("TRANG_BANG_TONG_HOP"),
+                        "TRICH_DAN": lot.get("CHUNG_CU_BANG_TONG_HOP")
+                                       or lot.get("TRICH_DOAN", ""),
+                        "TRANG_THAI": lot.get("TRANG_THAI", "CAN_XAC_MINH"),
                     })
             else:
-                for row in identify_codes(doc):
+                # Keep original generic evidence intake for Word, CSV, images, non-lot PDFs.
+                for item in identify_codes(source):
                     result["rows"].append({
-                        "FILE_NGUON": name, "MA_THUOC": row["Mã lô"],
-                        "MA_PHAN_LO": "", "HOAT_CHAT_HSMT": None,
-                        "GIA_UOC_TINH_PHAN": None, "TIEN_BAO_DAM_DU_THAU": None,
-                        "TRANG_VI_TRI": row["Nguồn"], "TRICH_DAN": row["Trích dẫn"],
+                        "FILE_NGUON": filename, "MA_GOI_THAU": classification["package_id"],
+                        "MA_THUOC": item["Mã lô"], "MA_PHAN_LO": "",
+                        "HOAT_CHAT_HSMT": None, "GIA_UOC_TINH_PHAN": None,
+                        "TIEN_BAO_DAM_DU_THAU": None,
+                        "TRANG_VI_TRI": item["Nguồn"], "TRICH_DAN": item["Trích dẫn"],
                         "TRANG_THAI": "CAN_XAC_MINH_TRUONG_DU_LIEU",
                     })
         except (ValueError, RuntimeError, OSError, ImportError) as exc:
-            result["warnings"].append(f"{name}: không thể xử lý ({type(exc).__name__}: {exc})")
+            result["warnings"].append(
+                f"{filename}: không thể đọc ({type(exc).__name__}: {exc})")
+    for notice in result["notices"]:
+        bp = notice.get("package_id")
+        # Only link tables with the same identified BP; never combine unrelated packages.
+        related = [t for t in result["structured_tables"] if t["Mã gói BP"] == bp]
+        if not related:
+            result["warnings"].append(
+                f"{notice['file']}: chưa có bảng phần/lô khớp gói {bp}")
+            continue
+        expected = (notice.get("evidence", {}).get("SO_PHAN_LO") or {}).get("value")
+        if expected and expected.isdigit():
+            actual = sum(t["Số lô"] for t in related)
+            if int(expected) != actual:
+                result["warnings"].append(
+                    f"{notice['file']}: số lô thông báo {expected}, bảng khớp {actual}; cần kiểm tra")
     return result
 
 
@@ -102,31 +153,41 @@ def render_ehsmt_workbench() -> None:
     pdfs = pd.DataFrame(analysis["pdf_reports"])
     a, b, c = st.columns(3)
     a.metric("Tệp đã đọc", len(docs))
-    b.metric("Mã G1 / bản ghi ứng viên", len(rows))
+    b.metric("Mặt hàng / mã ứng viên", len(rows))
     c.metric("Cảnh báo", len(analysis["warnings"]))
     st.warning("Đây là bản trích xuất để đối chiếu, KHÔNG phải kết quả kiểm chứng kỹ thuật, GMP hay giá chào.")
     if not docs.empty:
         st.markdown("**Tệp và nguồn chứng cứ**")
         st.dataframe(docs, hide_index=True, use_container_width=True)
+    if analysis.get("structured_tables"):
+        st.markdown("**Danh sách phần/lô theo từng mã gói thầu**")
+        st.dataframe(pd.DataFrame(analysis["structured_tables"]), hide_index=True, use_container_width=True)
+    if analysis.get("notices"):
+        st.markdown("**Thông báo mời thầu đã nhận diện**")
+        meta = [{"Tệp": notice["file"], "Mã gói BP": notice["package_id"],
+                 **{key: info["value"] for key, info in notice["evidence"].items()}}
+                for notice in analysis["notices"]]
+        st.dataframe(pd.DataFrame(meta), hide_index=True, use_container_width=True)
     if not pdfs.empty:
         st.markdown("**Kiểm kê bảng tổng hợp PDF E-HSMT**")
         st.dataframe(pdfs, hide_index=True, use_container_width=True)
     if not rows.empty:
+        evidence_rows = rows.drop(columns=["EVIDENCE", "verified"], errors="ignore")
         term = st.text_input("Tìm theo mã G1, mã PP, hoạt chất hoặc chứng cứ", key="tdv_see_pro_keyword")
         if term.strip():
-            mask = rows.fillna("").astype(str).apply(
+            mask = evidence_rows.fillna("").astype(str).apply(
                 lambda col: col.str.contains(term.strip(), case=False, regex=False)).any(axis=1)
-            shown = rows[mask]
+            shown = evidence_rows[mask]
         else:
-            shown = rows
+            shown = evidence_rows
         st.dataframe(shown.fillna(""), hide_index=True, use_container_width=True)
         st.download_button("Tải bảng kiểm kê CSV (chưa xác minh)",
-                           data=rows.fillna("").to_csv(index=False).encode("utf-8-sig"),
+                           data=evidence_rows.fillna("").to_csv(index=False).encode("utf-8-sig"),
                            file_name="TDV_SEE_PRO_KIEM_KE.csv", mime="text/csv",
                            key="tdv_see_pro_csv")
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            rows.fillna("").to_excel(writer, sheet_name="DANH_MUC_UNG_VIEN", index=False)
+            evidence_rows.fillna("").to_excel(writer, sheet_name="DANH_MUC_UNG_VIEN", index=False)
             docs.fillna("").to_excel(writer, sheet_name="NGUON_TAI_LIEU", index=False)
             pd.DataFrame({"CANH_BAO": analysis["warnings"]}).to_excel(
                 writer, sheet_name="CANH_BAO", index=False)
@@ -140,6 +201,6 @@ def render_ehsmt_workbench() -> None:
                 st.warning(warning)
     st.download_button(
         "Tải báo cáo JSON (chưa xác minh)",
-        data=json.dumps(analysis, ensure_ascii=False, indent=2).encode("utf-8"),
+        data=json.dumps(analysis, ensure_ascii=False, indent=2, default=str).encode("utf-8"),
         file_name="TDV_SEE_PRO_AUDIT.json", mime="application/json",
         key="tdv_see_pro_json")
