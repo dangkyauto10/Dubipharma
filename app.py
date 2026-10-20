@@ -695,6 +695,9 @@ with st.container(key="tdv_main_scroll"):
                         frame = frame[frame.astype(str).apply(
                             lambda col: col.str.contains(term, case=False, regex=False)).any(axis=1)]
                     st.dataframe(frame, hide_index=True, use_container_width=True)
+                st.download_button("Tải báo cáo kiểm tra JSON", json.dumps(parsed, ensure_ascii=False, indent=2).encode("utf-8"),
+                                   file_name="TDV_EHSMT_BAO_CAO_KIEM_TRA.json", mime="application/json",
+                                   key="tdv_real_ehsmt_json")
                 st.download_button("Tải bảng kiểm kê CSV", export_ehsmt_csv(parsed),
                                    file_name="TDV_EHSMT_KIEM_KE_CHUA_XAC_MINH.csv", mime="text/csv",
                                    key="tdv_real_ehsmt_export")
