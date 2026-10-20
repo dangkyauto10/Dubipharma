@@ -1,4 +1,4 @@
-name: TDV Streamlit External Health Diagnostics
+name: TDV Streamlit Browser Startup Diagnostics
 on:
   push:
     branches: [tdv-see-pro-nsx-public-corpus-20261021]
@@ -8,60 +8,54 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Verify streamlit HTML, runtime health and websocket
+      - name: Install diagnostic Chromium only in isolated runner
+        run: |
+          python -m pip install -q playwright
+          python -m playwright install --with-deps chromium
+      - name: Test visible Streamlit app after page load
         shell: bash
         run: |
-          python -m pip install -q requests websocket-client
           python - <<'PY'
-          import requests
-          import websocket
+          import asyncio
           from urllib.parse import urlparse
-          base="https://dangkyauto10-dubipharma-app-tdv-qc7-online-preview-20261-k4zpor.streamlit.app"
-          s=requests.Session()
-          for suffix in ["/", "/_stcore/health", "/_stcore/host-config"]:
-              try:
-                  r=s.get(base+suffix,timeout=12)
-                  print("path",suffix,"http",r.status_code,"type",r.headers.get('content-type'),
-                        "bytes",len(r.content),"ended_at",urlparse(r.url).path,
-                        "html_bootstrap",b"<html" in r.content[:2000],
-                        "health_ok",r.text.strip()=="ok","title",r.text.split('<title>')[-1].split('</title>')[0][:80] if '<title>' in r.text else "")
-              except requests.RequestException as exc:
-                  print("path",suffix,"request_error",type(exc).__name__)
-          cookies="; ".join(f"{c.name}={c.value}" for c in s.cookies if c.domain.endswith("streamlit.app"))
-          try:
-              ws=websocket.create_connection(
-                  base.replace("https://","wss://")+"/_stcore/stream",
-                  timeout=12,
-                  subprotocols=["streamlit"],
-                  cookie=cookies,
-                  origin=base,
-              )
-              print("STREAMLIT_WEBSOCKET_UPGRADE_OK","subprotocol",ws.subprotocol)
-              ws.close()
-          except Exception as exc:
-              message=str(exc).splitlines()[0][:180]
-              print("STREAMLIT_WEBSOCKET_NOT_CONFIRMED",type(exc).__name__,
-                    "error",message)
-          # Control app: determine whether Community Cloud normally routes
-          # /_stcore/health to its HTML shell under the same egress network.
-          for control in ("https://mcperlin.streamlit.app",
-                          "https://madras-data-app.streamlit.app"):
-              sess=requests.Session()
-              try:
-                  home=sess.get(control+"/",timeout=10)
-                  health=sess.get(control+"/_stcore/health",timeout=10)
-                  print("CONTROL",urlparse(control).netloc,
-                        "home_status",home.status_code,
-                        "health_status",health.status_code,
-                        "health_type",health.headers.get("content-type"),
-                        "health_ok",health.text.strip()=="ok",
-                        "health_html",b"<html" in health.content[:2000])
-              except requests.RequestException as exc:
-                  print("CONTROL",urlparse(control).netloc,type(exc).__name__)
-          print("DIAGNOSTIC COMPLETE; NO DATA WRITE")
+          from playwright.async_api import async_playwright
+          HOSTS=[
+              "https://dangkyauto10-dubipharma-app-tdv-qc7-online-preview-20261-k4zpor.streamlit.app",
+              "https://mcperlin.streamlit.app",
+          ]
+          async def main():
+              async with async_playwright() as p:
+                  browser=await p.chromium.launch(headless=True, args=["--no-sandbox"])
+                  for url in HOSTS:
+                      page=await browser.new_page()
+                      problems=[]
+                      websocket_events=[]
+                      page.on("pageerror",lambda error:problems.append("js:"+str(error)[:110]))
+                      page.on("requestfailed",lambda req:problems.append("net:"+urlparse(req.url).path[:90]))
+                      page.on("websocket",lambda ws:websocket_events.append("ws_created:"+urlparse(ws.url).path))
+                      try:
+                          r=await page.goto(url,timeout=35000,wait_until="domcontentloaded")
+                          await page.wait_for_timeout(22000)
+                          text=(await page.locator("body").inner_text())[:450].replace("\n"," | ")
+                          main_count=await page.locator('[data-testid="stAppViewContainer"]').count()
+                          print("APP",urlparse(url).netloc,
+                                "HTTP",r.status if r else "-",
+                                "FINAL_HOST",urlparse(page.url).netloc,
+                                "MAIN_CONTAINER",main_count,
+                                "BODY",repr(text),
+                                "WS",websocket_events[:8],
+                                "ISSUES",problems[:12])
+                      except Exception as exc:
+                          print("APP",urlparse(url).netloc,
+                                "BROWSER_ERROR",type(exc).__name__,
+                                str(exc).splitlines()[0][:150],
+                                "ISSUES",problems[:6])
+                      await page.close()
+                  await browser.close()
+          asyncio.run(main())
           PY
