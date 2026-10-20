@@ -19,6 +19,7 @@ from tdv_nsx_intake import KINDS, _read_one
 from see_pro_traceability import safe_cell, _format
 
 MAX_FILES = 24
+MAX_QUOTE_ROWS = 250
 IDENTIFIERS = ("PRODUCT_ID", "REGISTRATION_NO")
 ROLES = {"PRODUCT", "GMP_CERT", "GMP_EXPLANATION", "REGISTRATION",
          "AUTHORIZATION", "QUOTE", "OTHER"}
@@ -184,6 +185,7 @@ def _table_items(filename: str, raw: bytes, sha: str, kind: str) -> list[dict]:
         return []
     tables, _warnings = _read_grid(filename, raw)
     items = []
+    truncated = False
     for title, rows in tables:
         heads: dict[str, int] = {}
         for ri, row in enumerate(rows, 1):
@@ -211,10 +213,17 @@ def _table_items(filename: str, raw: bytes, sha: str, kind: str) -> list[dict]:
                     "kind": kind, "complete_read": True,
                     "origin": f"{title}, hàng {ri}", "verified": False,
                 })
-            if len(items) >= 250:
+            if len(items) >= MAX_QUOTE_ROWS:
+                truncated = True
                 break
-        if len(items) >= 250:
+        if truncated:
             break
+    if truncated:
+        # We have not proved the rest of the source contains no further rows.
+        # All extracted price evidence is still usable for review, not
+        # automatically linkable/complete.
+        for item in items:
+            item["complete_read"] = False
     return items
 
 
@@ -306,6 +315,7 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
             warnings.append(f"{name}: không đọc được ({type(exc).__name__})")
     products = []
     evidence_items = []
+    incomplete_attachments = []
     for classification, document, (filename, raw) in zip(classified, detailed, original):
         kind = classification["kind"]
         if "error" in document:
@@ -316,12 +326,34 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
                 products.append(p)
         elif kind in ("GMP_CERT", "GMP_EXPLANATION", "REGISTRATION", "QUOTE", "AUTHORIZATION"):
             rows = _table_items(filename, raw, classification["sha256"], kind)
+            if rows and len(rows) >= MAX_QUOTE_ROWS and kind == "QUOTE":
+                classification["complete_read"] = False
+                document["complete_read"] = False
+                warnings.append(
+                    f"{filename}: bảng báo giá có thể còn dòng ngoài giới hạn "
+                    f"{MAX_QUOTE_ROWS}; kết quả chưa được coi là đọc đủ"
+                )
+                outstanding_warning = {
+                    "file": filename, "kind": kind, "origin": "",
+                    "status": "CHUA_DOC_DU_BANG_BAO_GIA",
+                    "candidate_products": [],
+                    "reason": "Bảng báo giá chạm giới hạn phân tích; không tự xác nhận các dòng thiếu.",
+                }
+                # Review queue is built below; retain this warning in
+                # a separate list, then merge into review queue.
+                incomplete_attachments.append(outstanding_warning)
+            if rows:
+                for price_row in rows:
+                    price_row["complete_read"] = (
+                        price_row.get("complete_read", True)
+                        and document["complete_read"]
+                    )
             evidence_items.extend(rows or [{
                 **document, "filename": filename, "kind": kind,
                 "origin": "Các trường có nhãn trong tệp",
             }])
     links = []
-    outstanding = []
+    outstanding = list(incomplete_attachments)
     for proof in evidence_items:
         assessments = [_match(p, proof) for p in products]
         candidates = [x for x in assessments if x["status"] == STATUS_MATCH]
@@ -354,6 +386,13 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
                 "reason": "Không tìm được liên kết duy nhất có chứng cứ đủ mạnh.",
             })
     for c in classified:
+        if not c.get("complete_read", False) and c["role_confidence"] != "KHÔNG_ĐỌC_ĐƯỢC":
+            outstanding.append({
+                "file": c["filename"], "kind": c["kind"],
+                "origin": "", "status": "CAN_KIEM_TRA_DO_PHU",
+                "candidate_products": [],
+                "reason": "Nguồn chưa đọc đủ hoặc có giới hạn trích xuất.",
+            })
         if c["role_confidence"] in ("CHƯA_PHÂN_LOẠI", "KHÔNG_ĐỌC_ĐƯỢC"):
             outstanding.append({
                 "file": c["filename"], "kind": c["kind"],
