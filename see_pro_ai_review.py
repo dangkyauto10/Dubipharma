@@ -283,3 +283,66 @@ def review_with_gemini(
     reviewed["provider"] = "Google Gemini Developer API"
     reviewed["external_text_sent"] = True
     return reviewed
+
+
+
+def export_review_xlsx(report: dict) -> bytes:
+    """Traceable human-review workbook; strings never become Excel formulas."""
+    from io import BytesIO
+    from openpyxl import Workbook
+
+    def safe(value: Any) -> str | int | float | None:
+        if value is None:
+            return None
+        if isinstance(value, (dict, list)):
+            value = json.dumps(value, ensure_ascii=False, default=str)
+        if isinstance(value, (int, float)):
+            return value
+        output = str(value)
+        # Also guard leading whitespace followed by an Excel formula marker.
+        if output.lstrip().startswith(("=", "+", "-", "@")) or output.startswith(("\t", "\r", "\n")):
+            return "'" + output
+        return output
+
+    wb = Workbook()
+    findings = wb.active
+    findings.title = "DE_XUAT_AI_CAN_DUYET"
+    cols = ["Mã lô", "Trường", "Yêu cầu AI đọc", "Đáp ứng AI đọc",
+            "AI gợi ý", "Trạng thái kiểm chứng", "Nguồn yêu cầu",
+            "Vị trí yêu cầu", "Trích yêu cầu", "Nguồn đáp ứng",
+            "Vị trí đáp ứng", "Trích đáp ứng", "Diễn giải"]
+    findings.append(cols)
+    for f in report.get("findings", []):
+        req = f.get("CHUNG_CU_YEU_CAU") or {}
+        offer = f.get("CHUNG_CU_DE_XUAT") or {}
+        findings.append([safe(item) for item in (
+            f.get("MA_THUOC_HOAC_LO"), f.get("TRUONG"),
+            f.get("YEU_CAU_AI_DOC"), f.get("DE_XUAT_AI_DOC"),
+            f.get("AI_DE_XUAT"), f.get("TRANG_THAI"),
+            req.get("file"), req.get("locator"), req.get("quote"),
+            offer.get("file"), offer.get("locator"), offer.get("quote"),
+            f.get("GIAI_THICH"),
+        )])
+    sources = wb.create_sheet("NGUON_TAI_LIEU")
+    sources.append(["Tệp", "SHA256", "Số dòng", "Số dòng chứa mã", "Đọc toàn bộ", "Cảnh báo"])
+    for doc in report.get("source_files", []):
+        sources.append([safe(v) for v in (
+            doc.get("filename"), doc.get("sha256"), doc.get("line_count"),
+            doc.get("matching_lines"), str(doc.get("complete_read")),
+            doc.get("warnings"),
+        )])
+    metadata = wb.create_sheet("GIOI_HAN_KIEM_TOAN")
+    metadata.append(["Thuộc tính", "Giá trị"])
+    for k, value in (
+        ("Mã cần kiểm tra", report.get("lot_code")),
+        ("SHA256 gói trích đoạn", report.get("context_sha256")),
+        ("Dịch vụ AI", report.get("provider")),
+        ("Mô hình", report.get("model")),
+        ("Đã kiểm chứng toàn bộ HSMT/HSDT", "KHÔNG"),
+        ("Tự động phê duyệt kỹ thuật", "KHÔNG"),
+        ("Cảnh báo", report.get("warnings")),
+    ):
+        metadata.append([safe(k), safe(value)])
+    result = BytesIO()
+    wb.save(result)
+    return result.getvalue()
