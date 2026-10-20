@@ -156,7 +156,7 @@ def render_ehsmt_workbench() -> None:
         "Bật OCR cục bộ cho ảnh và trang PDF không có chữ (cần kiểm tra lại nguồn)",
         value=False, key="tdv_see_pro_ocr")
     deep = st.checkbox("Đối chiếu sâu bảng kỹ thuật PDF G1 theo vị trí cột (chỉ áp dụng khi nhận diện đúng mẫu)",
-                       value=True, key="tdv_see_pro_deep")
+                       value=False, key="tdv_see_pro_deep")
     if files:
         digest = hashlib.sha256()
         for f in files:
@@ -263,7 +263,8 @@ def render_ai_evidence_review(files, *, ocr: bool, upload_signature: str) -> Non
             "Google để phân tích và có thể phát sinh chi phí API. "
             "Không dùng dữ liệu bí mật trên dịch vụ miễn phí: theo điều khoản Google, "
             "dữ liệu API miễn phí có thể được dùng để cải thiện dịch vụ. "
-            "Bộ đọc cục bộ không gửi hồ sơ ra ngoài."
+            "Khi không bật Gemini, tài liệu chỉ được xử lý tại máy chủ ứng dụng Streamlit; "
+            "không chủ động chuyển tiếp đến Gemini."
         )
         code = st.text_input(
             "Mã thuốc hoặc mã phần/lô cần đối chiếu (ví dụ: G1.362, GE841.001, PP2600428741)",
