@@ -710,7 +710,8 @@ with st.container(key="tdv_main_scroll"):
         from tdv_nsx_workbench import render_nsx_workbench
         render_nsx_workbench()
         st.divider()
-        with st.expander("🧪 Bộ DEMO NSX cũ (giữ để kiểm thử hồi quy)", expanded=False):
+        if st.checkbox("🧪 Hiển thị bộ DEMO NSX cũ (chỉ để kiểm thử hồi quy)",
+                       value=False, key="tdv_nsx_demo_show"):
             st.warning("Chỉ dùng PDF DEMO không có dữ liệu thầu/NSX thật. Mọi chứng cứ đều ở "
                        "trạng thái cần kiểm chứng và không sinh quyết định giá/GMP.")
             if st.button("▶️ Tạo và nạp bộ NSX mẫu (sản phẩm + GMP + báo giá + ủy quyền)",
