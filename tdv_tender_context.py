@@ -54,10 +54,23 @@ DOCUMENT_KINDS = (
     ("KET_QUA_LCNT", ("ket qua lua chon nha thau",)),
     ("HOP_DONG_THAU", ("hop dong cung cap thuoc", "hop dong mua sam thuoc")),
 )
+FOLLOW_UP_ACTIONS = {
+    "SUA_DOI_EHSMT": "So thay đổi theo phiên bản E-HSMT gốc; chỉ áp dụng sau xác minh hiệu lực.",
+    "LAM_RO_EHSMT": "Ghép công văn làm rõ vào đúng gói và điều kiện được trả lời.",
+    "THONG_BAO_MOI_THAU": "Đối chiếu mã BP/IB, thời hạn và bảo đảm dự thầu với E-HSMT.",
+    "E_HSMT": "Trích điều kiện hợp lệ và danh mục hồ sơ theo đúng gói, chưa phê duyệt.",
+    "PHU_LUC_KY_THUAT": "So hoạt chất, hàm lượng, dạng bào chế, đơn vị và số lượng theo mã thuốc.",
+    "TIEU_CHI_DANH_GIA": "Tạo checklist chứng cứ theo tiêu chí và nguồn E-HSMT.",
+    "BAO_DAM_DU_THAU": "Kiểm tra loại, số tiền và hiệu lực theo E-HSMT, chưa kết luận.",
+    "BIEN_BAN_MO_THAU": "Đối chiếu dữ liệu sau mở thầu với hồ sơ đã lưu.",
+    "KET_QUA_LCNT": "Đối chiếu quyết định lựa chọn với gói, thuốc và hồ sơ thầu.",
+    "HOP_DONG_THAU": "Truy ngược nhà thầu, mặt hàng và điều kiện hợp đồng tới chứng cứ.",
+}
 KNOWN = {k for k, _ in DOCUMENT_KINDS}
 _BP = re.compile(r"(?<![A-Za-z0-9])BP\s*(\d{10,})(?!\d)", re.I)
 _IB = re.compile(r"(?<![A-Za-z0-9])IB\s*(\d{10,})(?!\d)", re.I)
 _G1 = re.compile(r"\bG1[.．]\d{3}\b", re.I)
+_DATE = re.compile(r"\b([0-3]?\d/[01]?\d/20\d{2})\b")
 
 
 def _norm(s: str) -> str:
@@ -69,7 +82,10 @@ def _norm(s: str) -> str:
 def detect_procurement_document(lines: list[dict]) -> dict | None:
     """Classify positive, specific tender signatures; remain conservative."""
     text_raw = " ".join(str(line.get("text", "")) for line in lines[:3000])
-    text = _norm(text_raw)
+    # Classify on the beginning of the document, not incidental terminology
+    # quoted far inside a supplier's manufacturer dossier.
+    heading_raw = " ".join(str(line.get("text", "")) for line in lines[:80])
+    text = _norm(heading_raw)
     kind = None
     for category, phrases in DOCUMENT_KINDS:
         if any(p in text for p in phrases):
@@ -80,9 +96,16 @@ def detect_procurement_document(lines: list[dict]) -> dict | None:
     packages = sorted({"BP" + m for m in _BP.findall(text_raw)})
     notices = sorted({"IB" + m for m in _IB.findall(text_raw)})
     lots = sorted({m.upper().replace("．", ".") for m in _G1.findall(text_raw)})[:500]
+    date_candidates = [
+        {"value": match.group(1), "status": "NGAY_TRONG_VAN_BAN_CHUA_XAC_MINH"}
+        for match in list(_DATE.finditer(heading_raw))[:5]
+    ]
     return {
         "kind": kind, "package_ids": packages, "notice_ids": notices,
         "lot_codes": lots, "source_scope": "văn bản đã nạp",
+        "date_candidates": date_candidates,
+        "revision_status": "CHUA_XAC_MINH_PHIEN_BAN_HIEU_LUC",
+        "suggested_action": FOLLOW_UP_ACTIONS[kind],
         "verified": False,
         "warning": ("Chỉ phân loại chứng cứ văn bản. Không tự kết luận "
                     "tính bắt buộc, hiệu lực, hoặc phiên bản mới nhất."),
