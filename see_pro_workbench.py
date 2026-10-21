@@ -19,6 +19,9 @@ from see_pro_traceability import build_audit_workbook
 from see_pro_pdf_viewer import render_original_pdf_viewer
 
 from tdv_ehsmt_xlsx import inspect_ehsmt_xlsx
+from tdv_tender_context import (
+    detect_procurement_document, index_tender_documents, PUBLIC_REFERENCES,
+)
 
 
 def _append_xlsx_ehsmt_summary(result: dict, filename: str, package_id: str,
@@ -70,12 +73,19 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
                     deep_technical: bool = False) -> dict:
     """Classify before reading. Do not force every PDF to use G1.xxx."""
     result = {"documents": [], "rows": [], "warnings": [],
-              "pdf_reports": [], "notices": [], "structured_tables": []}
+              "pdf_reports": [], "notices": [], "structured_tables": [],
+              "tender_documents": [], "tender_index": {}}
     for filename, data in uploaded:
         try:
             classification = identify_document(filename, data)
             role = classification["type"]
             source = extract_file(filename, data, ocr=enable_ocr)
+            tender_meta = detect_procurement_document(source["lines"])
+            if tender_meta:
+                result["tender_documents"].append({
+                    "filename": filename, "sha256": source["sha256"],
+                    "complete_read": source["complete"], **tender_meta,
+                })
             document_info = {
                 "Tệp": filename, "Loại": source["type"].upper(),
                 "Loại nghiệp vụ": role,
@@ -200,6 +210,10 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
             notice["lot_list_status"] = "CẦN KIỂM TRA: số lô không khớp"
             result["warnings"].append(
                 f"{notice['file']}: số lô thông báo {expected}, bảng khớp {actual}; cần kiểm tra")
+    result["tender_index"] = index_tender_documents(result["tender_documents"])
+    for issue in result["tender_index"]["unassigned"]:
+        result["warnings"].append(
+            f'{issue["filename"]}: tài liệu liên quan chưa xác định duy nhất mã BP')
     return result
 
 
@@ -250,6 +264,15 @@ def render_ehsmt_workbench() -> None:
         st.markdown("**Tệp và nguồn chứng cứ**")
         st.dataframe(docs, hide_index=True, use_container_width=True)
     render_original_pdf_viewer(files, analysis)
+    if analysis.get("tender_documents"):
+        st.markdown("**Tài liệu liên quan cùng gói thầu (tự nhận diện)**")
+        st.dataframe([{
+            "Tệp": d["filename"], "Loại": d["kind"],
+            "Mã BP": ", ".join(d["package_ids"]),
+            "Phiên bản": d["revision_status"], "Hướng xử lý": d["suggested_action"],
+            "SHA256": d["sha256"],
+        } for d in analysis["tender_documents"]],
+            hide_index=True, use_container_width=True)
     if analysis.get("structured_tables"):
         st.markdown("**Danh sách phần/lô theo từng mã gói thầu**")
         st.dataframe(pd.DataFrame(analysis["structured_tables"]), hide_index=True, use_container_width=True)
