@@ -181,7 +181,7 @@ def render_leadership_view():
     _summary(report)
     _records(report)
     from tdv_review_priorities import build_review_priorities
-    priority = build_review_priorities(report, max_rows=250)
+    priority = build_review_priorities(report, max_rows=10000)
     st.markdown("**Bảng công việc ưu tiên theo chứng cứ**")
     st.caption(priority["note"])
     levels = priority["by_priority"]
