@@ -17,6 +17,7 @@ from see_pro_multiformat import ACCEPTED, extract_file
 from tdv_nsx_adaptive import extract_product_rows, _read_grid, FIELD, normalize as norm
 from tdv_nsx_intake import KINDS, _read_one
 from tdv_nsx_public_guard import detect_nonprimary_document
+from tdv_tender_trace import build_reverse_dossiers
 from see_pro_traceability import safe_cell, _format
 
 MAX_FILES = 24
@@ -473,7 +474,7 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
     for digest, names in hashes.items():
         if len(names) > 1:
             warnings.append("Tệp có nội dung trùng SHA-256: " + ", ".join(names))
-    return {
+    report = {
         "mode": "NSX_AUTO_MULTI_DOCUMENT_READ_ONLY",
         "files": classified, "sources": detailed,
         "products": products, "links": links, "review_queue": outstanding,
@@ -490,6 +491,8 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
         "registration_confirmed": False, "quote_approved": False,
         "bid_eligible": False, "cloud_write_enabled": False,
     }
+    report["traceability"] = build_reverse_dossiers(report)
+    return report
 
 
 def export_auto_xlsx(report: dict) -> bytes:
@@ -552,6 +555,46 @@ def export_auto_xlsx(report: dict) -> bytes:
             trace.append([safe_cell(x) for x in (
                 link["source_evidence"], link["evidence_kind"], field,
                 item["value"], item["source"], item["sha256"], item["raw"],
+            )])
+    # Bid dossier: source-anchored reverse tracing is mandatory for leadership.
+    # These review categories are not automatically interpreted as statutory
+    # requirements until this project's own E-HSMT is parsed and confirmed.
+    reverse = report.get("traceability") or build_reverse_dossiers(report)
+    leaders = wb.create_sheet("TRUY_CUU_LANH_DAO")
+    leaders.append(["Mã thuốc nội bộ", "Tên thuốc", "SĐK nguồn", "Đơn vị cung cấp",
+                    "Nhà thầu", "Đơn vị đứng tên đăng ký", "Nhà sản xuất",
+                    "Cơ sở / nhà máy", "Tệp nguồn", "Vị trí nguồn",
+                    "SHA256 nguồn", "Trạng thái xác minh"])
+    for product in reverse["products"]:
+        party = product["parties"]
+        leaders.append([safe_cell(v) for v in (
+            product["product_id"], product["product_name"], product["registration_no"],
+            party["SUPPLIER"]["value"], party["BIDDER"]["value"],
+            party["REGISTRATION_HOLDER"]["value"], party["MANUFACTURER"]["value"],
+            party["FACTORY"]["value"], product["origin_file"], product["origin"],
+            product["source_sha256"], "CHUA_XAC_MINH",
+        )])
+    dossier_sheet = wb.create_sheet("GIAY_TO_THEO_THUOC")
+    dossier_sheet.append(["Mã", "Thuốc", "SĐK", "Đơn vị cung cấp", "Nhà sản xuất",
+                          "Nhà máy", "Loại chứng cứ cần rà soát",
+                          "Có chứng cứ gắn thuốc?", "Điều kiện E-HSMT",
+                          "Tên tệp", "Vị trí", "SHA256", "Trích gốc", "Xác minh"])
+    for item in reverse["checklist"]:
+        dossier_sheet.append([safe_cell(v) for v in (
+            item["product_id"], item["product_name"], item["registration_no"],
+            item["supplier"], item["manufacturer"], item["factory"], item["label"],
+            item["status"], item["requirement_status"], item["file"],
+            item["location"], item["sha256"], item["excerpt"], "CHUA",
+        )])
+    party_sheet = wb.create_sheet("CHU_THE_VA_CHUNG_CU")
+    party_sheet.append(["Mã", "Thuốc", "Vai trò đơn vị", "Tên ghi trong nguồn",
+                        "Trạng thái", "Tệp", "Vị trí", "SHA256", "Xác minh"])
+    for product in reverse["products"]:
+        for item in product["parties"].values():
+            party_sheet.append([safe_cell(v) for v in (
+                product["product_id"], product["product_name"], item["label"],
+                item["value"], item["status"], item["file"], item["source"],
+                item["sha256"], "CHUA",
             )])
     disclaim = wb.create_sheet("GIOI_HAN_KIEM_TOAN")
     disclaim.append(["Giới hạn", "Ý nghĩa"])
