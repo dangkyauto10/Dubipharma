@@ -67,3 +67,15 @@ class EhsmtWorkbookTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EhsmtAutoRouterTests(unittest.TestCase):
+    def test_xlsx_by_binary_signature_without_manual_role(self):
+        from tdv_ehsmt_xlsx import inspect_ehsmt_document
+        raw = book([[1, "PP1111111111", "G1.001", "Hoat chat A", "12.345.000", "123.450"]])
+        self.assertEqual(inspect_ehsmt_document(raw)["summary_rows"], 1)
+
+    def test_unknown_file_rejected_without_guessing(self):
+        from tdv_ehsmt_xlsx import inspect_ehsmt_document
+        with self.assertRaises(ValueError):
+            inspect_ehsmt_document(b"file is not PDF or XLSX")
