@@ -41,9 +41,16 @@ def _summary(report):
             "N/A không phải 0% đáp ứng."
         )
     st.caption(f'Đã phát hiện {s["ehsmt_lots"]} mã E-HSMT · '
-               f'{s["nsx_products"]} sản phẩm NSX · '
-               f'{s["criteria_ehsmt_available"]}/{s["total_criteria"]} '
-               'tiêu chí có yêu cầu đọc được từ E-HSMT.')
+               f'{s["nsx_products"]} dòng sản phẩm NSX · '
+               f'{s["criteria_ehsmt_available"]} tiêu chí E-HSMT đã đọc được · '
+               f'{s["linked_requirements"]} tiêu chí thuộc các cặp thuốc có '
+               'đủ nguồn để đối chiếu sơ bộ.')
+    if s.get("lots_with_title_hints"):
+        st.info(
+            f'Có {s["lots_with_title_hints"]} mã E-HSMT có gợi ý từ tên thuốc NSX. '
+            'Đây là tìm kiếm văn bản, KHÔNG chứng minh hoạt chất, '
+            'KHÔNG tính là liên kết hoặc tiêu chí đạt.'
+        )
     st.warning(report["note"])
     st.error(
         "KHÔNG kết luận ĐỦ ĐIỀU KIỆN DỰ THẦU từ tỷ lệ %. "
@@ -59,6 +66,7 @@ def _records(report):
             "Hoạt chất (chuẩn E-HSMT)":r["HOAT_CHAT_EHSMT"],
             "Hàm lượng (chuẩn E-HSMT)":r["HAM_LUONG_EHSMT"],
             "Số ứng viên NSX":r["SO_UNG_VIEN_NSX"],
+            "Gợi ý từ tên thuốc":r.get("SO_GOI_Y_TEN_NSX",0),
             "Tên NSX":r["TEN_THUOC_NSX"],
             "Mã / SĐK":r["SO_DANG_KY"],
             "Khớp":r["SO_TIEU_CHI_DAT"],
@@ -87,21 +95,34 @@ def _source_text(ev):
 
 def _criteria(r):
     st.markdown("**Hai nội dung gốc theo từng tiêu chí (E-HSMT ← NSX)**")
-    frame=pd.DataFrame([
-        {
-            "Tiêu chí":f["label"],
-            "E-HSMT — yêu cầu gốc":f["ehsmt"] or "CHƯA ĐỌC ĐƯỢC",
-            "NSX — nội dung chứng cứ":f["nsx"] or "CHƯA CÓ",
-            "Kết quả":PALETTE[f["status"]][2],
-            "_code":f["status"],
-        } for f in r["criteria"]
-    ])
-    if not frame.empty:
+    field_rows = [{
+        "Tiêu chí": f["label"],
+        "E-HSMT — yêu cầu gốc": f["ehsmt"] or "CHƯA ĐỌC ĐƯỢC",
+        "NSX — nội dung chứng cứ": f["nsx"] or "CHƯA CÓ",
+        "Kết quả": PALETTE[f["status"]][2],
+    } for f in r["criteria"]]
+    if field_rows:
+        frame = pd.DataFrame(field_rows)
+        states = [f["status"] for f in r["criteria"]]
         def style(row):
-            fg,bg,_=PALETTE[row["_code"]]
-            return [f"background-color:{bg};color:{fg};font-weight:600"]*len(row)
-        st.dataframe(frame.style.apply(style,axis=1).hide(axis="columns",subset=["_code"]),
-                     hide_index=True,use_container_width=True)
+            fg, bg, _ = PALETTE[states[row.name]]
+            return [f"background-color:{bg};color:{fg};font-weight:600"] * len(row)
+        st.dataframe(frame.style.apply(style, axis=1),
+                     hide_index=True, use_container_width=True)
+    if r.get("GOI_Y_TEN_NSX"):
+        st.warning(
+            "Gợi ý tên thuốc tương tự hoạt chất E-HSMT — CHƯA PHẢI KẾT QUẢ "
+            "SO SÁNH. Cần chứng cứ hoạt chất/SĐK gắn đích danh; "
+            "không được tự tô xanh hoặc gán sản phẩm."
+        )
+        st.dataframe([{
+            "Mã NSX": item["product_id"],
+            "Tên thuốc trong nguồn": item["product_name"],
+            "Tệp nguồn": item["source_file"],
+            "Dòng nguồn": item["source_location"],
+            "Trạng thái": "GỢI Ý VĂN BẢN — CHƯA XÁC MINH",
+        } for item in r["GOI_Y_TEN_NSX"]],
+            hide_index=True,use_container_width=True)
     with st.expander("Kiểm tra chứng cứ gốc của cả hai phía",expanded=True):
         for f in r["criteria"]:
             st.markdown(f'**{f["label"]} — {PALETTE[f["status"]][2]}**')
