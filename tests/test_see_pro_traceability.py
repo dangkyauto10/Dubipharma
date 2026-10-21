@@ -60,7 +60,7 @@ class TraceableExportTests(unittest.TestCase):
         self.assertEqual(book.sheetnames, [
             "DANH_MUC_PHAN_LO", "NGUON_TAI_LIEU",
             "TRUY_XUAT_CHUNG_CU", "CANH_BAO_CAN_XEM",
-            "PHAM_VI_KIEM_TOAN",
+            "KIEM_TOAN_CHAT_LUONG", "PHAM_VI_KIEM_TOAN",
         ])
         ws = book["DANH_MUC_PHAN_LO"]
         headers = [cell.value for cell in ws[1]]
