@@ -261,6 +261,24 @@ def export_leadership_xlsx(report: dict) -> bytes:
             x["requirement_status"], x["file"], x["location"], x["sha256"],
             x["excerpt"],
         )])
+    # Leadership must see both ORIGINAL data values and source locators for
+    # each criterion; row colours are visual summaries, not legal approval.
+    evidence_sheet = wb.create_sheet("HAI_NGUON_THEO_TIEU_CHI")
+    evidence_sheet.append([
+        "Mã E-HSMT", "Thuốc NSX", "Tiêu chí", "E-HSMT — chuẩn",
+        "NSX — nội dung", "Kết quả sơ bộ", "Tệp E-HSMT", "Trang / dòng E-HSMT",
+        "Tệp NSX", "Trang / dòng NSX", "SHA256 NSX", "Lý do", "Kết luận pháp lý",
+    ])
+    for row in rows:
+        for crit in row.get("criteria", []):
+            left, right = crit["ehsmt_evidence"], crit["nsx_evidence"]
+            evidence_sheet.append([_safe(v) for v in (
+                row["MA_THUOC_EHSMT"], row["TEN_THUOC_NSX"],
+                crit["label"], crit["ehsmt"], crit["nsx"],
+                crit["status"], left.get("file", ""), left.get("location", ""),
+                right.get("file", ""), right.get("location", ""),
+                right.get("sha256", ""), crit["note"], "CHUA_XAC_MINH",
+            )])
     sources = wb.create_sheet("DANH_MUC_TAI_LIEU")
     sources.append(["Hệ", "Tệp", "Loại", "SHA256", "Đọc đủ", "Xác minh"])
     for doc in report.get("ehsmt_documents", []):
@@ -281,6 +299,20 @@ def export_leadership_xlsx(report: dict) -> bytes:
     for sheet in wb.worksheets:
         _format(sheet, status_field="TRANG_THAI_DOI_CHIEU"
                 if sheet.title == "DOI_CHIEU_EHSMT_NSX" else None)
+    from openpyxl.styles import PatternFill, Font
+    visual = {
+        GREEN: ("E7F7ED", "176B41"),
+        YELLOW: ("FFF4D5", "90620C"),
+        RED: ("FDE9E9", "AF3030"),
+    }
+    for record in evidence_sheet.iter_rows(min_row=2):
+        status = str(record[5].value)
+        if status not in visual:
+            continue
+        bg, fg = visual[status]
+        for item in record[:6]:
+            item.fill = PatternFill("solid", fgColor=bg)
+            item.font = Font(name="Calibri", size=10, color=fg, bold=True)
     out = BytesIO()
     wb.save(out)
     return out.getvalue()
