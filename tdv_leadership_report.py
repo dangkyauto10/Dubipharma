@@ -22,65 +22,134 @@ def norm(value) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", txt.casefold())).strip()
 
 
+CRITERIA = (
+    ("HOAT_CHAT", "Hoạt chất", "HOAT_CHAT_HSMT", "INGREDIENT"),
+    ("HAM_LUONG", "Hàm lượng / nồng độ", "NONG_DO_HAM_LUONG", "STRENGTH"),
+    ("DANG_BAO_CHE", "Dạng bào chế", "DANG_BAO_CHE", "DOSAGE_FORM"),
+    ("DUONG_DUNG", "Đường dùng", "DUONG_DUNG", "ROUTE"),
+)
+GREEN = "DAT_SO_BO"
+YELLOW = "CHUA_DU_CAN_CU"
+RED = "KHONG_KHOP_CAN_XAC_MINH"
+
+
+def _comparable(value: str) -> str:
+    """Only normalize conservative typography and simple single-amount units."""
+    n = norm(value)
+    import decimal
+    # Only exactly a single mass unit; never change salt/base or dosage form.
+    m = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*(mcg|ug|mg|g)", n.replace(" ", ""))
+    if m:
+        amount = decimal.Decimal(m.group(1).replace(",", "."))
+        mg = amount * {"mcg": decimal.Decimal("0.001"), "ug": decimal.Decimal("0.001"),
+                       "mg": 1, "g": 1000}[m.group(2)]
+        return "mg:" + str(mg.normalize())
+    return n
+
+
+def _field_evidence(lot: dict, field: str) -> dict:
+    e = (lot.get("EVIDENCE") or {}).get(field)
+    if isinstance(e, dict) and e.get("source"):
+        return {"file": e.get("source", lot.get("FILE_NGUON", "")),
+                "location": f'{e.get("sheet", "")}, dòng {e.get("row", "")}, cột {e.get("column", "")}',
+                "raw": e.get("raw", ""), "sha256": lot.get("SHA256", "")}
+    g = lot.get("EVIDENCE_KY_THUAT") or {}
+    e = g.get(field) if isinstance(g, dict) else None
+    if isinstance(e, dict):
+        return {"file": lot.get("FILE_NGUON", ""),
+                "location": "Trang " + ", ".join(map(str, e.get("pages") or [])),
+                "raw": " ".join(map(str, e.get("raw_tokens") or [])),
+                "sha256": lot.get("SHA256", "")}
+    return {"file": lot.get("FILE_NGUON", ""),
+            "location": str(lot.get("TRANG_VI_TRI") or ""),
+            "raw": str(lot.get("TRICH_DAN") or ""), "sha256": lot.get("SHA256", "")}
+
+
 def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
-    """Conservative, source-based comparison with no arbitrary row selection."""
+    """E-HSMT is the sole standard; NSX sources are per-field candidates.
+
+    Evidence matches = preliminary, NEVER sufficient proof of bid eligibility.
+    Missing E-HSMT fields do not count as passes or verified failures.
+    """
     ehsmt = ehsmt or {}
     nsx = nsx or {}
-    entries = {}
-    warnings = []
-    for record in ehsmt.get("rows", []):
-        code = str(record.get("MA_THUOC") or "").strip().upper()
+    lots = {}
+    duplicate = set()
+    for row in ehsmt.get("rows") or []:
+        code = str(row.get("MA_THUOC") or "").strip().upper()
         if not LOT.fullmatch(code):
             continue
-        if code in entries:
-            warnings.append(f"Mã {code} có nhiều bản ghi E-HSMT; KHÔNG tự chọn bản đúng.")
-            entries[code]["duplicated"] = True
-            continue
-        entries[code] = dict(record)
-    products = nsx.get("traceability", {}).get("products")
-    if products is None:
-        products = []
-    raw_products = {p.get("uid"): p for p in nsx.get("products", [])}
-    group = defaultdict(list)
-    for p in products:
-        if p.get("ingredient"):
-            group[norm(p["ingredient"])].append(p)
-    rows = []
-    counted = defaultdict(int)
-    for code, lot in sorted(entries.items()):
-        ingredient = str(lot.get("HOAT_CHAT_HSMT") or lot.get("HOAT_CHAT_CHUAN") or "").strip()
-        strength = str(lot.get("NONG_DO_HAM_LUONG") or "").strip()
-        candidates = group.get(norm(ingredient), []) if ingredient else []
-        full = [p for p in candidates if strength and p.get("strength") and
-                norm(strength) == norm(p.get("strength"))]
-        if lot.get("duplicated"):
-            state = "E_HSMT_TRUNG_MA_CAN_DOI_CHIEU"
-            chosen = []
-        elif len(full) == 1:
-            state = "UNG_VIEN_KHOP_HOAT_CHAT_HAM_LUONG_CHUA_XAC_MINH"
-            chosen = full
-        elif len(full) > 1:
-            state = "NHIEU_THUOC_CUNG_THONG_SO_KHONG_TU_CHON"
-            chosen = full
-        elif not ingredient:
-            state = "E_HSMT_CHUA_TRICH_DUOC_HOAT_CHAT"
-            chosen = []
-        elif not candidates:
-            state = ("NSX_CHUA_CO_DANH_MUC" if not products
-                     else "NSX_KHONG_TIM_THAY_HOAT_CHAT")
-            chosen = []
-        elif len(candidates) == 1:
-            state = "CUNG_HOAT_CHAT_THIEU_HAM_LUONG_DOI_CHIEU"
-            chosen = candidates
+        if code in lots:
+            duplicate.add(code)
         else:
-            state = "NHIEU_UNG_VIEN_CUNG_HOAT_CHAT_CHUA_DU_TRUONG"
-            chosen = candidates
-        counted[state] += 1
-        specific = chosen[0] if len(chosen) == 1 else None
-        parties = specific.get("parties", {}) if specific else {}
-        src = raw_products.get(specific["product_id"], {}) if specific else {}
-        ev = src.get("evidence", {})
-        rows.append({
+            lots[code] = row
+    p = nsx.get("products") or []
+    traces = nsx.get("traceability") or {}
+    detailed = {x["product_id"]: x for x in traces.get("products") or []}
+    product_list = []
+    for item in p:
+        product_list.append({
+            "id": item["uid"], "fields": item.get("fields") or {},
+            "evidence": item.get("evidence") or {},
+            "trace": detailed.get(item["uid"], {}),
+            "filename": item.get("file", ""), "sha256": item.get("sha256", ""),
+        })
+    comparison = []
+    aggregate = {"green": 0, "yellow": 0, "red": 0, "evaluable": 0,
+                 "total_criteria": 0, "lots_with_candidates": 0}
+    for code, lot in sorted(lots.items()):
+        ingredient = str(lot.get("HOAT_CHAT_HSMT") or "").strip()
+        compatible = [item for item in product_list if
+                      ingredient and item["fields"].get("INGREDIENT") and
+                      _comparable(ingredient) == _comparable(item["fields"]["INGREDIENT"])]
+        strength = str(lot.get("NONG_DO_HAM_LUONG") or "")
+        narrowed = [item for item in compatible
+                    if strength and item["fields"].get("STRENGTH") and
+                    _comparable(strength) == _comparable(item["fields"]["STRENGTH"])]
+        candidates = narrowed if narrowed else compatible
+        if candidates:
+            aggregate["lots_with_candidates"] += 1
+        chosen = candidates[0] if len(candidates) == 1 and code not in duplicate else None
+        criteria = []
+        counts = {"green": 0, "yellow": 0, "red": 0, "evaluable": 0}
+        for field_id, label, lhs_key, rhs_key in CRITERIA:
+            expected = str(lot.get(lhs_key) or "").strip()
+            actual = str(chosen["fields"].get(rhs_key) or "").strip() if chosen else ""
+            right_proof = ((chosen.get("evidence") or {}).get(rhs_key) or {}) if chosen else {}
+            left_proof = _field_evidence(lot, lhs_key)
+            evidence_complete = bool(left_proof.get("file") and right_proof.get("source"))
+            if not expected or not actual or not chosen or code in duplicate or not evidence_complete:
+                status = YELLOW
+            elif _comparable(expected) == _comparable(actual):
+                status = GREEN
+            else:
+                status = RED
+            counts[{GREEN:"green", YELLOW:"yellow", RED:"red"}[status]] += 1
+            counts["evaluable"] += int(bool(expected))
+            criteria.append({
+                "field": field_id, "label": label,
+                "ehsmt": expected, "nsx": actual,
+                "status": status, "ehsmt_evidence": left_proof,
+                "nsx_evidence": {
+                    "file": chosen["filename"] if chosen else "",
+                    "location": right_proof.get("source", ""),
+                    "raw": right_proof.get("raw", ""),
+                    "sha256": right_proof.get("sha256", chosen["sha256"] if chosen else ""),
+                },
+                "note": "Có trích dẫn, CHƯA xác minh chuyên môn" if status == GREEN
+                        else ("Thông số nguồn chưa khớp, cần so bản gốc"
+                              if status == RED else "Thiếu dữ liệu/chứng cứ hoặc nhiều ứng viên"),
+            })
+        for key in aggregate:
+            if key in counts:
+                aggregate[key] += counts[key]
+        aggregate["total_criteria"] += len(CRITERIA)
+        pct = round(counts["green"] * 100 / len(CRITERIA), 1)
+        raw_trace = chosen["trace"] if chosen else {}
+        state = ("KHONG_KHOP_SO_BO" if counts["red"] else
+                 "CHUA_DU_CAN_CU" if counts["yellow"] else
+                 "KHOP_KY_THUAT_SO_BO_CHUA_DU_DIEU_KIEN")
+        comparison.append({
             "MA_THUOC_EHSMT": code,
             "HOAT_CHAT_EHSMT": ingredient,
             "HAM_LUONG_EHSMT": strength,
@@ -89,59 +158,61 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
             "VI_TRI_EHSMT": str(lot.get("TRANG_VI_TRI") or ""),
             "TRICH_DAN_EHSMT": str(lot.get("TRICH_DAN") or "")[:1000],
             "TRANG_THAI_DOI_CHIEU": state,
-            "SO_UNG_VIEN_NSX": len(chosen),
-            "MA_THUOC_NSX": specific["product_id"] if specific else "",
-            "TEN_THUOC_NSX": specific["product_name"] if specific else "",
-            "SO_DANG_KY": specific["registration_no"] if specific else "",
-            "HOAT_CHAT_NSX": specific["ingredient"] if specific else "",
-            "HAM_LUONG_NSX": specific["strength"] if specific else "",
-            "DON_VI_CUNG_CAP": parties.get("SUPPLIER", {}).get("value", ""),
-            "NHA_THAU": parties.get("BIDDER", {}).get("value", ""),
-            "DON_VI_DANG_KY": parties.get("REGISTRATION_HOLDER", {}).get("value", ""),
-            "NHA_SAN_XUAT": parties.get("MANUFACTURER", {}).get("value", ""),
-            "NHA_MAY": parties.get("FACTORY", {}).get("value", ""),
-            "NGUON_THUOC_NSX": specific.get("origin_file", "") if specific else "",
-            "VI_TRI_NSX": specific.get("origin", "") if specific else "",
-            "SHA256_NSX": specific.get("source_sha256", "") if specific else "",
-            "NGUON_HAM_LUONG_NSX": ev.get("STRENGTH", {}).get("source", ""),
+            "SO_UNG_VIEN_NSX": len(candidates),
+            "MA_THUOC_NSX": chosen["id"] if chosen else "",
+            "TEN_THUOC_NSX": chosen["fields"].get("PRODUCT_NAME", "") if chosen else "",
+            "SO_DANG_KY": chosen["fields"].get("REGISTRATION_NO", "") if chosen else "",
+            "HOAT_CHAT_NSX": chosen["fields"].get("INGREDIENT", "") if chosen else "",
+            "HAM_LUONG_NSX": chosen["fields"].get("STRENGTH", "") if chosen else "",
+            "DON_VI_CUNG_CAP": raw_trace.get("parties", {}).get("SUPPLIER", {}).get("value", ""),
+            "NHA_SAN_XUAT": raw_trace.get("parties", {}).get("MANUFACTURER", {}).get("value", ""),
+            "NHA_MAY": raw_trace.get("parties", {}).get("FACTORY", {}).get("value", ""),
+            "NGUON_THUOC_NSX": chosen["filename"] if chosen else "",
+            "SHA256_NSX": chosen["sha256"] if chosen else "",
+            "SO_TIEU_CHI_DAT": counts["green"],
+            "SO_TIEU_CHI_CHUA_DAT": counts["yellow"],
+            "SO_TIEU_CHI_KHONG_KHOP": counts["red"],
+            "TY_LE_KHOP_SO_BO": pct,
+            "criteria": criteria,
             "DA_XAC_MINH": "CHUA",
             "DAP_UNG_THAU": "CHUA_DU_CO_SO_KET_LUAN",
         })
-    if not ehsmt.get("rows"):
-        warnings.append("Chưa có kết quả E-HSMT THẬT trong phiên; không thực hiện đối chiếu.")
-    elif not entries:
-        warnings.append("Kết quả E-HSMT chưa có mã Gx.xxx; không được tự lập mã.")
-    if not products:
-        warnings.append("Chưa có sản phẩm NSX được nhận diện có nguồn; không kết luận không có sản phẩm.")
-    if not nsx.get("files"):
-        warnings.append("Chưa có kết quả bộ tài liệu NSX THẬT trong phiên.")
-    if ehsmt.get("warnings"):
-        warnings.append(f'E-HSMT có {len(ehsmt["warnings"])} cảnh báo nguồn; tra bảng gốc.')
-    if nsx.get("warnings"):
-        warnings.append(f'NSX có {len(nsx["warnings"])} cảnh báo nguồn; tra bảng gốc.')
+    warnings = []
+    if not lots:
+        warnings.append("Chưa có danh mục E-HSMT đọc được trong cùng phiên.")
+    if not product_list:
+        warnings.append("Chưa có danh mục thuốc NSX có chứng cứ trong cùng phiên.")
+    if duplicate:
+        warnings.append(f"Có {len(duplicate)} mã E-HSMT bị trùng, không tự chọn bản.")
+    warnings.extend(ehsmt.get("warnings") or [])
+    warnings.extend(nsx.get("warnings") or [])
     return {
         "created_at_vn": datetime.now(VN).strftime("%d/%m/%Y %H:%M:%S +07:00"),
-        "mode": "REAL_SOURCES_ONLY_NO_DEMO",
+        "mode": "REAL_SOURCES_ONLY_NO_DEMO", "comparison": comparison,
         "summary": {
-            "ehsmt_lots": len(entries), "nsx_products": len(products),
+            "ehsmt_lots": len(lots), "nsx_products": len(product_list),
             "nsx_files": len(nsx.get("files") or []),
             "nsx_review": len(nsx.get("review_queue") or []),
-            "matching_fields_unverified": counted["UNG_VIEN_KHOP_HOAT_CHAT_HAM_LUONG_CHUA_XAC_MINH"],
-            "other_cases": len(entries) - counted["UNG_VIEN_KHOP_HOAT_CHAT_HAM_LUONG_CHUA_XAC_MINH"],
+            "green_criteria_preliminary": aggregate["green"],
+            "yellow_criteria": aggregate["yellow"],
+            "red_mismatch_preliminary": aggregate["red"],
+            "total_criteria": aggregate["total_criteria"],
+            "matching_percent_preliminary": round(
+                100 * aggregate["green"] / aggregate["total_criteria"], 1)
+                if aggregate["total_criteria"] else 0,
+            "criteria_ehsmt_available": aggregate["evaluable"],
+            "lots_with_candidate": aggregate["lots_with_candidates"],
             "fully_verified": 0,
-        },
-        "comparison": rows,
-        "traceability": nsx.get("traceability") or {},
+        }, "traceability": traces,
         "ehsmt_documents": ehsmt.get("documents") or [],
-        "tender_documents": ehsmt.get("tender_documents") or [],
         "nsx_documents": nsx.get("files") or [],
-        "warnings": warnings,
-        "verified": False, "gmp_approved": False,
-        "bid_eligible": False, "requirements_checked": False,
-        "note": ("Các cột khớp chỉ là gợi ý cùng dữ kiện chữ và hàm lượng, "
-                 "KHÔNG chứng minh đáp ứng kỹ thuật, GMP/SĐK, giá, thầu hay pháp lý."),
+        "warnings": warnings, "verified": False, "bid_eligible": False,
+        "gmp_approved": False, "requirements_checked": False,
+        "note": ("Màu xanh = khớp SƠ BỘ 2 nguồn, vàng = thiếu hoặc mơ hồ, "
+                 "đỏ = số liệu chưa khớp phải kiểm tra; % = tỷ lệ tiêu chí trích xuất "
+                 "khớp sơ bộ trong tổng 4 tiêu chí kỹ thuật mỗi mã. "
+                 "Không được xem % là mức đủ điều kiện dự thầu."),
     }
-
 
 def _safe(value):
     from see_pro_traceability import safe_cell
