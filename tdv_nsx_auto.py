@@ -335,7 +335,10 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
             original.append((name, raw))
             detailed.append(details)
             classified.append(meta)
-            warnings.extend(f"{name}: {w}" for w in details["warnings"])
+            warnings.extend(
+                f"{name}: {w}" for w in details["warnings"]
+                if "phải chọn đúng một dòng" not in w
+            )
         except Exception as exc:
             sha = hashlib.sha256(raw).hexdigest()
             classified.append({
@@ -426,6 +429,28 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
             'không đủ điều kiện xác định duy nhất; KHÔNG tự chọn/gộp.')
     links = []
     outstanding = list(incomplete_attachments)
+    for product in products:
+        if product.get("conflicts"):
+            outstanding.append({
+                "file": product["file"], "kind": "PRODUCT",
+                "origin": product["origin"],
+                "status": "MAU_THUAN_GIUA_CAC_SHEET",
+                "candidate_products": [product["uid"]],
+                "reason": "Trường khác nhau: " +
+                          ", ".join(sorted(product["conflicts"])) +
+                          ". Giữ cả hai giá trị và chứng cứ gốc; chưa được "
+                          "chọn một giá trị để kết luận đạt/không đạt.",
+            })
+    for name in catalogue_audit["review_names"]:
+        ids = [p["uid"] for p in products
+               if norm(p["fields"].get("PRODUCT_NAME")) == norm(name)]
+        outstanding.append({
+            "file": "", "kind": "PRODUCT", "origin": "",
+            "status": "TRUNG_TEN_CHUA_GHEP",
+            "candidate_products": ids,
+            "reason": "Một tên xuất hiện nhiều lần trong cùng sheet hoặc thiếu "
+                      "định danh độc lập; không ghép ngẫu nhiên các dòng nguồn.",
+        })
     for proof in evidence_items:
         # A registration certificate is the source of the identity it provides,
         # not an independent second document proving that identity. Exclude
@@ -571,7 +596,8 @@ def export_auto_xlsx(report: dict) -> bytes:
             p["uid"], f.get("PRODUCT_NAME"), f.get("PRODUCT_ID"),
             f.get("REGISTRATION_NO"), f.get("INGREDIENT"), f.get("STRENGTH"),
             f.get("MANUFACTURER"), f.get("FACTORY"),
-            p["file"], p["origin"], "CHƯA",
+            p["file"], p["origin"],
+            "MÂU THUẪN NGUỒN - CHƯA" if p.get("conflicts") else "CHƯA",
         )])
     tab_review = wb.create_sheet("GOP_DONG_NHIEU_SHEET")
     tab_review.append(["Mã dòng", "Tên thuốc", "Tệp gốc", "Sheet và vị trí",
