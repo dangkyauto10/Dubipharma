@@ -18,6 +18,11 @@
 | 008 | `TDV_BACKUP_008_BEFORE_NSX_FIELD_MAPPING_20261021` | `714632009c5eaeefbb558a971dd8b1090fa2f31a` | 21/10/2026 12:39:36 (*mốc commit*) | Trước sửa lần thử 13 tệp / 87 dòng sản phẩm / 0 liên kết: SĐK & hoạt chất nhiều dòng chưa được trích | Khôi phục trạng thái ảnh kiểm thử |
 | 009 | `TDV_BACKUP_009_NSX_FIELD_MAPPING_20261021` | `ea41807b8cb4d8ade3a0f319a8634d5a4b8129e1` | 21/10/2026 13:14:20 (*mốc commit*) | Hiển thị độ phủ trường có chứng cứ ở NSX; chỉ gợi ý cùng tên hoạt chất không tự liên kết; tính % trên yêu cầu E-HSMT đã đọc của cặp được ghép; tách phạm vi 1/4 khỏi 100% | Phiên bản sửa hiển thị/mapping **chưa được nghiệm thu trên toàn bộ 13 file gốc** |
 
+
+| 010 | `TDV_BACKUP_010_BEFORE_NSX_MULTISHEET_20261021` | `a7747c4794cdc1c5a1cf00cb99e8af1d774ad22a` | 21/10/2026 13:16:51 (*mốc commit*) | Trước sửa: xuất Excel thật có 87 dòng trích xuất gồm 44 dòng sheet Biểu 05 và 43 dòng sheet ÁP, trong đó một dòng tiêu đề số 4 không phải thuốc; nhóm thuốc cùng tên bị đếm lặp | Khôi phục mã nguồn ONLINE trước sửa; tài liệu NSX thật không lưu tại repo |
+| 011 | `TDV_BACKUP_011_NSX_MULTISHEET_20261021` | `5dc54ebeedd85e30eb2335359274b8c19c8ba26e` | 21/10/2026 17:49:30 (*mốc commit*) | Khử dòng tiêu đề giả; gộp nhiều sheet CÙNG TỆP khi tên + định danh nhà máy/NSX khớp duy nhất; giữ toàn bộ trích dẫn nguồn, mâu thuẫn hàm lượng giữ vàng; cảnh báo trùng tên chưa thể gộp; thêm sheet audit; GitHub CI 158/158 và AppTest đạt | Chỉ bộ test giả lập đạt; số ứng viên dự kiến từ Excel kiểm toán 87 → khoảng 47, cần chạy lại toàn bộ tệp gốc để xác nhận |
+
+
 ## Trạng thái đã kiểm thử và giới hạn
 
 - 001/002/004 chỉ là các điểm khôi phục mã nguồn; không chứa tệp riêng tư.
