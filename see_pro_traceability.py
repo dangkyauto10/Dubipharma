@@ -182,6 +182,26 @@ def build_audit_workbook(analysis: dict) -> bytes:
     for i, warning in enumerate(warnings, 1):
         alerts.append([i, safe_cell(warning), "CAN_XAC_MINH"])
 
+    from see_pro_quality_gate import audit_ehsmt
+    quality = analysis.get("quality_gate") or audit_ehsmt(analysis)
+    quality_sheet = _sheet(wb, "KIEM_TOAN_CHAT_LUONG", [
+        "HẠNG MỤC", "TRƯỜNG / TỆP", "GIÁ TRỊ / VẤN ĐỀ",
+        "CÓ NGUỒN RIÊNG", "MỨC ĐỘ", "TRẠNG THÁI",
+    ])
+    quality_sheet.append(["Tệp đầu vào", "", quality["files"], "", "", "CHUA_NGHIEM_THU"])
+    quality_sheet.append(["Dòng trích xuất", "", quality["entries"], "", "", "CHUA_NGHIEM_THU"])
+    quality_sheet.append(["Số vấn đề", "", quality["issue_count"], "", "", "CAN_XAC_MINH"])
+    for field, values in quality["coverage"].items():
+        quality_sheet.append(["Độ phủ trường", safe_cell(field),
+                              values["values"], values["field_cited"],
+                              values["values"]-values["field_cited"], "CHUA_XAC_MINH"])
+    for issue in quality["issues"]:
+        quality_sheet.append([safe_cell(issue["type"]), safe_cell(issue["file"]),
+                              safe_cell(issue["reason"]), "",
+                              issue["priority"], "CAN_XAC_MINH"])
+    quality_sheet.append(["MỤC TIÊU 99,9999%", "",
+                          "CHƯA CÓ KẾT QUẢ NGHIỆM THU ĐỘ CHÍNH XÁC", "",
+                          "", "CHUA_DU_CO_SO_KET_LUAN"])
     notes = _sheet(wb, "PHAM_VI_KIEM_TOAN", ["NỘI DUNG", "GIỚI HẠN / GHI CHÚ"])
     for title, detail in (
         ("PHẠM VI", "Bảng kiểm kê và đối chiếu chứng cứ, CHƯA PHẢI kết quả thẩm định pháp lý/ kỹ thuật."),
@@ -190,7 +210,7 @@ def build_audit_workbook(analysis: dict) -> bytes:
         ("GIÁ", "Giá kế hoạch/ước tính trong E-HSMT KHÔNG phải giá dự thầu hoặc giá chào."),
         ("AI", "Nếu dùng AI, mọi đề xuất phải kiểm tra trích dẫn và được người có thẩm quyền duyệt."),
         ("SỐ BẢN GHI TRÍCH XUẤT", len(rows)),
-        ("SỐ TỆP TIẾP NHẬN", len(documents)),
+        ("SỐ TỆP TIẾP NHẬN", quality["files"]),
         ("SỐ CẢNH BÁO", len(warnings)),
     ):
         notes.append([safe_cell(title), safe_cell(detail)])
