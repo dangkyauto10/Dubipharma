@@ -35,16 +35,17 @@ RED = "KHONG_KHOP_CAN_XAC_MINH"
 
 def _comparable(value: str) -> str:
     """Only normalize conservative typography and simple single-amount units."""
-    n = norm(value)
     import decimal
+    # Preserve the decimal separator; text normalization would erase it.
+    raw = re.sub(r"\s+", "", str(value or "").lower()).replace(",", ".")
     # Only exactly a single mass unit; never change salt/base or dosage form.
-    m = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*(mcg|ug|mg|g)", n.replace(" ", ""))
+    m = re.fullmatch(r"(\d+(?:\.\d+)?)\s*(mcg|ug|mg|g)", raw)
     if m:
         amount = decimal.Decimal(m.group(1).replace(",", "."))
         mg = amount * {"mcg": decimal.Decimal("0.001"), "ug": decimal.Decimal("0.001"),
                        "mg": 1, "g": 1000}[m.group(2)]
         return "mg:" + str(mg.normalize())
-    return n
+    return norm(value)
 
 
 def _field_evidence(lot: dict, field: str) -> dict:
