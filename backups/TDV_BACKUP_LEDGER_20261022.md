@@ -17,6 +17,9 @@
 | 014 | `TDV_BACKUP_014_BEFORE_LEADERSHIP_TRIAGE_20261022` | `d0cba956cf069dbf2ce07b474eeca49259f70dd1` | Trạng thái Preview trước khi tích hợp thứ tự rà soát vào báo cáo Lãnh đạo, CI đã đạt 174/174 bài | 
 | 015 | `TDV_BACKUP_015_LEADERSHIP_TRIAGE_20261022` | `387de6db60d9da7185ead043edcffaa5835e7f97` | Bộ triage đọc-only: chênh lệch kỹ thuật / chứng cứ SĐK-GMP / chưa có ứng viên, ưu tiên theo công việc. Bổ sung bảng trong Báo cáo Lãnh đạo, sheet Excel `UU_TIEN_XU_LY` và phần Word. Kiểm thử giả lập 181/181 và AppTest đạt; chưa thử 13 PDF NSX gốc |
 
+| 016 | `TDV_BACKUP_016_20261022` | `f8e84cab9a7bc7153381b2accfe1395b88ea2f5d` | Sao lưu Preview trước khi nâng SEE PRO kiểm toán chất lượng trích xuất |
+| 017 | `TDV_BACKUP_017_SEE_PRO_QUALITY_20261022` | `e45e0a3ce35d30c235f99e6213fd11d5c97dbcac` | Mã kiểm thử 190/190: kiểm đếm tệp Upload, lưu lỗi đọc, đo độ phủ trích dẫn riêng E-HSMT/NSX, cảnh báo kết quả xanh thiếu nguồn, thêm sheet E-HSMT `KIEM_TOAN_CHAT_LUONG`; không kiểm định độ chính xác bằng tài liệu thật |
+
 ## Ghi nhận và giới hạn
 
 1. Ảnh và Excel NSX người dùng cung cấp: 13 tài liệu đã đọc, 87 dòng trích xuất ban đầu, 0 liên kết sơ bộ. File Excel có các trường đăng ký pháp lý chủ yếu chưa gắn vào từng dòng sản phẩm. **Không** thể suy 0 liên kết thành kết luận không có chứng cứ hay không đủ điều kiện.
@@ -40,3 +43,11 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Excel `UU_TIEN_XU_LY` xuất mọi vấn đề có trích dẫn nguồn khi dưới giới hạn; Word chỉ hiện một số mục ưu tiên và hướng dẫn xem Excel.
 - Chức năng dành cho người dùng hiện tại **chưa có xác thực doanh nghiệp**; không upload NSX mật vào Preview công khai. Không bật lưu Google Drive, phê duyệt pháp lý hoặc trả phí.
 - CI cuối phải đạt trên đúng commit sau cập nhật nhật ký trước khi thay đổi nhánh Preview; `main` giữ nguyên.
+
+
+## SEE PRO Quality Gate — 22/10/2026
+- Đã thêm `see_pro_quality_gate.py` với ba phép kiểm **E-HSMT**, **NSX**, **SO SÁNH**. Tệp nạp có SHA-256 và lỗi trích xuất phải được ghi lại; các trường dữ liệu trích xuất không có trích dẫn riêng phải hiển thị khác với trường có nguồn.
+- Khi một tiêu chí **XANH SƠ BỘ** thiếu dấu vết tệp/trang-dòng ở E-HSMT hoặc NSX, UI cảnh báo rõ. Phần này **không thay đổi** kết luận chuyên môn/luật hay ba màu gốc, để tránh tô xanh từ một kiểm tra chất lượng.
+- Excel E-HSMT có sáu sheet, gồm thêm `KIEM_TOAN_CHAT_LUONG`. Trên giao diện NSX hiện thị bảng độ phủ có nguồn, trường mâu thuẫn và tệp chưa đọc đủ.
+- `99,9999%` chỉ là **mục tiêu phát triển**, **không phải tỷ lệ chính xác đã kiểm định**. Cần tập dữ liệu gốc được chuyên gia gán nhãn, tập lỗi hiểm trọng và nghiệm thu độc lập. Bộ 190 bài kiểm thử tổng hợp chỉ xác nhận quy tắc/phần mềm hoạt động như thiết kế.
+- Không tạo tài khoản Cloud, không bật thanh toán, không ghi tài liệu lên GitHub/Drive, không bật quyền duyệt hồ sơ.
