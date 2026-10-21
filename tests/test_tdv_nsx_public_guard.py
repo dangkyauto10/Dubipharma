@@ -61,6 +61,28 @@ def catalogue() -> bytes:
 
 
 class PublicEvidenceSafetyTests(unittest.TestCase):
+    def test_dav_official_pdf_heading_variant_is_not_factory_certificate(self):
+        # The heading was observed in DAV's real public GMP list dated
+        # 24/10/2025; this fixture is NOT the PDF binary or issuer certification.
+        # URL: https://dav.gov.vn/danh-sach-cac-cssx-trong-nuoc-dat-tieu-chuan-nguyen-tac-gmp-gmp-bao-bi-duoc-pham-cap-nhat-toi-ngay-24102025-n5075.html
+        official_heading = (
+            "DANH SÁCH CÁC CƠ SỞ TRONG NƯỚC "
+            "ĐẠT TIÊU CHUẨN NGUYÊN TẮC GMP"
+        )
+        detection = detect_nonprimary_document([
+            {"source": "Trang 1", "text": official_heading},
+            {"source": "Trang 1", "text": "Cập nhật tới ngày 24/10/2025"},
+        ])
+        self.assertIsNotNone(detection)
+        self.assertEqual(detection["class"], PUBLIC_GMP_LIST)
+        self.assertFalse(detection["automatic_primary_link_allowed"])
+        classified = classify_document(
+            "official_list_heading.docx",
+            docx([official_heading, "Cập nhật tới ngày 24/10/2025"]),
+        )
+        self.assertEqual(classified["kind"], "OTHER")
+        self.assertEqual(classified["public_document_class"], PUBLIC_GMP_LIST)
+
     def test_dav_public_gmp_register_not_an_individual_certificate(self):
         raw = docx([
             "PHỤ LỤC 1: DANH SÁCH CƠ SỞ SẢN XUẤT THUỐC NƯỚC NGOÀI ĐẠT TIÊU CHUẨN GMP",
