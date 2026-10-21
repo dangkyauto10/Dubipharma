@@ -320,7 +320,7 @@ def render_ehsmt_workbench() -> None:
                            data=evidence_rows.fillna("").to_csv(index=False).encode("utf-8-sig"),
                            file_name="TDV_SEE_PRO_KIEM_KE.csv", mime="text/csv",
                            key="tdv_see_pro_csv")
-        st.download_button("Tải Excel kiểm toán có chứng cứ (5 Sheet)",
+        st.download_button("Tải Excel kiểm toán và chất lượng (6 Sheet)",
                            data=build_audit_workbook(analysis),
                            file_name="TDV_SEE_PRO_KIEM_TOAN_CHUNG_CU.xlsx",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
