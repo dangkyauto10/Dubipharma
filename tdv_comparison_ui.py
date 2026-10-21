@@ -33,7 +33,7 @@ def _summary(report):
     b.metric("Tiêu chí chưa đủ căn cứ",s["yellow_criteria"])
     c.metric("Tiêu chí không khớp",s["red_mismatch_preliminary"])
     ratio = s["matching_percent_preliminary"]
-    d.metric("Tỷ lệ khớp sơ bộ (%)", f"{ratio:.1f}%" if ratio is not None else "N/A")
+    d.metric("Khớp sơ bộ / tiêu chí có nguồn", f"{ratio:.1f}%" if ratio is not None else "N/A")
     if not s["lots_uniquely_linked"]:
         st.warning(
             "Chưa có mã E-HSMT nào gắn duy nhất với một sản phẩm NSX "
@@ -72,14 +72,15 @@ def _records(report):
             "Khớp":r["SO_TIEU_CHI_DAT"],
             "Chưa đủ":r["SO_TIEU_CHI_CHUA_DAT"],
             "Không khớp":r["SO_TIEU_CHI_KHONG_KHOP"],
-            "% sơ bộ":r["TY_LE_KHOP_SO_BO"],
+            "Yêu cầu E-HSMT đọc được / 4":f'{r.get("SO_TIEU_CHI_EHSMT_DOC_DUOC",0)}/4',
+            "% khớp của yêu cầu đọc được":r["TY_LE_KHOP_SO_BO"],
             "Kết quả":r["TRANG_THAI_DOI_CHIEU"],
         })
     if display:
         frame=pd.DataFrame(display)
         st.dataframe(frame,hide_index=True,use_container_width=True,
-                     column_config={"% sơ bộ":st.column_config.ProgressColumn(
-                        "% sơ bộ",min_value=0,max_value=100,format="%.1f%%")})
+                     column_config={"% khớp của yêu cầu đọc được":st.column_config.ProgressColumn(
+                        "% khớp của yêu cầu đọc được",min_value=0,max_value=100,format="%.1f%%")})
     else:
         st.info("Chưa có mã E-HSMT đủ định danh để lập bảng so sánh.")
 
