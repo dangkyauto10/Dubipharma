@@ -66,6 +66,17 @@ def _field_evidence(lot: dict, field: str) -> dict:
             "raw": str(lot.get("TRICH_DAN") or ""), "sha256": lot.get("SHA256", "")}
 
 
+def _title_ingredient_hint(ingredient: str, product: dict) -> bool:
+    """Trade-name TEXT hint only; never proof of ingredient or legal fitness."""
+    expected = norm(ingredient)
+    fields = product.get("fields") or {}
+    name = norm(fields.get("PRODUCT_NAME"))
+    if (len(expected) < 5 or not name or not re.search(r"[a-z]", expected)
+        or fields.get("INGREDIENT") or not product.get("evidence", {}).get("PRODUCT_NAME")):
+        return False
+    return bool(re.search(r"(?<![a-z0-9])" + re.escape(expected) + r"(?![a-z0-9])", name))
+
+
 def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
     """E-HSMT is the sole standard; NSX sources are per-field candidates.
 
@@ -98,7 +109,8 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
     comparison = []
     aggregate = {"green": 0, "yellow": 0, "red": 0, "evaluable": 0,
                  "total_criteria": 0, "lots_with_candidates": 0,
-                 "lots_uniquely_linked": 0}
+                 "lots_uniquely_linked": 0, "linked_requirements": 0,
+                 "lots_with_title_hints": 0
     for code, lot in sorted(lots.items()):
         ingredient = str(lot.get("HOAT_CHAT_HSMT") or "").strip()
         compatible = [item for item in product_list if
@@ -112,6 +124,12 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
         if candidates:
             aggregate["lots_with_candidates"] += 1
         chosen = candidates[0] if len(candidates) == 1 and code not in duplicate else None
+        title_hints = (
+            [item for item in product_list if _title_ingredient_hint(ingredient, item)]
+            if ingredient and not candidates else []
+        )
+        if title_hints:
+            aggregate["lots_with_title_hints"] += 1
         if chosen:
             aggregate["lots_uniquely_linked"] += 1
         criteria = []
@@ -148,8 +166,10 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
             if key in counts:
                 aggregate[key] += counts[key]
         aggregate["total_criteria"] += len(CRITERIA)
-        pct = (round(counts["green"] * 100 / len(CRITERIA), 1)
-               if chosen else None)
+        if chosen:
+            aggregate["linked_requirements"] += counts["evaluable"]
+        pct = (round(counts["green"] * 100 / counts["evaluable"], 1)
+               if chosen and counts["evaluable"] else None)
         raw_trace = chosen["trace"] if chosen else {}
         state = ("KHONG_KHOP_SO_BO" if counts["red"] else
                  "CHUA_DU_CAN_CU" if counts["yellow"] else
@@ -164,6 +184,17 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
             "TRICH_DAN_EHSMT": str(lot.get("TRICH_DAN") or "")[:1000],
             "TRANG_THAI_DOI_CHIEU": state,
             "SO_UNG_VIEN_NSX": len(candidates),
+            "SO_GOI_Y_TEN_NSX": len(title_hints),
+            "GOI_Y_TEN_NSX": [
+                {"product_id": item["id"],
+                 "product_name": item["fields"]["PRODUCT_NAME"],
+                 "source_file": item["filename"],
+                 "source_location": item["evidence"]["PRODUCT_NAME"]["source"],
+                 "sha256": item["sha256"],
+                 "status": "CHUA_CHUNG_MINH_HOAT_CHAT"}
+                for item in title_hints[:25]
+            ],
+            "SO_TIEU_CHI_EHSMT_DOC_DUOC": counts["evaluable"],
             "MA_THUOC_NSX": chosen["id"] if chosen else "",
             "TEN_THUOC_NSX": chosen["fields"].get("PRODUCT_NAME", "") if chosen else "",
             "SO_DANG_KY": chosen["fields"].get("REGISTRATION_NO", "") if chosen else "",
@@ -203,12 +234,14 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
             "red_mismatch_preliminary": aggregate["red"],
             "total_criteria": aggregate["total_criteria"],
             "matching_percent_preliminary": round(
-                100 * aggregate["green"] / aggregate["total_criteria"], 1)
-                if aggregate["total_criteria"] and aggregate["lots_uniquely_linked"]
+                100 * aggregate["green"] / aggregate["linked_requirements"], 1)
+                if aggregate["linked_requirements"] and aggregate["lots_uniquely_linked"]
                 else None,
             "criteria_ehsmt_available": aggregate["evaluable"],
             "lots_with_candidate": aggregate["lots_with_candidates"],
             "lots_uniquely_linked": aggregate["lots_uniquely_linked"],
+            "lots_with_title_hints": aggregate["lots_with_title_hints"],
+            "linked_requirements": aggregate["linked_requirements"],
             "fully_verified": 0,
         }, "traceability": traces,
         "ehsmt_documents": ehsmt.get("documents") or [],
@@ -217,7 +250,8 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
         "gmp_approved": False, "requirements_checked": False,
         "note": ("Màu xanh = khớp SƠ BỘ 2 nguồn, vàng = thiếu hoặc mơ hồ, "
                  "đỏ = số liệu chưa khớp phải kiểm tra; % = tỷ lệ tiêu chí trích xuất "
-                 "khớp sơ bộ trong tổng 4 tiêu chí kỹ thuật mỗi mã. "
+                 "khớp sơ bộ trong số yêu cầu E-HSMT ĐÃ ĐỌC ĐƯỢC "
+                "của các cặp NSX ghép duy nhất bằng hoạt chất có nguồn. "
                  "Không được xem % là mức đủ điều kiện dự thầu."),
     }
 
