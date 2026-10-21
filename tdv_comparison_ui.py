@@ -180,6 +180,44 @@ def render_leadership_view():
         return
     _summary(report)
     _records(report)
+    from tdv_review_priorities import build_review_priorities
+    priority = build_review_priorities(report, max_rows=250)
+    st.markdown("**Bảng công việc ưu tiên theo chứng cứ**")
+    st.caption(priority["note"])
+    levels = priority["by_priority"]
+    a1, a2, a3 = st.columns(3)
+    a1.metric("Mức 1 · chênh lệch/mâu thuẫn", levels["1"])
+    a2.metric("Mức 2 · chứng cứ cần đối chiếu", levels["2"])
+    a3.metric("Mức 3 · thiếu ứng viên", levels["3"])
+    chosen_priority = st.selectbox(
+        "Xem theo mức xử lý",
+        ["Tất cả", "1", "2", "3"],
+        format_func=lambda x: "Tất cả" if x=="Tất cả" else f"Mức {x}",
+        key="tdv_leadership_priority_filter",
+    )
+    issues = [
+        issue for issue in priority["rows"]
+        if chosen_priority == "Tất cả" or
+        str(issue["muc_uu_tien"]) == chosen_priority
+    ]
+    if issues:
+        st.dataframe(pd.DataFrame([{
+            "Ưu tiên": issue["muc_uu_tien"],
+            "Nhóm": issue["van_de"], "Mã / nhà máy": issue["ma"],
+            "Chi tiết": issue["chi_tiet"],
+            "Tệp nguồn": issue["tai_lieu"],
+            "Trang/dòng": issue["vi_tri_nguon"],
+            "Cần làm": issue["viec_can_lam"],
+            "Tình trạng": "CHƯA XÁC MINH",
+        } for issue in issues[:100]]), hide_index=True, use_container_width=True)
+    else:
+        st.info("Chưa phát hiện vấn đề thuộc mức đã lọc trong các dòng đang hiển thị.")
+    if priority["truncated"]:
+        st.warning(
+            f'Đã tổng hợp {priority["total_issues"]} vấn đề; màn hình chỉ '
+            f'giữ {priority["shown_issues"]} mục đầu. '
+            'Để xuất toàn bộ, dùng Excel báo cáo ở cuối trang.'
+        )
     st.markdown("**Các trường hợp cần ưu tiên rà soát**")
     at_risk=[r for r in report["comparison"]
              if r["SO_TIEU_CHI_KHONG_KHOP"] or r["SO_TIEU_CHI_CHUA_DAT"]]
