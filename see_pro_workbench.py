@@ -18,6 +18,53 @@ from see_pro_pdf_geometry import extract_g1_technical
 from see_pro_traceability import build_audit_workbook
 from see_pro_pdf_viewer import render_original_pdf_viewer
 
+from tdv_ehsmt_xlsx import inspect_ehsmt_xlsx
+
+
+def _append_xlsx_ehsmt_summary(result: dict, filename: str, package_id: str,
+                               scanned: dict) -> None:
+    """Source-anchored fallback for authentic summary-style E-HSMT workbooks.
+
+    Only used when the existing structured technical-table reader finds no rows.
+    Keep incomplete or contradictory codes visible rather than silently dropping
+    them; never automatically verify legal or technical compliance.
+    """
+    complete = scanned["complete_read"] and not scanned["missing_summary"]
+    result["structured_tables"].append({
+        "Tệp": filename, "Mã gói BP": package_id,
+        "Số lô": scanned["lot_count"], "Nhận diện cấu trúc": complete,
+        "Số cảnh báo": len(scanned["warnings"]),
+        "Các Sheet": f'{scanned["sheets"]} sheet',
+        "Dòng bảng tổng hợp rõ": scanned["summary_rows"],
+        "Loại bảng": "Bảng tổng hợp E-HSMT (tự nhận diện)",
+    })
+    result["warnings"].extend(f"{filename}: {warning}" for warning in scanned["warnings"])
+    for lot in scanned["lots"]:
+        evidence = lot.get("EVIDENCE") or {}
+        refs = lot.get("VI_TRI_THAM_CHIEU") or []
+        place = ({"sheet": evidence["sheet"], "row": evidence["row"]}
+                 if evidence else refs[0] if refs else {})
+        original = " | ".join(str(c["raw"]) for c in evidence.get("cells", []))
+        location = (f'{place["sheet"]} – dòng {place["row"]}' if place else "")
+        field_evidence = ({
+            "DONG_BANG_TONG_HOP": {
+                "source": filename, "sheet": evidence["sheet"], "row": evidence["row"],
+                "column": "", "raw": original, "verified": False,
+            }
+        } if evidence else {})
+        result["rows"].append({
+            "FILE_NGUON": filename, "MA_GOI_THAU": package_id,
+            "MA_THUOC": lot["MA_THUOC"], "MA_PHAN_LO": lot.get("MA_PHAN_LO", ""),
+            "HOAT_CHAT_HSMT": lot.get("HOAT_CHAT_CHUAN"),
+            "GIA_UOC_TINH_PHAN": lot.get("GIA_TRI_UOC_TINH"),
+            "TIEN_BAO_DAM_DU_THAU": lot.get("BAO_DAM_DU_THAU"),
+            "SHEET": place.get("sheet", ""), "DONG_NGUON": place.get("row", ""),
+            "TRANG_VI_TRI": location, "TRICH_DAN": original[:600],
+            "TRANG_THAI": lot["TRANG_THAI"],
+            "EVIDENCE": field_evidence, "verified": False,
+        })
+
+
 
 def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = False,
                     deep_technical: bool = False) -> dict:
@@ -47,6 +94,12 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
 
             if filename.lower().endswith((".xlsx", ".xls", ".csv", ".docx")):
                 parsed = parse_tabular_document(filename, data)
+                if filename.lower().endswith(".xlsx") and not parsed["rows"]:
+                    summary = inspect_ehsmt_xlsx(data)
+                    if summary["lot_count"]:
+                        _append_xlsx_ehsmt_summary(
+                            result, filename, classification["package_id"], summary)
+                        continue
                 result["structured_tables"].append({
                     "Tệp": filename, "Mã gói BP": parsed["package_id"],
                     "Số lô": parsed["total_lots"], "Nhận diện cấu trúc": parsed["complete"],
