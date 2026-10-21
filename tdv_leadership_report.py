@@ -350,9 +350,45 @@ def export_leadership_docx(report: dict) -> bytes:
         )
     if len(report["comparison"])>40:
         doc.add_paragraph("Các mã còn lại và chứng cứ đầy đủ nằm trong file Excel kèm theo.")
+    doc.add_heading("3. Đối chiếu song song E-HSMT và tài liệu NSX", level=1)
+    doc.add_paragraph(
+        "Màu của mỗi dòng tiêu chí là trạng thái SƠ BỘ, không phải kết luận đủ "
+        "điều kiện dự thầu. Giới hạn 20 mã hiển thị trực tiếp trong Word; "
+        "Excel kèm theo lưu toàn bộ mã và cả hai nguồn chứng cứ."
+    )
+    from docx.shared import RGBColor
+    colour = {
+        GREEN: RGBColor(23, 107, 65),
+        YELLOW: RGBColor(144, 98, 12),
+        RED: RGBColor(175, 48, 48),
+    }
+    for drug in report["comparison"][:20]:
+        doc.add_heading(drug["MA_THUOC_EHSMT"], level=2)
+        t = doc.add_table(rows=1, cols=4)
+        t.style = "Light Shading Accent 1"
+        for cell, heading in zip(t.rows[0].cells, (
+            "Tiêu chí", "E-HSMT — yêu cầu", "NSX — đối chiếu", "Kết quả",
+        )):
+            cell.text = heading
+        for detail in drug.get("criteria", []):
+            cells = t.add_row().cells
+            for cell, value in zip(cells, (
+                detail["label"], detail["ehsmt"] or "Chưa đọc được",
+                detail["nsx"] or "Chưa có", detail["status"],
+            )):
+                cell.text = value
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        run.font.color.rgb = colour[detail["status"]]
+            refs = t.add_row().cells
+            left, right = detail["ehsmt_evidence"], detail["nsx_evidence"]
+            refs[0].text = "Chứng cứ gốc"
+            refs[1].text = f'{left.get("file","")} {left.get("location","")}'
+            refs[2].text = f'{right.get("file","")} {right.get("location","")}'
+            refs[3].text = "CHƯA XÁC MINH"
     for message in report["warnings"]:
         doc.add_paragraph(message, style="List Bullet")
-    doc.add_heading("3. Kiến nghị cho Lãnh đạo",level=1)
+    doc.add_heading("4. Kiến nghị cho Lãnh đạo",level=1)
     for message in (
         "Không phê duyệt đáp ứng E-HSMT chỉ dựa trên phép so trùng hoạt chất/hàm lượng.",
         "Đọc đầy đủ E-HSMT, phiên bản sửa đổi/làm rõ và yêu cầu hồ sơ của đúng gói.",
