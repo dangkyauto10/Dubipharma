@@ -117,6 +117,22 @@ class TenderContextQA(unittest.TestCase):
         self.assertGreater(book["NGUON_TRA_CUU_CONG_KHAI"].max_row,2)
         book.close()
 
+    def test_related_tender_documents_show_up_inside_existing_ehsmt_workbench(self):
+        from see_pro_workbench import analyze_uploads
+        result=analyze_uploads([
+            ("unknown_notice.docx",word(
+                "THÔNG BÁO MỜI THẦU", "Mã gói thầu BP1234567890")),
+            ("unknown_revision.docx",word(
+                "SỬA ĐỔI E-HSMT", "Mã gói thầu BP1234567890")),
+        ])
+        self.assertEqual(len(result["tender_documents"]),2)
+        self.assertEqual(len(result["tender_index"]["by_package"]),1)
+        self.assertTrue(all(d["sha256"] for d in result["tender_documents"]))
+        self.assertTrue(all(d["revision_status"] ==
+            "CHUA_XAC_MINH_PHIEN_BAN_HIEU_LUC"
+            for d in result["tender_documents"]))
+        self.assertFalse(result["tender_index"]["verified"])
+
     def test_tender_documents_in_same_batch_not_misidentified_as_drug(self):
         report=analyze_auto([
             ("unknown.docx",word("THÔNG BÁO MỜI THẦU",
