@@ -15,6 +15,7 @@ from typing import Any
 
 from see_pro_multiformat import ACCEPTED, extract_file
 from tdv_nsx_adaptive import extract_product_rows, _read_grid, FIELD, normalize as norm
+from tdv_nsx_multisheet import reconcile_product_rows
 from tdv_nsx_intake import KINDS, _read_one
 from tdv_nsx_public_guard import detect_nonprimary_document
 from tdv_tender_trace import build_reverse_dossiers
@@ -403,6 +404,26 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
                 **document, "filename": filename, "kind": kind,
                 "origin": "Các trường có nhãn trong tệp",
             }])
+    # Product candidates extracted from different tabs of a SINGLE source
+    # are not necessarily distinct drugs. Reconcile only with an independent,
+    # corroborating manufacturer/site/registration anchor. Preserve every
+    # original field and its worksheet cell as source_rows.
+    products, catalogue_audit = reconcile_product_rows(products)
+    for i, p in enumerate(products, 1):
+        p["uid"] = "P" + str(i).zfill(4)
+    if catalogue_audit["excluded_ghost_rows"]:
+        warnings.append(
+            f'{len(catalogue_audit["excluded_ghost_rows"])} dòng tiêu đề/số thứ tự '
+            'bị loại khỏi danh mục thuốc; vẫn có chứng cứ gốc trong kiểm toán.')
+    if catalogue_audit["merged_secondary_rows"]:
+        warnings.append(
+            f'Đã gộp {catalogue_audit["merged_secondary_rows"]} dòng lặp giữa '
+            'các sheet CÙNG TỆP có ít nhất một định danh NSX/nhà máy trùng. '
+            'Mọi giá trị khác nhau vẫn được lưu và đánh dấu cần xác minh.')
+    if catalogue_audit["ambiguous_name_groups"]:
+        warnings.append(
+            f'{catalogue_audit["ambiguous_name_groups"]} nhóm trùng tên nhưng '
+            'không đủ điều kiện xác định duy nhất; KHÔNG tự chọn/gộp.')
     links = []
     outstanding = list(incomplete_attachments)
     for proof in evidence_items:
@@ -507,12 +528,17 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
         "tender_index": tender_index,
         "files": classified, "sources": detailed,
         "products": products, "links": links, "review_queue": outstanding,
+        "catalogue_audit": catalogue_audit,
         "warnings": warnings,
         "summary": {
             "files": len(files),
             "parsed": sum(x["role_confidence"] != "KHÔNG_ĐỌC_ĐƯỢC" for x in classified),
             "reference_documents": sum(bool(x.get("public_document_class")) for x in classified),
             "products": len(products),
+            "source_product_rows": catalogue_audit["source_rows"],
+            "reconciled_rows": catalogue_audit["merged_secondary_rows"],
+            "excluded_ghost_rows": len(catalogue_audit["excluded_ghost_rows"]),
+            "ambiguous_name_groups": catalogue_audit["ambiguous_name_groups"],
             "linked": len(links),
             "review": len(outstanding),
         },
@@ -547,6 +573,17 @@ def export_auto_xlsx(report: dict) -> bytes:
             f.get("MANUFACTURER"), f.get("FACTORY"),
             p["file"], p["origin"], "CHƯA",
         )])
+    tab_review = wb.create_sheet("GOP_DONG_NHIEU_SHEET")
+    tab_review.append(["Mã dòng", "Tên thuốc", "Tệp gốc", "Sheet và vị trí",
+                       "Số nguồn", "Trường khác nhau", "Trạng thái"])
+    for p in report["products"]:
+        sources = p.get("source_rows") or []
+        for original in sources:
+            tab_review.append([safe_cell(v) for v in (
+                p["uid"], p["fields"].get("PRODUCT_NAME", ""),
+                original["file"], original["origin"], len(sources),
+                ", ".join(sorted(p.get("conflicts") or {})), "CHƯA XÁC MINH",
+            )])
     links = wb.create_sheet("LIEN_KET_CHUNG_CU")
     links.append(["Mã dòng", "Thuốc", "Loại chứng cứ", "Nguồn", "Vị trí", "Khớp trường",
                   "Trạng thái", "Giải thích", "Đã xác minh"])
@@ -566,10 +603,23 @@ def export_auto_xlsx(report: dict) -> bytes:
     trace = wb.create_sheet("TRUY_XUAT_TUNG_TRUONG")
     trace.append(["Tệp", "Vai trò", "Trường", "Giá trị", "Trang hoặc ô nguồn", "SHA256", "Trích đoạn"])
     for p in report["products"]:
-        for field, item in p["evidence"].items():
+        # Export ALL observed fields from all source tabs, including conflicting
+        # technical values (never silently drop a supplementary sheet).
+        for source_row in p.get("source_rows") or [{
+            "file": p["file"], "evidence": p.get("evidence") or {},
+        }]:
+            for field, item in source_row["evidence"].items():
+                trace.append([safe_cell(x) for x in (
+                    item.get("file", source_row["file"]), "PRODUCT", field,
+                    item.get("value", ""), item.get("source", ""),
+                    item.get("sha256", ""), item.get("raw", ""),
+                )])
+    for discarded in report.get("catalogue_audit", {}).get("excluded_ghost_rows", []):
+        for field, item in discarded.get("evidence", {}).items():
             trace.append([safe_cell(x) for x in (
-                p["file"], "PRODUCT", field, item["value"], item["source"],
-                item["sha256"], item["raw"],
+                discarded["file"], "LOAI_TIEU_DE_GIA", field,
+                item.get("value", ""), item.get("source", ""),
+                item.get("sha256", ""), item.get("raw", ""),
             )])
     for d in report["sources"]:
         for field, item in d.get("evidence", {}).items():
