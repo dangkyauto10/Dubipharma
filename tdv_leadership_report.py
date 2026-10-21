@@ -299,14 +299,17 @@ def export_leadership_docx(report: dict) -> bytes:
         "nsx_products": "Thuốc NSX có định danh nguồn",
         "nsx_files": "Tài liệu NSX đã nạp",
         "nsx_review": "Mục NSX cần kiểm tra",
-        "matching_fields_unverified": "Ứng viên trùng hoạt chất và hàm lượng (CHƯA XÁC MINH)",
-        "other_cases": "Mã E-HSMT chưa có ứng viên đủ trường",
+        "green_criteria_preliminary": "Tiêu chí khớp SƠ BỘ (chưa xác minh)",
+        "yellow_criteria": "Tiêu chí thiếu dữ liệu/chứng cứ",
+        "red_mismatch_preliminary": "Tiêu chí không khớp SƠ BỘ, cần xác minh",
+        "matching_percent_preliminary": "Tỷ lệ khớp sơ bộ (%), KHÔNG phản ánh đủ điều kiện",
         "fully_verified": "Mã được xác minh đáp ứng hoàn toàn",
     }
     for key, label in labels.items():
         doc.add_paragraph(f'{label}: {report["summary"].get(key,0)}',style="List Bullet")
     doc.add_heading("2. Kết quả đối chiếu và vấn đề tồn tại",level=1)
     doc.add_paragraph(report["note"])
+    doc.add_paragraph("Không tự kết luận ĐẠT/ĐỦ ĐIỀU KIỆN từ các phép so sánh sơ bộ.")
     for row in report["comparison"][:40]:
         doc.add_paragraph(
             f'{row["MA_THUOC_EHSMT"]} — {row["HOAT_CHAT_EHSMT"]}: '
