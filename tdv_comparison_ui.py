@@ -32,7 +32,14 @@ def _summary(report):
     a.metric("Tiêu chí khớp sơ bộ",s["green_criteria_preliminary"])
     b.metric("Tiêu chí chưa đủ căn cứ",s["yellow_criteria"])
     c.metric("Tiêu chí không khớp",s["red_mismatch_preliminary"])
-    d.metric("Tỷ lệ khớp sơ bộ (%)",f'{s["matching_percent_preliminary"]:.1f}%')
+    ratio = s["matching_percent_preliminary"]
+    d.metric("Tỷ lệ khớp sơ bộ (%)", f"{ratio:.1f}%" if ratio is not None else "N/A")
+    if not s["lots_uniquely_linked"]:
+        st.warning(
+            "Chưa có mã E-HSMT nào gắn duy nhất với một sản phẩm NSX "
+            "có nguồn chứng cứ. Chưa có mẫu số so sánh hợp lệ; "
+            "N/A không phải 0% đáp ứng."
+        )
     st.caption(f'Đã phát hiện {s["ehsmt_lots"]} mã E-HSMT · '
                f'{s["nsx_products"]} sản phẩm NSX · '
                f'{s["criteria_ehsmt_available"]}/{s["total_criteria"]} '
