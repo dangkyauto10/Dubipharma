@@ -145,6 +145,25 @@ class EvidenceDiscoveryQA(unittest.TestCase):
         self.assertEqual(data["summary"]["factory_source_groups"],0)
         self.assertEqual(data["unresolved"][0]["status"],"CAN_KIEM_TRA_BAN_GOC")
 
+    def test_unclassified_sourced_sdk_not_promoted_to_registration(self):
+        other=record({"REGISTRATION_NO":"REG-2026-X"},kind="OTHER")
+        data=run([self.product],[other])
+        self.assertEqual(data["summary"]["registration_hints"],0)
+        self.assertEqual(data["summary"]["unresolved_evidence"],1)
+        self.assertEqual(data["unresolved"][0]["status"],
+                         "CO_TRUONG_SDK_GMP_NHUNG_CHUA_RO_LOAI")
+        self.assertEqual(data["independent_proof_links_created"],0)
+
+    def test_public_decision_sourced_sdk_remains_public_reference(self):
+        other=record({"REGISTRATION_NO":"REG-2026-X"},kind="OTHER")
+        meta=classified(other)
+        meta["public_document_class"]="REGISTRATION_PUBLIC_DECISION"
+        data=discover_evidence_candidates([self.product],[meta],[other],
+                                          reference_date=date(2026,10,22))
+        self.assertEqual(data["summary"]["registration_hints"],0)
+        self.assertEqual(data["unresolved"][0]["status"],
+                         "TAI_LIEU_CONG_KHAI_KHONG_PHAI_BANG_CHUNG_GOC")
+
     def test_export_separate_review_tabs_without_changing_link_count(self):
         reg=record({"PRODUCT_NAME":"Medicine A","STRENGTH":"50 mg"},kind="REGISTRATION")
         cert=record({"FACTORY":"Site A"},kind="GMP_CERT",filename="gmp.pdf",sha="e"*64)
