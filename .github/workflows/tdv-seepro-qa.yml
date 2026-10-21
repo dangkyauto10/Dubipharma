@@ -1,0 +1,24 @@
+name: SEE PRO QA
+on:
+  push:
+    branches: [tdv-seepro-qa-20261022]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - run: python -m py_compile see_pro_quality_gate.py see_pro_workbench.py see_pro_traceability.py tdv_nsx_workbench.py tdv_comparison_ui.py
+      - run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          app = AppTest.from_file('app.py', default_timeout=30).run()
+          assert not app.exception
+          print('SEE_PRO_QA_BOOT_OK')
+          PY
