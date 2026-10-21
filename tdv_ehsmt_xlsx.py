@@ -134,3 +134,21 @@ def inspect_ehsmt_xlsx(data: bytes, *, max_bytes: int = 40 * 1024 * 1024,
         "warnings": warnings, "verified": False,
         "note": "Chỉ là trích xuất bảng tổng hợp từ E-HSMT; không phê duyệt NSX/thuốc/GMP/SĐK.",
     }
+
+
+def inspect_ehsmt_document(data: bytes) -> dict:
+    """Automatically route authentic PDF/XLSX E-HSMT by file signature."""
+    if not isinstance(data, bytes) or not data:
+        raise ValueError("Hồ sơ E-HSMT rỗng hoặc không hợp lệ")
+    if data.startswith(b"%PDF-"):
+        from tdv_ehsmt_intake import inspect_ehsmt_pdf
+        return inspect_ehsmt_pdf(data)
+    if data.startswith(b"PK\x03\x04"):
+        from zipfile import BadZipFile, ZipFile
+        try:
+            with ZipFile(BytesIO(data)) as archive:
+                if "xl/workbook.xml" in archive.namelist():
+                    return inspect_ehsmt_xlsx(data)
+        except BadZipFile:
+            pass
+    raise ValueError("Chưa nhận dạng được E-HSMT PDF/XLSX; không tự suy đoán loại hồ sơ")
