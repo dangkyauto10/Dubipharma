@@ -97,7 +97,8 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
         })
     comparison = []
     aggregate = {"green": 0, "yellow": 0, "red": 0, "evaluable": 0,
-                 "total_criteria": 0, "lots_with_candidates": 0}
+                 "total_criteria": 0, "lots_with_candidates": 0,
+                 "lots_uniquely_linked": 0}
     for code, lot in sorted(lots.items()):
         ingredient = str(lot.get("HOAT_CHAT_HSMT") or "").strip()
         compatible = [item for item in product_list if
@@ -111,6 +112,8 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
         if candidates:
             aggregate["lots_with_candidates"] += 1
         chosen = candidates[0] if len(candidates) == 1 and code not in duplicate else None
+        if chosen:
+            aggregate["lots_uniquely_linked"] += 1
         criteria = []
         counts = {"green": 0, "yellow": 0, "red": 0, "evaluable": 0}
         for field_id, label, lhs_key, rhs_key in CRITERIA:
@@ -145,7 +148,8 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
             if key in counts:
                 aggregate[key] += counts[key]
         aggregate["total_criteria"] += len(CRITERIA)
-        pct = round(counts["green"] * 100 / len(CRITERIA), 1)
+        pct = (round(counts["green"] * 100 / len(CRITERIA), 1)
+               if chosen else None)
         raw_trace = chosen["trace"] if chosen else {}
         state = ("KHONG_KHOP_SO_BO" if counts["red"] else
                  "CHUA_DU_CAN_CU" if counts["yellow"] else
@@ -200,9 +204,11 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
             "total_criteria": aggregate["total_criteria"],
             "matching_percent_preliminary": round(
                 100 * aggregate["green"] / aggregate["total_criteria"], 1)
-                if aggregate["total_criteria"] else 0,
+                if aggregate["total_criteria"] and aggregate["lots_uniquely_linked"]
+                else None,
             "criteria_ehsmt_available": aggregate["evaluable"],
             "lots_with_candidate": aggregate["lots_with_candidates"],
+            "lots_uniquely_linked": aggregate["lots_uniquely_linked"],
             "fully_verified": 0,
         }, "traceability": traces,
         "ehsmt_documents": ehsmt.get("documents") or [],
