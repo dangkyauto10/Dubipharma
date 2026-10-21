@@ -107,7 +107,8 @@ def _consecutive_pdf_fields(lines: list[dict]):
     names from filenames are excluded. Final fields remain unverified.
     """
     allowed = {"PRODUCT_NAME", "REGISTRATION_NO", "INGREDIENT",
-               "STRENGTH", "DOSAGE_FORM", "MANUFACTURER", "FACTORY"}
+               "STRENGTH", "DOSAGE_FORM", "MANUFACTURER", "FACTORY",
+               "SUPPLIER", "BIDDER", "REGISTRATION_HOLDER"}
     for index in range(len(lines) - 1):
         here, following = lines[index], lines[index + 1]
         if here["source"] != following["source"]:
