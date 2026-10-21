@@ -161,6 +161,30 @@ class AutoBatchTests(unittest.TestCase):
         self.assertFalse(any(q["status"] == "CHUA_NHAN_DIEN_DANH_MUC"
                              for q in batch["review_queue"]))
 
+    def test_native_pdf_two_line_registration_is_detected_without_catalogue(self):
+        """PDFs with separated line labels produce only provisional records."""
+        import pymupdf
+        pdf = pymupdf.open()
+        page = pdf.new_page()
+        for index, line in enumerate([
+            "Registration Certificate", "Drug Name", "Medicine C",
+            "Registration Number", "VN-TEST-003", "Active Ingredient",
+            "Ingredient Three",
+        ]):
+            page.insert_text((72, 72 + 27 * index), line, fontsize=11)
+        content = pdf.tobytes()
+        pdf.close()
+        report = analyze_auto([("unlabeled_document.pdf", content)], enable_ocr=False)
+        self.assertEqual(report["files"][0]["kind"], "REGISTRATION")
+        self.assertEqual(report["summary"]["products"], 1)
+        self.assertEqual(report["summary"]["linked"], 0)
+        product = report["products"][0]
+        self.assertEqual(product["fields"]["PRODUCT_NAME"], "Medicine C")
+        self.assertEqual(product["fields"]["REGISTRATION_NO"], "VN-TEST-003")
+        self.assertIn("Trang", product["evidence"]["PRODUCT_NAME"]["source"])
+        self.assertTrue(product["registration_document_source"])
+        self.assertFalse(report["registration_confirmed"])
+
     def test_registration_number_without_product_name_stays_source_only(self):
         standalone = analyze_auto([("register.docx", registration())])
         self.assertEqual(standalone["summary"]["products"], 0)
