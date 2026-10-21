@@ -250,6 +250,7 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
             "linked_requirements": aggregate["linked_requirements"],
             "fully_verified": 0,
         }, "traceability": traces,
+        "nsx_evidence_candidates": nsx.get("evidence_candidates") or {},
         "ehsmt_documents": ehsmt.get("documents") or [],
         "nsx_documents": nsx.get("files") or [],
         "warnings": warnings, "verified": False, "bid_eligible": False,
@@ -325,6 +326,24 @@ def export_leadership_xlsx(report: dict) -> bytes:
                 right.get("file", ""), right.get("location", ""),
                 right.get("sha256", ""), crit["note"], "CHUA_XAC_MINH",
             )])
+    # Prioritized triage is read-only and never modifies the
+    # original comparison, compliance judgement or source documents.
+    from tdv_review_priorities import build_review_priorities
+    triage = build_review_priorities(report, max_rows=10000)
+    actions = wb.create_sheet("UU_TIEN_XU_LY")
+    actions.append(["Ưu tiên", "Nhóm", "Vấn đề", "Mã / nhà máy",
+                    "Chi tiết", "Tệp nguồn", "Trang/dòng", "Việc cần làm",
+                    "Trạng thái", "Kết luận pháp lý"])
+    for issue in triage["rows"]:
+        actions.append([_safe(z) for z in (
+            issue["muc_uu_tien"], issue["nhom"], issue["van_de"],
+            issue["ma"], issue["chi_tiet"], issue["tai_lieu"],
+            issue["vi_tri_nguon"], issue["viec_can_lam"],
+            issue["trang_thai"], "CHUA_XAC_MINH",
+        )])
+    actions.append(["", "", "Tổng số mục cần rà soát", triage["total_issues"],
+                    "", "", "", "Tài liệu gốc quyết định; không tự duyệt",
+                    "", "KHONG_PHAI_KET_LUAN_THAU"])
     sources = wb.create_sheet("DANH_MUC_TAI_LIEU")
     sources.append(["Hệ", "Tệp", "Loại", "SHA256", "Đọc đủ", "Xác minh"])
     for doc in report.get("ehsmt_documents", []):
@@ -434,7 +453,27 @@ def export_leadership_docx(report: dict) -> bytes:
             refs[3].text = "CHƯA XÁC MINH"
     for message in report["warnings"]:
         doc.add_paragraph(message, style="List Bullet")
-    doc.add_heading("4. Kiến nghị cho Lãnh đạo",level=1)
+    from tdv_review_priorities import build_review_priorities
+    triage = build_review_priorities(report, max_rows=10)
+    doc.add_heading("4. Thứ tự xử lý chứng cứ (không phải kết luận pháp lý)",level=1)
+    doc.add_paragraph(
+        f'Tổng số vấn đề rà soát: {triage["total_issues"]} '
+        f'· Mức 1: {triage["by_priority"]["1"]} '
+        f'· Mức 2: {triage["by_priority"]["2"]} '
+        f'· Mức 3: {triage["by_priority"]["3"]}. '
+        'Đây là số mục công việc, có thể lớn hơn số thuốc.'
+    )
+    for item in triage["rows"]:
+        doc.add_paragraph(
+            f'Mức {item["muc_uu_tien"]} · {item["ma"]} · '
+            f'{item["van_de"]}: {item["viec_can_lam"]}',
+            style="List Bullet",
+        )
+    doc.add_paragraph(
+        "Danh sách đầy đủ nằm trong Excel, sheet UU_TIEN_XU_LY. "
+        "Không tự nâng SĐK/GMP hoặc chứng cứ gợi ý thành ĐẠT."
+    )
+    doc.add_heading("5. Kiến nghị cho Lãnh đạo",level=1)
     for message in (
         "Không phê duyệt đáp ứng E-HSMT chỉ dựa trên phép so trùng hoạt chất/hàm lượng.",
         "Đọc đầy đủ E-HSMT, phiên bản sửa đổi/làm rõ và yêu cầu hồ sơ của đúng gói.",
