@@ -290,6 +290,59 @@ def render_nsx_workbench() -> None:
     else:
         st.info("Chưa có liên kết chứng cứ đủ duy nhất; không tự gán GMP/giá/SĐK.")
 
+    st.markdown("**3A. Truy tìm chứng cứ SĐK/GMP theo đúng nguồn (chưa xác minh)**")
+    suggestions = report.get("evidence_candidates") or {}
+    sample = suggestions.get("summary") or {}
+    st.caption(
+        f'Gợi ý đối chiếu tên thuốc: {sample.get("registration_hints", 0)} · '
+        f'Nhóm GMP cùng tên nhà máy: {sample.get("factory_source_groups", 0)} · '
+        f'Tài liệu SĐK/GMP chưa ghép: {sample.get("unresolved_evidence", 0)}. '
+        'Không tính các gợi ý này vào liên kết chứng cứ đã xác minh hoặc tỷ lệ đáp ứng.'
+    )
+    if suggestions.get("registrations"):
+        with st.expander("Giấy đăng ký — gợi ý theo tên nguồn, không tự gán SĐK", expanded=True):
+            st.dataframe([{
+                "Mã NSX": e["product_id"], "Tên trên giấy": e["product_name"],
+                "SĐK trích từ giấy": e["registration_no_in_proof"] or "CHƯA TRÍCH",
+                "Nguồn danh mục": e["product_source"]["file"],
+                "Vị trí danh mục": e["product_source"]["location"],
+                "Nguồn giấy SĐK": e["document_source"]["file"],
+                "Vị trí trên giấy": e["document_source"]["location"],
+                "Trường cùng khớp": ", ".join(e["supporting_fields"]),
+                "Trường mâu thuẫn": ", ".join(e["conflict_fields"]),
+                "Tình trạng": e["status"],
+            } for e in suggestions["registrations"]],
+                hide_index=True, use_container_width=True)
+    if suggestions.get("factories"):
+        with st.expander("GMP — chứng cứ theo nhà máy, KHÔNG phải chứng nhận cho mọi thuốc",
+                         expanded=True):
+            st.dataframe([{
+                "Nhà máy theo giấy": e["factory"], "Nguồn": e["document_file"],
+                "Vị trí": e["factory_source"]["location"],
+                "Số GMP trong giấy": e["gmp_number_in_proof"] or "CHƯA TRÍCH",
+                "Phạm vi trong giấy": e["gmp_scope_in_proof"] or "CHƯA TRÍCH",
+                "Hết hạn ghi trên giấy": e["expiry_in_proof"] or "CHƯA TRÍCH",
+                "Cảnh báo": e["expiry_observation"],
+                "Số thuốc cùng tên nhà máy": e["related_product_count"],
+                "Mã tham chiếu": ", ".join(e["related_product_ids"]),
+                "Xác minh": "CHƯA",
+            } for e in suggestions["factories"]],
+                hide_index=True, use_container_width=True)
+    if suggestions.get("unresolved"):
+        with st.expander("Giấy SĐK/GMP chưa tìm được nguồn định danh chung",
+                         expanded=True):
+            st.dataframe([{
+                "Tệp": e["file"],
+                "Loại": KINDS.get(e["type"], e["type"]),
+                "Trạng thái": e["status"], "Nguyên nhân": e["reason"],
+            } for e in suggestions["unresolved"]],
+                hide_index=True, use_container_width=True)
+    st.caption(
+        "Ngay cả khi ghi cùng một nhà máy, vẫn phải kiểm tra số GMP, "
+        "phạm vi dây chuyền/sản phẩm, hiệu lực, thay đổi/thu hồi và yêu cầu "
+        "riêng của E-HSMT. Ngày ghi trên giấy không tự chứng minh hiệu lực pháp lý."
+    )
+
     st.markdown("**4. Các điểm chưa rõ và cần xác minh**")
     if report["review_queue"]:
         st.dataframe([
