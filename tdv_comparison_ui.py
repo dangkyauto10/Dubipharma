@@ -8,6 +8,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from see_pro_quality_gate import audit_comparison
 from tdv_leadership_report import (
     compare_sources, export_leadership_xlsx, export_leadership_docx,
     GREEN, YELLOW, RED,
@@ -51,6 +52,17 @@ def _summary(report):
             'Đây là tìm kiếm văn bản, KHÔNG chứng minh hoạt chất, '
             'KHÔNG tính là liên kết hoặc tiêu chí đạt.'
         )
+    check = audit_comparison(report)
+    if check["issue_count"]:
+        st.error(
+            f'SEE PRO phát hiện {check["issue_count"]} tiêu chí đang xanh sơ bộ '
+            'nhưng chưa có đủ dấu vết trích dẫn ở cả hai phía. '
+            'Không được dùng các dòng này để xác nhận đáp ứng.'
+        )
+        with st.expander("Kiểm toán dấu vết kết quả xanh sơ bộ"):
+            st.dataframe(pd.DataFrame(check["issues"][:150]),
+                         hide_index=True,use_container_width=True)
+    st.caption("99,9999% là MỤC TIÊU kiểm thử độc lập, không phải tỷ lệ chính xác đã đạt.")
     st.warning(report["note"])
     st.error(
         "KHÔNG kết luận ĐỦ ĐIỀU KIỆN DỰ THẦU từ tỷ lệ %. "
