@@ -339,11 +339,27 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
         kind = classification["kind"]
         if "error" in document:
             continue
-        if kind == "PRODUCT":
+        # Registration dossiers can be the ONLY product-identifying source in
+        # a supplier batch. Do not require a separately uploaded catalogue.
+        # Promote only a same-document, non-conflicting labeled NAME + SĐK,
+        # with both source citations; never derive identities from filenames.
+        if kind in ("PRODUCT", "REGISTRATION"):
             for p in _candidate_from_document(document):
+                if kind == "REGISTRATION":
+                    fs, evidence = p["fields"], p["evidence"]
+                    if (not fs.get("PRODUCT_NAME") or not fs.get("REGISTRATION_NO")
+                        or "PRODUCT_NAME" in p["conflicts"]
+                        or "REGISTRATION_NO" in p["conflicts"]
+                        or "PRODUCT_NAME" not in evidence
+                        or "REGISTRATION_NO" not in evidence):
+                        continue
+                    p["origin"] = "Tên thuốc và SĐK trong giấy đăng ký lưu hành: " + (
+                        str(evidence["PRODUCT_NAME"]["source"]) + " / " +
+                        str(evidence["REGISTRATION_NO"]["source"]))
+                    p["registration_document_source"] = True
                 p["uid"] = "P" + str(len(products) + 1).zfill(4)
                 products.append(p)
-        elif kind in ("GMP_CERT", "GMP_EXPLANATION", "REGISTRATION", "QUOTE", "AUTHORIZATION"):
+        if kind in ("GMP_CERT", "GMP_EXPLANATION", "REGISTRATION", "QUOTE", "AUTHORIZATION"):
             rows = _table_items(filename, raw, classification["sha256"], kind)
             if rows and len(rows) >= MAX_QUOTE_ROWS and kind == "QUOTE":
                 classification["complete_read"] = False
@@ -374,7 +390,17 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
     links = []
     outstanding = list(incomplete_attachments)
     for proof in evidence_items:
-        assessments = [_match(p, proof) for p in products]
+        # A registration certificate is the source of the identity it provides,
+        # not an independent second document proving that identity. Exclude
+        # the source product itself from matching and do not create an empty
+        # warning when no other distinct product can be matched.
+        self_sourced = (proof["kind"] == "REGISTRATION" and any(
+            p.get("registration_document_source")
+            and p["sha256"] == proof["sha256"]
+            for p in products))
+        assessments = [_match(p, proof) for p in products
+                       if not (self_sourced
+                               and p["sha256"] == proof["sha256"])]
         candidates = [x for x in assessments if x["status"] == STATUS_MATCH]
         if len(candidates) == 1:
             links.append(candidates[0])
@@ -389,6 +415,10 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
                 "reason": "Nhiều thuốc có cùng định danh trong tài liệu chứng cứ.",
             })
         else:
+            if self_sourced:
+                # Source registration already contributes an unverified
+                # product; no self-confirmation and no spurious mismatch.
+                continue
             # Mismatching identifiers of unrelated products are EXPECTED in
             # a multi-product dossier. They are not automatically data errors.
             # Only surface "conflict" if a common anchor agrees but another
