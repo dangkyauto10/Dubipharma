@@ -7,9 +7,10 @@ from datetime import date
 from io import BytesIO
 import unittest
 
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
+from docx import Document
 from tdv_nsx_evidence_candidates import discover_evidence_candidates
-from tdv_nsx_auto import export_auto_xlsx
+from tdv_nsx_auto import export_auto_xlsx, analyze_auto
 
 
 def record(fields, *, uid="", kind="", filename="source.pdf", sha="a"*64,
@@ -163,6 +164,47 @@ class EvidenceDiscoveryQA(unittest.TestCase):
         self.assertEqual(data["summary"]["registration_hints"],0)
         self.assertEqual(data["unresolved"][0]["status"],
                          "TAI_LIEU_CONG_KHAI_KHONG_PHAI_BANG_CHUNG_GOC")
+
+    def test_real_pipeline_synthetic_source_formats_keep_sdk_gmp_unverified(self):
+        # End-to-end against real parser flow; all documents are synthetic.
+        wb = Workbook()
+        sh = wb.active
+        sh.append(["Tên thuốc", "Hàm lượng", "Hoạt chất", "Nhà máy sản xuất"])
+        sh.append(["Medicine A", "50 mg", "Active A", "Site A"])
+        buf = BytesIO()
+        wb.save(buf)
+
+        reg = Document()
+        reg.add_paragraph("Giấy đăng ký lưu hành")
+        reg.add_paragraph("Tên thuốc: Medicine A")
+        reg.add_paragraph("Hàm lượng: 50 mg")
+        reg.add_paragraph("Số đăng ký: REG-X")
+        regbuf = BytesIO()
+        reg.save(regbuf)
+
+        gmp = Document()
+        gmp.add_paragraph("Giấy chứng nhận GMP")
+        gmp.add_paragraph("Nhà máy sản xuất: Site A")
+        gmp.add_paragraph("Số chứng nhận GMP: GMP-X")
+        gmpbuf = BytesIO()
+        gmp.save(gmpbuf)
+
+        output = analyze_auto([
+            ("cat.xlsx", buf.getvalue()),
+            ("reg.docx", regbuf.getvalue()),
+            ("gmp.docx", gmpbuf.getvalue()),
+        ], enable_ocr=False)
+        self.assertEqual(output["summary"]["parsed"], 3)
+        proposals = output["evidence_candidates"]
+        self.assertTrue(any(x["product_id"] for x in proposals["registrations"]))
+        self.assertEqual(proposals["summary"]["factory_source_groups"], 1)
+        self.assertFalse(proposals["legal_approval"])
+        self.assertFalse(output["registration_confirmed"])
+        self.assertFalse(output["gmp_confirmed"])
+        self.assertFalse(output["bid_eligible"])
+        self.assertFalse(output["cloud_write_enabled"])
+        self.assertTrue(any(r["registration_no_in_proof"] == "REG-X"
+                            for r in proposals["registrations"]))
 
     def test_export_separate_review_tabs_without_changing_link_count(self):
         reg=record({"PRODUCT_NAME":"Medicine A","STRENGTH":"50 mg"},kind="REGISTRATION")
