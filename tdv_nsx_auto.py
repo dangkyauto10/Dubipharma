@@ -18,6 +18,9 @@ from tdv_nsx_adaptive import extract_product_rows, _read_grid, FIELD, normalize 
 from tdv_nsx_intake import KINDS, _read_one
 from tdv_nsx_public_guard import detect_nonprimary_document
 from tdv_tender_trace import build_reverse_dossiers
+from tdv_tender_context import (
+    detect_procurement_document, index_tender_documents, PUBLIC_REFERENCES,
+)
 from see_pro_traceability import safe_cell, _format
 
 MAX_FILES = 24
@@ -57,6 +60,18 @@ def classify_document(filename: str, raw: bytes, *, enable_ocr: bool = False) ->
     if filename.rsplit(".", 1)[-1].lower() not in ACCEPTED:
         raise ValueError("Định dạng không được hỗ trợ")
     source = extract_file(filename, raw, ocr=enable_ocr)
+    tender = detect_procurement_document(source["lines"])
+    if tender:
+        return {
+            "kind": "OTHER", "kind_label": KINDS["OTHER"],
+            "filename": filename, "sha256": source["sha256"],
+            "content_type": source["type"], "complete_read": bool(source["complete"]),
+            "role_confidence": "TAI_LIEU_GOI_THAU",
+            "role_candidates": [], "score": 0, "reasons": [tender["warning"]],
+            "tender_document": tender,
+            "catalogue_products_found": 0, "quotation_table_found": False,
+            "_extracted_source": source, "verified": False,
+        }
     nonprimary = detect_nonprimary_document(source["lines"])
     if nonprimary:
         # A government GMP list, a registration decision, a quote invitation
@@ -457,6 +472,18 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
                 "origin": "", "status": "CAN_PHAN_LOAI_LAI",
                 "candidate_products": [], "reason": "; ".join(c["reasons"]),
             })
+    tender_documents = [
+        {"filename": c["filename"], "sha256": c["sha256"],
+         "complete_read": c["complete_read"], **c["tender_document"]}
+        for c in classified if c.get("tender_document")
+    ]
+    tender_index = index_tender_documents(tender_documents)
+    for doc in tender_index["unassigned"]:
+        outstanding.append({
+            "file": doc["filename"], "kind": "OTHER", "origin": "",
+            "status": doc["status"], "candidate_products": [],
+            "reason": "Không tự ghép chứng cứ qua các gói: " + doc["reason"],
+        })
     if not products:
         warnings.append(
             "Không có danh mục/sản phẩm đủ định danh để liên kết chứng cứ; "
@@ -476,6 +503,8 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
             warnings.append("Tệp có nội dung trùng SHA-256: " + ", ".join(names))
     report = {
         "mode": "NSX_AUTO_MULTI_DOCUMENT_READ_ONLY",
+        "tender_documents": tender_documents,
+        "tender_index": tender_index,
         "files": classified, "sources": detailed,
         "products": products, "links": links, "review_queue": outstanding,
         "warnings": warnings,
@@ -596,6 +625,22 @@ def export_auto_xlsx(report: dict) -> bytes:
                 item["value"], item["status"], item["file"], item["source"],
                 item["sha256"], "CHUA",
             )])
+    tender = wb.create_sheet("TAI_LIEU_GOI_THAU")
+    tender.append(["Tệp", "Loại nguồn", "Mã gói BP đọc từ nội dung",
+                   "Mã TBMT IB", "Số mã G1 tham chiếu", "SHA256",
+                   "Đọc đầy đủ", "Xác minh"])
+    for item in report.get("tender_documents", []):
+        tender.append([safe_cell(v) for v in (
+            item["filename"], item["kind"], ", ".join(item["package_ids"]),
+            ", ".join(item["notice_ids"]), len(item["lot_codes"]),
+            item["sha256"], item["complete_read"], "CHUA",
+        )])
+    public_sources = wb.create_sheet("NGUON_TRA_CUU_CONG_KHAI")
+    public_sources.append(["Cơ quan / nguồn", "URL", "Dùng để tra", "Giới hạn"])
+    for item in PUBLIC_REFERENCES:
+        public_sources.append([safe_cell(v) for v in (
+            item["name"], item["url"], item["purpose"], item["authority"],
+        )])
     disclaim = wb.create_sheet("GIOI_HAN_KIEM_TOAN")
     disclaim.append(["Giới hạn", "Ý nghĩa"])
     for k, v in (
