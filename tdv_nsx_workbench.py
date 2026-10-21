@@ -156,7 +156,20 @@ def render_nsx_workbench() -> None:
     if not report or st.session_state.get("tdv_nsx_auto_signature") != digest:
         return
 
+    from see_pro_quality_gate import audit_nsx
+    quality = audit_nsx(report)
     stats = report["summary"]
+    st.caption(f'SEE PRO · Tệp NSX: {quality["files"]}, sản phẩm ứng viên: '
+               f'{quality["entries"]}, lỗi/điểm cần kiểm tra chất lượng: '
+               f'{quality["issue_count"]}. 99,9999% chỉ là mục tiêu, chưa nghiệm thu.')
+    with st.expander("Kiểm toán chất lượng trích xuất NSX theo từng trường"):
+        st.dataframe([{"Trường":k,"Có nội dung":v["values"],
+                      "Có nguồn riêng":v["field_cited"],
+                      "Thiếu nguồn/đang mâu thuẫn":v["values"]-v["field_cited"]}
+                      for k,v in quality["coverage"].items()],
+                     hide_index=True,use_container_width=True)
+        if quality["issues"]:
+            st.dataframe(quality["issues"],hide_index=True,use_container_width=True)
     metrics = st.columns(5)
     for col, (label, value) in zip(metrics, (
         ("Tài liệu", stats["files"]),
