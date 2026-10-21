@@ -161,7 +161,7 @@ def render_nsx_workbench() -> None:
     for col, (label, value) in zip(metrics, (
         ("Tài liệu", stats["files"]),
         ("Đọc được", stats["parsed"]),
-        ("Thuốc nhận diện", stats["products"]),
+        ("Dòng sản phẩm trích xuất", stats["products"]),
         ("Liên kết sơ bộ", stats["linked"]),
         ("Cần kiểm tra", stats["review"]),
     )):
