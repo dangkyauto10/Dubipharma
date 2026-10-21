@@ -77,6 +77,9 @@ def detect_nonprimary_document(lines: list[dict[str, Any]]) -> dict | None:
             "danh sách cơ sở sản xuất đạt tiêu chuẩn gmp",
             "danh sách cơ sở sản xuất thuốc nước ngoài đáp ứng gmp",
             "danh sách các cssx trong nước đạt tiêu chuẩn nguyên tắc gmp",
+            "danh sách các cơ sở trong nước đạt tiêu chuẩn nguyên tắc gmp",
+            "danh sách cơ sở trong nước đạt tiêu chuẩn nguyên tắc gmp",
+            "danh sách các cơ sở sản xuất thuốc trong nước đạt tiêu chuẩn nguyên tắc gmp",
             "danh sách cssx trong nước đạt tiêu chuẩn nguyên tắc gmp"):
         chosen = PUBLIC_GMP_LIST
 
