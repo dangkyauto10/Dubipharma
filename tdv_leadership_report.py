@@ -103,6 +103,7 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
         product_list.append({
             "id": item["uid"], "fields": item.get("fields") or {},
             "evidence": item.get("evidence") or {},
+            "conflicts": item.get("conflicts") or {},
             "trace": detailed.get(item["uid"], {}),
             "filename": item.get("file", ""), "sha256": item.get("sha256", ""),
         })
@@ -115,10 +116,12 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
         ingredient = str(lot.get("HOAT_CHAT_HSMT") or "").strip()
         compatible = [item for item in product_list if
                       ingredient and item["fields"].get("INGREDIENT") and
+                      "INGREDIENT" not in item["conflicts"] and
                       _comparable(ingredient) == _comparable(item["fields"]["INGREDIENT"])]
         strength = str(lot.get("NONG_DO_HAM_LUONG") or "")
         narrowed = [item for item in compatible
                     if strength and item["fields"].get("STRENGTH") and
+                    "STRENGTH" not in item["conflicts"] and
                     _comparable(strength) == _comparable(item["fields"]["STRENGTH"])]
         candidates = narrowed if narrowed else compatible
         if candidates:
@@ -140,7 +143,8 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
             right_proof = ((chosen.get("evidence") or {}).get(rhs_key) or {}) if chosen else {}
             left_proof = _field_evidence(lot, lhs_key)
             evidence_complete = bool(left_proof.get("file") and right_proof.get("source"))
-            if not expected or not actual or not chosen or code in duplicate or not evidence_complete:
+            if (not expected or not actual or not chosen or code in duplicate
+                or not evidence_complete or rhs_key in chosen["conflicts"]):
                 status = YELLOW
             elif _comparable(expected) == _comparable(actual):
                 status = GREEN
@@ -158,9 +162,11 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
                     "raw": right_proof.get("raw", ""),
                     "sha256": right_proof.get("sha256", chosen["sha256"] if chosen else ""),
                 },
-                "note": "Có trích dẫn, CHƯA xác minh chuyên môn" if status == GREEN
-                        else ("Thông số nguồn chưa khớp, cần so bản gốc"
-                              if status == RED else "Thiếu dữ liệu/chứng cứ hoặc nhiều ứng viên"),
+                "note": ("Mâu thuẫn giữa các sheet NSX, cần so tài liệu gốc"
+                         if chosen and rhs_key in chosen["conflicts"] else
+                         "Có trích dẫn, CHƯA xác minh chuyên môn" if status == GREEN
+                         else ("Thông số nguồn chưa khớp, cần so bản gốc"
+                               if status == RED else "Thiếu dữ liệu/chứng cứ hoặc nhiều ứng viên")),
             })
         for key in aggregate:
             if key in counts:
