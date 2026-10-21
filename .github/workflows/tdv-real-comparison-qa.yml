@@ -28,4 +28,26 @@ jobs:
           a=AppTest.from_file("app.py",default_timeout=35).run()
           assert not a.exception, str(list(a.exception))
           print("TDV_COMPARE_APP_STARTS")
+      - name: Render colored side-by-side evidence with native Streamlit
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          source = """
+          from tdv_comparison_ui import _criteria
+          _criteria({"criteria":[
+             {"field":"HOAT_CHAT","label":"Hoạt chất","ehsmt":"Ingredient A",
+              "nsx":"Ingredient A","status":"DAT_SO_BO",
+              "ehsmt_evidence":{"file":"ehsmt.xlsx","location":"Sheet 1"},
+              "nsx_evidence":{"file":"nsx.docx","location":"Paragraph 1"},
+              "note":"Trích xuất sơ bộ"},
+             {"field":"ROUTE","label":"Đường dùng","ehsmt":"Uống",
+              "nsx":"Tiêm","status":"KHONG_KHOP_CAN_XAC_MINH",
+              "ehsmt_evidence":{"file":"ehsmt.xlsx","location":"Sheet 2"},
+              "nsx_evidence":{"file":"nsx.docx","location":"Paragraph 2"},
+              "note":"Không khớp sơ bộ"}]})
+          """
+          test=AppTest.from_string(source,default_timeout=30).run()
+          assert not test.exception, str(list(test.exception))
+          print("TDV_COLORED_TWO_SOURCE_VIEW_PASS")
+          PY
           PY
