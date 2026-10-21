@@ -170,6 +170,79 @@ def render_nsx_workbench() -> None:
         "GMP, SĐK, ủy quyền và giá chưa được thẩm định hoặc phê duyệt."
     )
 
+    st.markdown("**5. Hồ sơ thầu theo thuốc · Truy xuất ngược cho Lãnh đạo**")
+    st.caption(
+        "Tra theo tên thuốc, SĐK hoặc mã nội bộ; máy đưa lên đơn vị cung cấp, "
+        "nhà thầu, cơ sở đăng ký, NSX, nhà máy, giấy tờ và chứng cứ còn thiếu. "
+        "Mọi kết quả CHƯA XÁC MINH."
+    )
+    trace = report.get("traceability") or {}
+    dossiers = trace.get("products") or []
+    needle = st.text_input(
+        "Tìm sản phẩm trong hồ sơ thầu", key="tdv_nsx_leadership_drug_search",
+        placeholder="Tên thuốc, số đăng ký, mã thuốc..."
+    ).strip().casefold()
+    displayed = [
+        p for p in dossiers
+        if not needle or needle in (" ".join(
+            str(p.get(k, "")) for k in (
+                "product_id", "product_name", "registration_no", "product_code",
+            )).casefold())
+    ]
+    if dossiers:
+        st.dataframe([
+            {
+                "Thuốc": p["product_name"], "SĐK": p["registration_no"],
+                "Mã": p["product_id"],
+                "Nhà thầu": p["parties"]["BIDDER"]["value"],
+                "Đơn vị cung cấp": p["parties"]["SUPPLIER"]["value"],
+                "Đơn vị đăng ký": p["parties"]["REGISTRATION_HOLDER"]["value"],
+                "NSX": p["parties"]["MANUFACTURER"]["value"],
+                "Nhà máy": p["parties"]["FACTORY"]["value"],
+                "Tệp gốc": p["origin_file"], "Vị trí": p["origin"],
+                "Tình trạng": "CHƯA XÁC MINH",
+            } for p in displayed
+        ], hide_index=True, use_container_width=True)
+        st.markdown("**Giấy tờ / chứng cứ gắn riêng với từng thuốc**")
+        st.dataframe([
+            {
+                "Thuốc": p["product_name"], "SĐK": p["registration_no"],
+                "Loại tài liệu cần rà soát": proof["label"],
+                "Có chứng cứ liên kết": proof["status"],
+                "Yêu cầu của E-HSMT": proof["requirement_status"],
+                "Tệp": source["file"], "Vị trí": source["location"],
+                "SHA256": source["sha256"], "Trích gốc": source.get("excerpt", ""),
+            }
+            for p in displayed for proof in p["proofs"]
+            for source in (proof["sources"] or [{
+                "file": "", "location": "", "sha256": "", "excerpt": "",
+            }])
+        ], hide_index=True, use_container_width=True)
+        st.warning(
+            "Chưa thể kết luận tài liệu nào bắt buộc/đủ/hợp lệ cho từng gói "
+            "nếu chưa đọc và đối chiếu phiên bản E-HSMT cùng các văn bản sửa đổi, làm rõ."
+        )
+    else:
+        st.info("Chưa phát hiện thuốc có định danh gốc, nên chưa thể lập truy xuất ngược.")
+    tender_docs = report.get("tender_documents") or []
+    if tender_docs:
+        st.markdown("**Tài liệu khác cùng gói thầu được tự phát hiện**")
+        st.dataframe([
+            {
+                "Tệp": doc["filename"], "Loại": doc["kind"],
+                "BP đọc trong hồ sơ": ", ".join(doc["package_ids"]),
+                "TBMT": ", ".join(doc["notice_ids"]),
+                "Số mã G1 phát hiện": len(doc["lot_codes"]),
+                "Đã đọc đầy đủ": doc["complete_read"],
+                "SHA256": doc["sha256"], "Xác minh": "CHƯA",
+            } for doc in tender_docs
+        ], hide_index=True, use_container_width=True)
+    with st.expander("Nguồn công khai để SEE PRO tra cứu theo từng loại chứng cứ"):
+        from tdv_tender_context import PUBLIC_REFERENCES
+        st.caption("Chỉ là danh mục nguồn tra cứu. Chưa tự tải về hoặc xác thực chứng nhận.")
+        for ref in PUBLIC_REFERENCES:
+            st.markdown(f'- [{ref["name"]}]({ref["url"]}) — {ref["purpose"]}')
+
     with st.expander("Truy xuất chứng cứ gốc từng trường"):
         traces = []
         for p in report["products"]:
@@ -197,7 +270,7 @@ def render_nsx_workbench() -> None:
                 st.warning(warning)
 
     st.download_button(
-        "Tải Excel kiểm toán NSX có chứng cứ (6 Sheet)",
+        "Tải Excel NSX + hồ sơ thầu truy xuất ngược (11 Sheet)",
         data=export_auto_xlsx(report),
         file_name="TDV_NSX_SEE_PRO_KIEM_TOAN.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
