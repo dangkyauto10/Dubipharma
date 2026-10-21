@@ -16,6 +16,7 @@ from typing import Any
 from see_pro_multiformat import ACCEPTED, extract_file
 from tdv_nsx_adaptive import extract_product_rows, _read_grid, FIELD, normalize as norm
 from tdv_nsx_multisheet import reconcile_product_rows
+from tdv_nsx_evidence_candidates import discover_evidence_candidates
 from tdv_nsx_intake import KINDS, _read_one
 from tdv_nsx_public_guard import detect_nonprimary_document
 from tdv_tender_trace import build_reverse_dossiers
@@ -547,6 +548,7 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
     for digest, names in hashes.items():
         if len(names) > 1:
             warnings.append("Tệp có nội dung trùng SHA-256: " + ", ".join(names))
+    source_candidates = discover_evidence_candidates(products, classified, detailed)
     report = {
         "mode": "NSX_AUTO_MULTI_DOCUMENT_READ_ONLY",
         "tender_documents": tender_documents,
@@ -554,6 +556,7 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
         "files": classified, "sources": detailed,
         "products": products, "links": links, "review_queue": outstanding,
         "catalogue_audit": catalogue_audit,
+        "evidence_candidates": source_candidates,
         "warnings": warnings,
         "summary": {
             "files": len(files),
@@ -565,6 +568,9 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
             "excluded_ghost_rows": len(catalogue_audit["excluded_ghost_rows"]),
             "ambiguous_name_groups": catalogue_audit["ambiguous_name_groups"],
             "linked": len(links),
+            "registration_hints": source_candidates["summary"]["registration_hints"],
+            "factory_source_groups": source_candidates["summary"]["factory_source_groups"],
+            "unresolved_evidence": source_candidates["summary"]["unresolved_evidence"],
             "review": len(outstanding),
         },
         "verified": False, "gmp_confirmed": False,
@@ -625,6 +631,44 @@ def export_auto_xlsx(report: dict) -> bytes:
         inspect.append([safe_cell(x) for x in (
             item["file"], KINDS.get(item["kind"], item["kind"]),
             item["origin"], item["status"], item["candidate_products"], item["reason"],
+        )])
+    suggestions = report.get("evidence_candidates") or {}
+    registration_review = wb.create_sheet("GOI_Y_SDK_CHUA_XAC_MINH")
+    registration_review.append([
+        "Mã ứng viên", "Tên trên giấy SĐK", "SĐK trích từ giấy",
+        "Nguồn danh mục", "Vị trí tên trong danh mục", "Nguồn giấy SĐK",
+        "Vị trí tên trong giấy", "SHA256 giấy", "Trường cùng khớp",
+        "Trường mâu thuẫn", "Trạng thái", "Xác minh",
+    ])
+    for item in suggestions.get("registrations") or []:
+        registration_review.append([safe_cell(v) for v in (
+            item["product_id"], item["product_name"], item["registration_no_in_proof"],
+            item["product_source"]["file"], item["product_source"]["location"],
+            item["document_source"]["file"], item["document_source"]["location"],
+            item["document_sha256"], ", ".join(item["supporting_fields"]),
+            ", ".join(item["conflict_fields"]), item["status"], "CHUA",
+        )])
+    facility_review = wb.create_sheet("GMP_THEO_NHA_MAY")
+    facility_review.append([
+        "Nhà máy trích trong GMP", "Nguồn GMP", "Vị trí gốc", "SHA256",
+        "Số GMP ghi trong giấy", "Phạm vi ghi trong giấy", "Ngày hết hạn ghi",
+        "Cảnh báo theo lịch", "Mã sản phẩm liên quan (không phải đã đạt)",
+        "Số sản phẩm", "Trạng thái", "Đã xác minh",
+    ])
+    for item in suggestions.get("factories") or []:
+        facility_review.append([safe_cell(v) for v in (
+            item["factory"], item["document_file"], item["factory_source"]["location"],
+            item["document_sha256"], item["gmp_number_in_proof"],
+            item["gmp_scope_in_proof"], item["expiry_in_proof"],
+            item["expiry_observation"], ", ".join(item["related_product_ids"]),
+            item["related_product_count"], item["status"], "CHUA",
+        )])
+    missing_review = wb.create_sheet("CHUNG_CU_CHUA_GHEP")
+    missing_review.append(["Loại", "Tệp", "SHA256", "Tình trạng", "Nguyên nhân"])
+    for item in suggestions.get("unresolved") or []:
+        missing_review.append([safe_cell(v) for v in (
+            item["type"], item["file"], item["sha256"],
+            item["status"], item["reason"],
         )])
     trace = wb.create_sheet("TRUY_XUAT_TUNG_TRUONG")
     trace.append(["Tệp", "Vai trò", "Trường", "Giá trị", "Trang hoặc ô nguồn", "SHA256", "Trích đoạn"])
