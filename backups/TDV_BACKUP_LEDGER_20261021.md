@@ -10,7 +10,7 @@
 | 002 | `TDV_BACKUP_002_20261021` | `83d2b463fd1f7c2021cb8df62870f173dc04a4be` | 21/10/2026 07:53:54 | SEE PRO đọc PDF/XLSX tự động tại phân hệ E-HSMT | Khôi phục bản E-HSMT sơ bộ |
 | 003 (DEV) | `TDV_DEV_BACKUP_003_20261021` | `4381c6d8d765491f1423c5b9117aa99ea3f8cda8` | 21/10/2026 08:48:23 | NSX tự nhận diện SĐK/GMP; truy ngược đơn vị, nhà máy, chứng cứ; phân loại văn bản gói thầu | Mốc nghiên cứu riêng, **chưa triển khai lên Preview** |
 | 004 | `TDV_BACKUP_004_BEFORE_REAL_COMPARISON_20261021` | `83d2b463fd1f7c2021cb8df62870f173dc04a4be` | 21/10/2026 07:53:54 (*mốc mã nguồn*) | Ngay trước tích hợp NSX và SO SÁNH thật vào cùng Preview | Điểm rollback an toàn (nội dung trùng 002) |
-| 005 (sẽ tạo sau QA) | `TDV_BACKUP_005_COMPARISON_20261021` | Xác định đúng commit QA đạt | Chỉ ghi sau xác nhận | SEE PRO chung + E-HSMT + NSX + đối chiếu 3 trạng thái và báo cáo có chứng cứ | Mốc khôi phục phiên bản tích hợp |
+| 005 | `TDV_BACKUP_005_COMPARISON_20261021` | `fa0c430f7c159f510a2aa3ec6886411339e62c17` | 21/10/2026 12:02:20 (*mốc mã nguồn*) | SEE PRO chung + E-HSMT + NSX + so sánh có ba màu, báo cáo Word/Excel hai nguồn | Mốc khôi phục phiên bản tích hợp trước khi cập nhật sổ lần cuối |
 
 ## Trạng thái đã kiểm thử và giới hạn
 
