@@ -110,7 +110,7 @@ def compare_sources(ehsmt: dict | None, nsx: dict | None) -> dict:
     aggregate = {"green": 0, "yellow": 0, "red": 0, "evaluable": 0,
                  "total_criteria": 0, "lots_with_candidates": 0,
                  "lots_uniquely_linked": 0, "linked_requirements": 0,
-                 "lots_with_title_hints": 0
+                 "lots_with_title_hints": 0}
     for code, lot in sorted(lots.items()):
         ingredient = str(lot.get("HOAT_CHAT_HSMT") or "").strip()
         compatible = [item for item in product_list if
