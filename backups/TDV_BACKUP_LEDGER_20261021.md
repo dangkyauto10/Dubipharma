@@ -12,6 +12,9 @@
 | 004 | `TDV_BACKUP_004_BEFORE_REAL_COMPARISON_20261021` | `83d2b463fd1f7c2021cb8df62870f173dc04a4be` | 21/10/2026 07:53:54 (*mốc mã nguồn*) | Ngay trước tích hợp NSX và SO SÁNH thật vào cùng Preview | Điểm rollback an toàn (nội dung trùng 002) |
 | 005 | `TDV_BACKUP_005_COMPARISON_20261021` | `fa0c430f7c159f510a2aa3ec6886411339e62c17` | 21/10/2026 12:02:20 (*mốc mã nguồn*) | SEE PRO chung + E-HSMT + NSX + so sánh có ba màu, báo cáo Word/Excel hai nguồn | Mốc khôi phục phiên bản tích hợp trước khi cập nhật sổ lần cuối |
 
+| 006 | `TDV_BACKUP_006_BEFORE_NSX_DIAGNOSTIC_20261021` | `09c92d259011d7ba9148d2ad5f1d77efc993db2b` | 21/10/2026 12:03:36 (*mốc mã nguồn*) | Trước sửa lỗi hiển thị 0% khi chưa có ứng viên NSX; tài liệu NSX chưa tạo được bản ghi thuốc | Khôi phục nguyên trạng Preview ngay trước chẩn đoán |
+| 007 | `TDV_BACKUP_007_NSX_DIAGNOSTIC_20261021` | `56b92e45e4645743323b5fff2e4b14511d124e8a` | 21/10/2026 12:37:20 (*mốc mã nguồn*) | Bổ sung chẩn đoán từng nguồn NSX; phân biệt `N/A` với 0%; không lộ dữ liệu chi tiết. GitHub QA: 145/145, khởi động AppTest đạt | Mốc rollback sau khi sửa hiển thị/chẩn đoán, **chưa chứng minh PDF NSX thật đã nhận diện đúng** |
+
 ## Trạng thái đã kiểm thử và giới hạn
 
 - 001/002/004 chỉ là các điểm khôi phục mã nguồn; không chứa tệp riêng tư.
