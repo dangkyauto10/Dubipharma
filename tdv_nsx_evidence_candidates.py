@@ -7,7 +7,7 @@ No network, Drive writes, OCR calls, filenames-as-identity or paid APIs.
 """
 from __future__ import annotations
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 import re
 from tdv_nsx_adaptive import normalize as norm
 
@@ -72,10 +72,31 @@ def discover_evidence_candidates(
     GMP: records factory-level references, possibly covering >1 product,
     WITHOUT creating per-product proof links or validating GMP status.
     """
-    reference_date = reference_date or date.today()
+    reference_date = reference_date or datetime.now(timezone(timedelta(hours=7))).date()
     registrations, factories, unresolved = [], [], []
     for meta, source in zip(classified, sources):
         kind = meta.get("kind")
+        if kind == "OTHER":
+            # An undecided PDF may still contain a cited SĐK/GMP number.
+            # Preserve the discovery but do NOT silently recategorize it as
+            # a primary registration certificate or factory GMP.
+            signals = [
+                field for field in ("REGISTRATION_NO", "GMP_NUMBER",
+                                    "GMP_SCOPE", "GMP_EXPIRY")
+                if _sourced(source, field)
+            ]
+            if signals:
+                public = bool(meta.get("public_document_class"))
+                unresolved.append({
+                    "type": "OTHER", "file": meta.get("filename", ""),
+                    "sha256": meta.get("sha256", ""),
+                    "status": ("TAI_LIEU_CONG_KHAI_KHONG_PHAI_BANG_CHUNG_GOC"
+                               if public else "CO_TRUONG_SDK_GMP_NHUNG_CHUA_RO_LOAI"),
+                    "reason": ("Có trường nguồn: " + ", ".join(signals) +
+                               ". Chỉ đưa vào hàng đợi đọc/xác định loại; "
+                               "KHÔNG dùng để chứng minh SĐK/GMP."),
+                })
+            continue
         if kind not in ("REGISTRATION", "GMP_CERT"):
             continue
         if "error" in source or not meta.get("complete_read"):
@@ -177,6 +198,7 @@ def discover_evidence_candidates(
     return {
         "registrations": registrations, "factories": factories,
         "unresolved": unresolved,
+        "reference_date_vn": reference_date.isoformat(),
         "summary": {
             "registration_hints": len(registrations),
             "factory_source_groups": len(factories),
