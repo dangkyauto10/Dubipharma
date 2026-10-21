@@ -17,6 +17,7 @@ def record(fields, *, uid="", kind="", filename="source.pdf", sha="a"*64,
     return {
         "uid":uid, "kind":kind, "fields":dict(fields), "file":filename,
         "filename":filename, "sha256":sha, "complete_read":complete,
+        "origin":"Trang 1, dòng 1",
         "conflicts":dict(conflicts or {}),
         "evidence":{key:{"file":filename,"sha256":sha,
                          "source":f"Trang 1, dòng {i+1}", "raw":value,
