@@ -34,6 +34,12 @@ LABELS = {
     "REGISTRATION_NO": ("so dang ky", "so dang ky luu hanh", "sdk",
                         "registration number", "registration no"),
     "PRODUCT_NAME": ("ten thuoc", "ten san pham", "trade name", "drug name"),
+    "SUPPLIER": ("don vi cung cap", "nha cung cap", "ten nha cung cap", "supplier",
+                 "distributor", "distributing company"),
+    "BIDDER": ("ten nha thau", "don vi du thau", "bidder", "bidder name"),
+    "REGISTRATION_HOLDER": ("co so dang ky", "co so dang ky thuoc",
+                            "don vi dang ky", "chu so huu so dang ky",
+                            "marketing authorization holder", "mah"),
     "INGREDIENT": ("hoat chat", "ten hoat chat", "thanh phan hoat chat",
                    "active ingredient", "ingredient"),
     "STRENGTH": ("ham luong", "nong do ham luong", "nong do hoac ham luong",
@@ -93,13 +99,43 @@ def _evidence_pair(raw: str) -> list[tuple[str, str]]:
     return pairs
 
 
+def _consecutive_pdf_fields(lines: list[dict]):
+    """Recognize strictly adjacent labeled two-line fields on one PDF page.
+
+    The raw page and both original lines remain in evidence. A heading is
+    never accepted as a value; distant lines, other pages or guessed product
+    names from filenames are excluded. Final fields remain unverified.
+    """
+    allowed = {"PRODUCT_NAME", "REGISTRATION_NO", "INGREDIENT",
+               "STRENGTH", "DOSAGE_FORM", "MANUFACTURER", "FACTORY",
+               "SUPPLIER", "BIDDER", "REGISTRATION_HOLDER"}
+    for index in range(len(lines) - 1):
+        here, following = lines[index], lines[index + 1]
+        if here["source"] != following["source"]:
+            continue
+        heading = str(here["text"]).strip().strip(":： ")
+        field = LOOKUP.get(normalize(heading))
+        if field not in allowed:
+            continue
+        value = str(following["text"]).strip()
+        if (not 1 <= len(value) <= 140
+            or LOOKUP.get(normalize(value.strip(":： ")))
+            or re.match(r"^[^:：]{2,80}\s*[:：]", value)):
+            continue
+        yield field, value, {
+            "source": here["source"] + " (hai dòng liền kề)",
+            "raw": str(here["text"])[:150] + " | " + value,
+        }
+
+
 def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
-              selected_product_index: int | None = None) -> dict:
+              selected_product_index: int | None = None,
+              source_document: dict | None = None) -> dict:
     if kind not in KINDS:
         raise ValueError("Loại tài liệu không hợp lệ")
     if not filename or filename.rsplit(".", 1)[-1].lower() not in ACCEPTED:
         raise ValueError("Chưa hỗ trợ loại tệp")
-    source = extract_file(filename, raw, ocr=ocr)
+    source = source_document if source_document is not None else extract_file(filename, raw, ocr=ocr)
     fields, evidence, conflicts = {}, {}, defaultdict(list)
     warnings = list(source["warnings"])
     if not source["complete"]:
@@ -121,6 +157,20 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
                 "raw": line["text"][:700],
                 "value": value,
                 "verified": False,
+            }
+            if field in fields and normalize(fields[field]) != normalize(value):
+                conflicts[field].append(citation)
+            elif field not in fields:
+                fields[field] = value
+                evidence[field] = citation
+    if source["type"] == "pdf":
+        # Native PDF often places a field label and its value on separate
+        # consecutive text lines, unlike Word table pairs or key:value text.
+        for field, value, location in _consecutive_pdf_fields(source["lines"][:MAX_LINE_COUNT]):
+            citation = {
+                "file": filename, "sha256": source["sha256"],
+                "source": location["source"], "raw": location["raw"][:700],
+                "value": value, "verified": False,
             }
             if field in fields and normalize(fields[field]) != normalize(value):
                 conflicts[field].append(citation)
