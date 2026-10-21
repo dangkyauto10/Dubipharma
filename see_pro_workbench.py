@@ -19,6 +19,7 @@ from see_pro_traceability import build_audit_workbook
 from see_pro_pdf_viewer import render_original_pdf_viewer
 
 from tdv_ehsmt_xlsx import inspect_ehsmt_xlsx
+from see_pro_quality_gate import audit_ehsmt
 from tdv_tender_context import (
     detect_procurement_document, index_tender_documents, PUBLIC_REFERENCES,
 )
@@ -74,7 +75,10 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
     """Classify before reading. Do not force every PDF to use G1.xxx."""
     result = {"documents": [], "rows": [], "warnings": [],
               "pdf_reports": [], "notices": [], "structured_tables": [],
-              "tender_documents": [], "tender_index": {}}
+              "tender_documents": [], "tender_index": {},
+              "input_files": [{"name":name,"sha256":hashlib.sha256(raw).hexdigest(),
+                               "bytes":len(raw)} for name,raw in uploaded],
+              "failed_inputs": []}
     for filename, data in uploaded:
         try:
             classification = identify_document(filename, data)
@@ -192,8 +196,9 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
                         "TRANG_THAI": "CAN_XAC_MINH_TRUONG_DU_LIEU",
                     })
         except (ValueError, RuntimeError, OSError, ImportError) as exc:
+            result["failed_inputs"].append({"name":filename,"error":type(exc).__name__})
             result["warnings"].append(
-                f"{filename}: không thể đọc ({type(exc).__name__}: {exc})")
+                f"{filename}: không thể đọc ({type(exc).__name__})")
     for notice in result["notices"]:
         bp = notice.get("package_id")
         # Only link tables with the same identified BP; never combine unrelated packages.
@@ -214,6 +219,7 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
     for issue in result["tender_index"]["unassigned"]:
         result["warnings"].append(
             f'{issue["filename"]}: tài liệu liên quan chưa xác định duy nhất mã BP')
+    result["quality_gate"] = audit_ehsmt(result)
     return result
 
 
@@ -260,6 +266,19 @@ def render_ehsmt_workbench() -> None:
     b.metric("Mặt hàng / mã ứng viên", len(rows))
     c.metric("Cảnh báo", len(analysis["warnings"]))
     st.warning("Đây là bản trích xuất để đối chiếu, KHÔNG phải kết quả kiểm chứng kỹ thuật, GMP hay giá chào.")
+    quality = analysis.get("quality_gate") or audit_ehsmt(analysis)
+    st.markdown("**SEE PRO · Kiểm toán chất lượng đầu vào**")
+    st.caption(quality["note"] + " Mốc 99,9999% là mục tiêu, chưa nghiệm thu.")
+    st.caption(f'Tệp đầu vào: {quality["files"]} · Mã/dòng trích xuất: {quality["entries"]} · '
+               f'Vấn đề phát hiện: {quality["issue_count"]}')
+    st.dataframe(pd.DataFrame([{
+        "Trường E-HSMT":key, "Có giá trị":value["values"],
+        "Có nguồn riêng":value["field_cited"],
+        "Thiếu nguồn riêng":value["values"]-value["field_cited"]
+    } for key,value in quality["coverage"].items()]),hide_index=True,use_container_width=True)
+    if quality["issues"]:
+        with st.expander("Chi tiết tệp lỗi, mã trùng và nguồn chưa đầy đủ"):
+            st.dataframe(pd.DataFrame(quality["issues"]),hide_index=True,use_container_width=True)
     if not docs.empty:
         st.markdown("**Tệp và nguồn chứng cứ**")
         st.dataframe(docs, hide_index=True, use_container_width=True)
