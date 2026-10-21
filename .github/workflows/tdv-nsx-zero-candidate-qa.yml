@@ -1,0 +1,31 @@
+name: TDV NSX zero-candidate diagnostics and percent safety QA
+on:
+  push:
+    branches:
+      - tdv-nsx-diagnostic-20261021
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install project dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile modules
+        run: python -m py_compile tdv_nsx_workbench.py tdv_comparison_ui.py tdv_leadership_report.py tests/test_tdv_nsx_diagnostic.py
+      - name: Full read-only regression
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Streamlit existing app startup
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          app=AppTest.from_file('app.py',default_timeout=30).run()
+          assert not app.exception, str(list(app.exception))
+          print('TDV_SAME_ONLINE_APP_SMOKE_PASS')
+          PY
