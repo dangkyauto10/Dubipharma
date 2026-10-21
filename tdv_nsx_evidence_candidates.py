@@ -103,7 +103,9 @@ def discover_evidence_candidates(
                 })
                 continue
             matches = [p for p in products
-                       if _sourced(p, "PRODUCT_NAME") and
+                       if not (p.get("registration_document_source") and
+                               p.get("sha256") == meta.get("sha256"))
+                       and _sourced(p, "PRODUCT_NAME") and
                        norm(_sourced(p, "PRODUCT_NAME")) == norm(title)]
             if not matches:
                 unresolved.append({
