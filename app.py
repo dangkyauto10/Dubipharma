@@ -825,28 +825,8 @@ with st.container(key="tdv_main_scroll"):
         st.info("Bước kế tiếp: tiếp nhận E-HSMT thật có phân quyền, lưu bản gốc/chứng cứ bền vững, "
                 "đọc toàn bộ trang và kiểm thử với đáp án chuẩn trước khi ghi dữ liệu chính thức.")
     elif page == PAGES[5]:
-        st.markdown('<div class="tdv-page-title">⚖️ So sánh kỹ thuật · Kiểm chứng bằng dữ liệu mẫu</div>',
-                    unsafe_allow_html=True)
-        st.caption("Không lấy dữ liệu thật từ nhà sản xuất. Các trường mẫu dưới đây chỉ minh họa quy tắc an toàn.")
-        drug = st.selectbox("Mẫu ứng viên nhà sản xuất", ["Acenocoumarol 1 mg", "Acenocoumarol 4 mg"])
-        dose = drug.rsplit(" ", 2)[-2] + " " + drug.rsplit(" ", 1)[-1]
-        lot = {"hoat_chat": "Acenocoumarol", "ham_luong": "4 mg",
-               "dang_bao_che": "Viên nén", "duong_dung": "Uống"}
-        product = dict(lot, ham_luong=dose)
-        result = match_fields(lot, product)
-        st.table([
-            {"Thông tin": "Hoạt chất", "E-HSMT (mẫu)": lot["hoat_chat"], "NSX (mẫu)": product["hoat_chat"]},
-            {"Thông tin": "Hàm lượng", "E-HSMT (mẫu)": lot["ham_luong"], "NSX (mẫu)": product["ham_luong"]},
-            {"Thông tin": "Dạng bào chế", "E-HSMT (mẫu)": lot["dang_bao_che"], "NSX (mẫu)": product["dang_bao_che"]},
-            {"Thông tin": "Đường dùng", "E-HSMT (mẫu)": lot["duong_dung"], "NSX (mẫu)": product["duong_dung"]},
-        ])
-        if result["status"] == "KHONG_KHOP":
-            st.error("KHÔNG KHỚP: " + "; ".join(result["mismatches"]))
-        elif result["status"] == "CAN_XAC_MINH":
-            st.warning("CẦN XÁC MINH: " + "; ".join(result["uncertainties"]))
-        else:
-            st.info("Khớp 4 trường mẫu nhưng vẫn CHƯA XÁC MINH SĐK, nhóm thầu, GMP và chứng cứ.")
-        st.warning("Không được tự chuyển kết quả kiểm tra mẫu thành kết luận 'đáp ứng thầu'.")
+        from tdv_comparison_ui import render_comparison_view
+        render_comparison_view()
     elif page == PAGES[4]:
         st.markdown('<div class="tdv-page-title">🛡️ Chứng cứ nhà sản xuất · Kiểm tra nhà máy và loại văn bản</div>',
                     unsafe_allow_html=True)
@@ -862,58 +842,8 @@ with st.container(key="tdv_main_scroll"):
         st.info(x["note"])
         st.caption("Không có giấy GMP thật được lưu hoặc xác nhận trên trang này.")
     elif page == PAGES[6]:
-        st.markdown('<div class="tdv-page-title">📊 Báo cáo lãnh đạo · Đối chiếu E-HSMT – NSX</div>',
-                    unsafe_allow_html=True)
-        tender = st.session_state.get("tdv_ehsmt_read")
-        supplier = st.session_state.get("tdv_nsx_read")
-        if not tender or not supplier:
-            st.warning("Cần thực hiện cả hai bước: đọc E-HSMT DEMO và nạp hồ sơ NSX DEMO "
-                       "trên cùng phiên làm việc để có báo cáo đối chiếu.")
-        else:
-            report = leadership_report(tender, supplier)
-            totals = report["summary"]
-            a, b, c = st.columns(3)
-            a.metric("Mã E-HSMT trích xuất", totals["lots"])
-            b.metric("Khớp kỹ thuật SƠ BỘ", totals["technical_prelim_match"])
-            c.metric("Khác kỹ thuật", totals["technical_conflict"])
-            st.warning("BÁO CÁO THỬ NGHIỆM – CHƯA PHÊ DUYỆT. Không kết luận GMP, "
-                       "không tự duyệt giá, không xác nhận đủ điều kiện dự thầu.")
-            table_rows = []
-            for item in report["items"]:
-                table_rows.append({
-                    "Mã E-HSMT": item["lot_id"], "Mã NSX": item["product_id"],
-                    "Nhà máy": item["factory_id"],
-                    "Đối chiếu kỹ thuật": item["technical"],
-                    "Cần kiểm chứng": "; ".join(item["reasons"]),
-                    "Phê duyệt": "CHƯA"})
-            if table_rows:
-                st.dataframe(table_rows, hide_index=True, use_container_width=True)
-            else:
-                st.error("Không có mã danh mục có chứng cứ để lập báo cáo.")
-            with st.expander("Chi tiết nguồn chứng cứ, trang và trạng thái từng trường"):
-                for item in report["items"]:
-                    st.markdown("**Mã: " + item["lot_id"] + "**")
-                    records = []
-                    for side, key in (("E-HSMT", "tender_field_evidence"),
-                                      ("Sản phẩm NSX", "product_field_evidence")):
-                        for field, citation in item[key].items():
-                            records.append({"Hồ sơ": side, "Trường": field,
-                                            "Giá trị": citation["value"],
-                                            "Mã nguồn": citation["source_id"],
-                                            "Trang": citation["page"],
-                                            "Cách đọc": citation["method"]})
-                    if records:
-                        st.dataframe(records, hide_index=True, use_container_width=True)
-            st.download_button("⬇️ Xuất báo cáo lãnh đạo sơ bộ (.txt)",
-                               report_text(report).encode("utf-8"),
-                               file_name="TDV_QC7_BAO_CAO_SO_BO_DEMO.txt",
-                               mime="text/plain", key="tdv_report_txt")
-            st.download_button("⬇️ Xuất chứng cứ và đối chiếu (.json)",
-                               json.dumps(report, ensure_ascii=False, indent=2).encode("utf-8"),
-                               file_name="TDV_QC7_CHUNG_CU_DEMO.json",
-                               mime="application/json", key="tdv_report_json")
-            st.caption("Báo cáo được tạo trong bộ nhớ phiên, không tự ghi Google Sheets, "
-                       "không cập nhật giá và không xuất dữ liệu thật.")
+        from tdv_comparison_ui import render_leadership_view
+        render_leadership_view()
     elif page == PAGES[-1]:
         st.markdown('<div class="tdv-page-title">☁️ Tiến độ Online</div>',unsafe_allow_html=True)
         st.table([
