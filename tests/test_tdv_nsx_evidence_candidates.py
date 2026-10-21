@@ -28,7 +28,9 @@ def record(fields, *, uid="", kind="", filename="source.pdf", sha="a"*64,
 
 def classified(record):
     return {"kind":record["kind"],"filename":record["filename"],
-            "sha256":record["sha256"],"complete_read":record["complete_read"]}
+            "sha256":record["sha256"],"complete_read":record["complete_read"],
+            "kind_label":record["kind"], "role_confidence":"GỢI_Ý_CẦN_XÁC_MINH",
+            "reasons":[]}
 
 
 def run(products, sources, *, today=date(2026, 10, 22)):
