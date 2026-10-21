@@ -267,7 +267,10 @@ class AutoBatchTests(unittest.TestCase):
         wb = load_workbook(BytesIO(export_auto_xlsx(report)), data_only=False)
         self.assertEqual(wb.sheetnames, [
             "TU_DONG_NHAN_DIEN", "DANH_MUC_THUOC", "LIEN_KET_CHUNG_CU",
-            "CAN_XAC_MINH", "TRUY_XUAT_TUNG_TRUONG", "GIOI_HAN_KIEM_TOAN",
+            "CAN_XAC_MINH", "TRUY_XUAT_TUNG_TRUONG",
+            "TRUY_CUU_LANH_DAO", "GIAY_TO_THEO_THUOC",
+            "CHU_THE_VA_CHUNG_CU", "TAI_LIEU_GOI_THAU",
+            "NGUON_TRA_CUU_CONG_KHAI", "GIOI_HAN_KIEM_TOAN",
         ])
         rows = list(wb["TRUY_XUAT_TUNG_TRUONG"].values)
         quote_prices = [r for r in rows[1:] if r[2] == "QUOTE_UNIT_PRICE"]
