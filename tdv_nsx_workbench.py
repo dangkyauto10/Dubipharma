@@ -167,6 +167,31 @@ def render_nsx_workbench() -> None:
     )):
         col.metric(label, value)
 
+    if stats.get("source_product_rows", 0) > stats["products"]:
+        st.info(
+            f'Danh mục nguồn có {stats["source_product_rows"]} dòng trên các sheet; '
+            f'sau đối chiếu nguồn nội bộ còn {stats["products"]} dòng ứng viên. '
+            f'Đã gộp {stats.get("reconciled_rows", 0)} dòng có tên + '
+            'định danh nhà máy/NSX trùng trong cùng tệp, '
+            f'loại {stats.get("excluded_ghost_rows", 0)} dòng tiêu đề số. '
+            'Các dòng trùng tên nhưng chưa phân biệt được vẫn giữ riêng; '
+            'không xem đây là số thuốc đã xác minh.'
+        )
+    if any(p.get("conflicts") for p in report.get("products", [])):
+        conflicts = [p for p in report["products"] if p.get("conflicts")]
+        st.warning(
+            f'{len(conflicts)} ứng viên có trường khác nhau giữa các sheet. '
+            'Các trường mâu thuẫn phải giữ trạng thái CHƯA ĐỦ CĂN CỨ '
+            'cho đến khi so bản gốc; không tự tô xanh/đỏ.'
+        )
+        with st.expander("Các dòng có trường mâu thuẫn — cần đối chiếu"):
+            st.dataframe([{
+                "Mã": p["uid"], "Tên sản phẩm": p["fields"].get("PRODUCT_NAME", ""),
+                "Trường mâu thuẫn": ", ".join(sorted(p["conflicts"])),
+                "Số dòng nguồn": len(p.get("source_rows") or []),
+                "Trạng thái": "CHƯA XÁC MINH",
+            } for p in conflicts],hide_index=True,use_container_width=True)
+
     if stats["products"] == 0:
         st.error(
             "ĐÃ ĐỌC TỆP nhưng CHƯA TRÍCH ĐƯỢC THUỐC có đủ định danh. "
@@ -242,7 +267,8 @@ def render_nsx_workbench() -> None:
                 "Nhà máy": p["fields"].get("FACTORY", ""),
                 "Nguồn": p["file"],
                 "Vị trí": p["origin"],
-                "Trạng thái": "CHƯA XÁC MINH",
+                "Trạng thái": ("CÓ MÂU THUẪN NGUỒN — CHƯA XÁC MINH"
+                              if p.get("conflicts") else "CHƯA XÁC MINH"),
             } for p in report["products"]
         ], hide_index=True, use_container_width=True)
     else:
