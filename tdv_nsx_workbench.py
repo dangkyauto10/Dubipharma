@@ -27,6 +27,48 @@ def _signature(files: list[tuple[str, bytes]]) -> str:
     return digest.hexdigest()
 
 
+def diagnose_extracted_documents(report: dict) -> list[dict]:
+    """Explain why a parsed file did not yield a product, without exposing
+    any unprotected raw NSX/private text in the preview diagnostics."""
+    out = []
+    for meta, source in zip(report.get("files", []), report.get("sources", [])):
+        fields = source.get("fields") or {}
+        conflicts = source.get("conflicts") or {}
+        kind = meta.get("kind", "OTHER")
+        product_ready = (
+            kind == "PRODUCT"
+            and any(fields.get(k) for k in ("PRODUCT_NAME", "REGISTRATION_NO",
+                                            "PRODUCT_ID"))
+            and not conflicts
+        ) or (
+            kind == "REGISTRATION"
+            and bool(fields.get("PRODUCT_NAME")) and bool(fields.get("REGISTRATION_NO"))
+            and not any(conflicts.get(k) for k in ("PRODUCT_NAME", "REGISTRATION_NO"))
+        )
+        if meta.get("role_confidence") == "KHÔNG_ĐỌC_ĐƯỢC":
+            reason = "TỆP KHÔNG ĐỌC ĐƯỢC"
+        elif not source.get("complete_read", False):
+            reason = "ĐỌC CHƯA ĐỦ / OCR CẦN XEM"
+        elif kind not in ("PRODUCT", "REGISTRATION"):
+            reason = "KHÔNG PHẢI NGUỒN DANH MỤC THUỐC TRỰC TIẾP"
+        elif conflicts:
+            reason = "TRƯỜNG GHI NHIỀU GIÁ TRỊ MÂU THUẪN"
+        elif not product_ready:
+            reason = "THIẾU TÊN THUỐC HOẶC SĐK CÓ NHÃN / CHỨNG CỨ"
+        else:
+            reason = "ĐÃ CÓ TRƯỜNG ĐỊNH DANH SƠ BỘ"
+        out.append({
+            "Tệp": meta.get("filename", ""),
+            "Loại nhận diện": meta.get("kind_label", kind),
+            "Tên thuốc trong nội dung": "CÓ" if fields.get("PRODUCT_NAME") else "CHƯA TRÍCH",
+            "SĐK trong nội dung": "CÓ" if fields.get("REGISTRATION_NO") else "CHƯA TRÍCH",
+            "Hoạt chất trong nội dung": "CÓ" if fields.get("INGREDIENT") else "CHƯA TRÍCH",
+            "Hàm lượng trong nội dung": "CÓ" if fields.get("STRENGTH") else "CHƯA TRÍCH",
+            "Nguyên nhân / bước tiếp": reason,
+        })
+    return out
+
+
 def render_nsx_workbench() -> None:
     st.markdown("### SEE PRO · Hồ sơ NSX & Báo giá — đọc tự động")
     st.caption(
@@ -101,6 +143,21 @@ def render_nsx_workbench() -> None:
         ("Cần kiểm tra", stats["review"]),
     )):
         col.metric(label, value)
+
+    if stats["products"] == 0:
+        st.error(
+            "ĐÃ ĐỌC TỆP nhưng CHƯA TRÍCH ĐƯỢC THUỐC có đủ định danh. "
+            "Trang SO SÁNH chưa có dữ liệu NSX; không được hiểu 0% là không đạt."
+        )
+        with st.expander("Chẩn đoán tự động: vì sao chưa nhận diện được thuốc?", expanded=True):
+            st.dataframe(
+                diagnose_extracted_documents(report),
+                hide_index=True, use_container_width=True,
+            )
+            st.caption(
+                "Chỉ hiển thị tình trạng trích xuất, không hiển thị dữ liệu mật. "
+                "Tệp PDF không có lớp chữ hoặc OCR thiếu trường cần kiểm tra từ nguồn gốc."
+            )
 
     st.markdown("**1. Tài liệu tự nhận diện**")
     st.dataframe([
