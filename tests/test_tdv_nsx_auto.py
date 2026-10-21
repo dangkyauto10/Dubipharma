@@ -131,6 +131,43 @@ class AutoBatchTests(unittest.TestCase):
                           for x in prices}, {"11000", "22000"})
         self.assertEqual(report["review_queue"], [])
 
+    def test_registration_documents_seed_product_without_catalogue_or_manual_tags(self):
+        """Two independent labeled original-like documents produce source-bound,
+        UNVERIFIED candidates; they never self-certify their SĐK."""
+        reg_a = document(
+            ["GIẤY ĐĂNG KÝ LƯU HÀNH"],
+            [("Tên thuốc", "Medicine A"), ("Số đăng ký", "VN-TEST-001"),
+             ("Hoạt chất", "Ingredient One")])
+        reg_b = document(
+            ["GIẤY ĐĂNG KÝ LƯU HÀNH"],
+            [("Tên thuốc", "Medicine B"), ("Số đăng ký", "VN-TEST-002"),
+             ("Hoạt chất", "Ingredient Two")])
+        batch = analyze_auto([
+            ("register_a.docx", reg_a), ("register_b.docx", reg_b),
+            ("gmp.docx", gmp()),
+        ])
+        self.assertEqual(batch["summary"]["products"], 2)
+        self.assertEqual(batch["summary"]["linked"], 0)
+        self.assertEqual({p["fields"]["PRODUCT_NAME"] for p in batch["products"]},
+                         {"Medicine A", "Medicine B"})
+        self.assertTrue(all(p["registration_document_source"]
+                            for p in batch["products"]))
+        self.assertTrue(all(p["evidence"]["REGISTRATION_NO"]["sha256"] == p["sha256"]
+                            for p in batch["products"]))
+        self.assertTrue(all(p["verified"] is False for p in batch["products"]))
+        self.assertFalse(batch["registration_confirmed"])
+        self.assertFalse(batch["gmp_confirmed"])
+        self.assertFalse(batch["bid_eligible"])
+        self.assertFalse(any(q["status"] == "CHUA_NHAN_DIEN_DANH_MUC"
+                             for q in batch["review_queue"]))
+
+    def test_registration_number_without_product_name_stays_source_only(self):
+        standalone = analyze_auto([("register.docx", registration())])
+        self.assertEqual(standalone["summary"]["products"], 0)
+        self.assertEqual(standalone["summary"]["linked"], 0)
+        self.assertTrue(any(q["status"] == "CHUA_NHAN_DIEN_DANH_MUC"
+                            for q in standalone["review_queue"]))
+
     def test_gmp_for_shared_factory_never_arbitrarily_attaches_one_drug(self):
         report = analyze_auto([
             ("cat.xlsx", products(shared_factory=True)),
