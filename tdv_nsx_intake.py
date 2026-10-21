@@ -93,6 +93,34 @@ def _evidence_pair(raw: str) -> list[tuple[str, str]]:
     return pairs
 
 
+def _consecutive_pdf_fields(lines: list[dict]):
+    """Recognize strictly adjacent labeled two-line fields on one PDF page.
+
+    The raw page and both original lines remain in evidence. A heading is
+    never accepted as a value; distant lines, other pages or guessed product
+    names from filenames are excluded. Final fields remain unverified.
+    """
+    allowed = {"PRODUCT_NAME", "REGISTRATION_NO", "INGREDIENT",
+               "STRENGTH", "DOSAGE_FORM", "MANUFACTURER", "FACTORY"}
+    for index in range(len(lines) - 1):
+        here, following = lines[index], lines[index + 1]
+        if here["source"] != following["source"]:
+            continue
+        heading = str(here["text"]).strip().strip(":： ")
+        field = LOOKUP.get(normalize(heading))
+        if field not in allowed:
+            continue
+        value = str(following["text"]).strip()
+        if (not 1 <= len(value) <= 140
+            or LOOKUP.get(normalize(value.strip(":： ")))
+            or re.match(r"^[^:：]{2,80}\s*[:：]", value)):
+            continue
+        yield field, value, {
+            "source": here["source"] + " (hai dòng liền kề)",
+            "raw": str(here["text"])[:150] + " | " + value,
+        }
+
+
 def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
               selected_product_index: int | None = None,
               source_document: dict | None = None) -> dict:
@@ -122,6 +150,20 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
                 "raw": line["text"][:700],
                 "value": value,
                 "verified": False,
+            }
+            if field in fields and normalize(fields[field]) != normalize(value):
+                conflicts[field].append(citation)
+            elif field not in fields:
+                fields[field] = value
+                evidence[field] = citation
+    if source["type"] == "pdf":
+        # Native PDF often places a field label and its value on separate
+        # consecutive text lines, unlike Word table pairs or key:value text.
+        for field, value, location in _consecutive_pdf_fields(source["lines"][:MAX_LINE_COUNT]):
+            citation = {
+                "file": filename, "sha256": source["sha256"],
+                "source": location["source"], "raw": location["raw"][:700],
+                "value": value, "verified": False,
             }
             if field in fields and normalize(fields[field]) != normalize(value):
                 conflicts[field].append(citation)
