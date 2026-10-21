@@ -40,7 +40,12 @@ class EndToEndTDVIntegration(unittest.TestCase):
         self.assertEqual(entry["SO_TIEU_CHI_DAT"],1)
         self.assertEqual(entry["SO_TIEU_CHI_CHUA_DAT"],3)
         self.assertEqual(entry["SO_TIEU_CHI_KHONG_KHOP"],0)
-        self.assertEqual(entry["TY_LE_KHOP_SO_BO"],25.0)
+        self.assertEqual(entry["TY_LE_KHOP_SO_BO"],100.0)
+        # One requirement actually present and source-linked: 1/1 preliminary.
+        # The remaining 3 technical requirements were NOT in the summary.
+        self.assertEqual(report["summary"]["linked_requirements"],1)
+        self.assertEqual(report["summary"]["criteria_ehsmt_available"],1)
+        self.assertEqual(report["summary"]["fully_verified"],0)
         self.assertEqual(entry["criteria"][0]["ehsmt"],"Ingredient Q")
         self.assertEqual(entry["criteria"][0]["nsx"],"Ingredient Q")
         self.assertEqual(entry["criteria"][0]["ehsmt_evidence"]["file"],"example_ehsmt.xlsx")
