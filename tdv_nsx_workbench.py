@@ -69,6 +69,29 @@ def diagnose_extracted_documents(report: dict) -> list[dict]:
     return out
 
 
+def summarize_product_field_coverage(report: dict) -> dict:
+    """Count extracted and cited fields per catalogued NSX product.
+
+    Counts are extraction coverage only, not valid registration, legal proof,
+    clinical equivalence or tender qualification. Do not leak raw values.
+    """
+    products = report.get("products") or []
+    keys = ("PRODUCT_NAME", "INGREDIENT", "STRENGTH", "DOSAGE_FORM",
+            "ROUTE", "REGISTRATION_NO", "MANUFACTURER", "FACTORY")
+    counts = {
+        key: sum(bool(p.get("fields", {}).get(key)) and
+                 bool(p.get("evidence", {}).get(key, {}).get("source"))
+                 and key not in (p.get("conflicts") or {})
+                 for p in products)
+        for key in keys
+    }
+    return {
+        "total": len(products), "fields": counts,
+        "linked_evidence": len(report.get("links") or []),
+        "source_anchored": True, "verified": False,
+    }
+
+
 def render_nsx_workbench() -> None:
     st.markdown("### SEE PRO · Hồ sơ NSX & Báo giá — đọc tự động")
     st.caption(
@@ -158,6 +181,39 @@ def render_nsx_workbench() -> None:
                 "Chỉ hiển thị tình trạng trích xuất, không hiển thị dữ liệu mật. "
                 "Tệp PDF không có lớp chữ hoặc OCR thiếu trường cần kiểm tra từ nguồn gốc."
             )
+
+    coverage = summarize_product_field_coverage(report)
+    if stats["products"] and (not stats["linked"] or
+                             coverage["fields"]["INGREDIENT"] < stats["products"] or
+                             coverage["fields"]["REGISTRATION_NO"] < stats["products"]):
+        st.warning(
+            "Máy đã lập được danh sách sản phẩm, nhưng CHƯA ĐỦ TRƯỜNG "
+            "để chứng minh thuốc tương ứng với yêu cầu E-HSMT "
+            "hoặc để liên kết duy nhất chứng nhận SĐK/GMP. "
+            "0 liên kết KHÔNG đồng nghĩa không có hồ sơ; không tự gắn "
+            "giấy GMP cho tất cả thuốc cùng nhà máy."
+        )
+        st.markdown("**Độ phủ dữ liệu trích xuất từ toàn bộ danh mục (tự động)**")
+        labels = {
+            "PRODUCT_NAME": "Tên thuốc", "INGREDIENT": "Hoạt chất",
+            "STRENGTH": "Hàm lượng", "DOSAGE_FORM": "Dạng bào chế",
+            "ROUTE": "Đường dùng", "REGISTRATION_NO": "SĐK",
+            "MANUFACTURER": "NSX", "FACTORY": "Nhà máy",
+        }
+        st.dataframe([
+            {"Trường": labels[key], "Có nội dung + nguồn": count,
+             "Chưa trích được": coverage["total"] - count,
+             "Tổng số dòng sản phẩm": coverage["total"],
+             "Xác minh pháp lý": "CHƯA"}
+            for key, count in coverage["fields"].items()
+        ], hide_index=True, use_container_width=True)
+        with st.expander("Chẩn đoán từng tài liệu chứng cứ NSX"):
+            st.dataframe(diagnose_extracted_documents(report),
+                         hide_index=True, use_container_width=True)
+        st.caption(
+            "Độ phủ chỉ phản ánh có trường dữ liệu gắn nguồn; chưa xác minh "
+            "SĐK, GMP, hiệu lực, nhà máy hay điều kiện dự thầu."
+        )
 
     st.markdown("**1. Tài liệu tự nhận diện**")
     st.dataframe([
