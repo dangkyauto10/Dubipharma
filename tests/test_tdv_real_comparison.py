@@ -60,7 +60,10 @@ class RealComparisonQA(unittest.TestCase):
         self.assertEqual(summary["green_criteria_preliminary"],3)
         self.assertEqual(summary["red_mismatch_preliminary"],1)
         self.assertEqual(summary["yellow_criteria"],4)
-        self.assertEqual(summary["matching_percent_preliminary"],37.5)
+        self.assertEqual(summary["matching_percent_preliminary"],75.0)
+        # Only the four known E-HSMT requirements in the uniquely linked pair
+        # count; four unlinked yellow slots do not constitute evaluated failures.
+        self.assertEqual(summary["linked_requirements"],4)
         self.assertEqual(summary["fully_verified"],0)
         r=report["comparison"][0]
         self.assertEqual(r["SO_UNG_VIEN_NSX"],1)
