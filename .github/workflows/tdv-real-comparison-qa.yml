@@ -28,6 +28,7 @@ jobs:
           a=AppTest.from_file("app.py",default_timeout=35).run()
           assert not a.exception, str(list(a.exception))
           print("TDV_COMPARE_APP_STARTS")
+          PY
       - name: Render colored side-by-side evidence with native Streamlit
         run: |
           python - <<'PY'
@@ -49,5 +50,4 @@ jobs:
           test=AppTest.from_string(source,default_timeout=30).run()
           assert not test.exception, str(list(test.exception))
           print("TDV_COLORED_TWO_SOURCE_VIEW_PASS")
-          PY
           PY
