@@ -15,6 +15,9 @@
 | 006 | `TDV_BACKUP_006_BEFORE_NSX_DIAGNOSTIC_20261021` | `09c92d259011d7ba9148d2ad5f1d77efc993db2b` | 21/10/2026 12:03:36 (*mốc mã nguồn*) | Trước sửa lỗi hiển thị 0% khi chưa có ứng viên NSX; tài liệu NSX chưa tạo được bản ghi thuốc | Khôi phục nguyên trạng Preview ngay trước chẩn đoán |
 | 007 | `TDV_BACKUP_007_NSX_DIAGNOSTIC_20261021` | `56b92e45e4645743323b5fff2e4b14511d124e8a` | 21/10/2026 12:37:20 (*mốc mã nguồn*) | Bổ sung chẩn đoán từng nguồn NSX; phân biệt `N/A` với 0%; không lộ dữ liệu chi tiết. GitHub QA: 145/145, khởi động AppTest đạt | Mốc rollback sau khi sửa hiển thị/chẩn đoán, **chưa chứng minh PDF NSX thật đã nhận diện đúng** |
 
+| 008 | `TDV_BACKUP_008_BEFORE_NSX_FIELD_MAPPING_20261021` | `714632009c5eaeefbb558a971dd8b1090fa2f31a` | 21/10/2026 12:39:36 (*mốc commit*) | Trước sửa lần thử 13 tệp / 87 dòng sản phẩm / 0 liên kết: SĐK & hoạt chất nhiều dòng chưa được trích | Khôi phục trạng thái ảnh kiểm thử |
+| 009 | `TDV_BACKUP_009_NSX_FIELD_MAPPING_20261021` | `ea41807b8cb4d8ade3a0f319a8634d5a4b8129e1` | 21/10/2026 13:14:20 (*mốc commit*) | Hiển thị độ phủ trường có chứng cứ ở NSX; chỉ gợi ý cùng tên hoạt chất không tự liên kết; tính % trên yêu cầu E-HSMT đã đọc của cặp được ghép; tách phạm vi 1/4 khỏi 100% | Phiên bản sửa hiển thị/mapping **chưa được nghiệm thu trên toàn bộ 13 file gốc** |
+
 ## Trạng thái đã kiểm thử và giới hạn
 
 - 001/002/004 chỉ là các điểm khôi phục mã nguồn; không chứa tệp riêng tư.
