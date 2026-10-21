@@ -28,6 +28,11 @@ def row(code="G1.001", *, candidates=0, hints=0, yellow=4,
         criteria=None):
     return {
         "MA_THUOC_EHSMT": code, "NGUON_EHSMT": "E-HSMT.pdf",
+        "HOAT_CHAT_EHSMT": "Acarbose", "HAM_LUONG_EHSMT": "50 mg",
+        "TEN_THUOC_NSX": "Drug A" if candidates else "",
+        "TRANG_THAI_DOI_CHIEU": "CHUA_DU_CAN_CU",
+        "SO_TIEU_CHI_DAT": 0,
+        "SO_TIEU_CHI_KHONG_KHOP": 0,
         "VI_TRI_EHSMT": "Trang 8", "NGUON_THUOC_NSX": "NSX.xlsx",
         "SO_UNG_VIEN_NSX": candidates, "SO_GOI_Y_TEN_NSX": hints,
         "SO_TIEU_CHI_CHUA_DAT": yellow,
