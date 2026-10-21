@@ -1,0 +1,31 @@
+name: TDV NSX multi-sheet source preservation QA
+on:
+  push:
+    branches:
+      - tdv-nsx-multisheet-20261021
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Source syntax and comparison guard
+        run: python -m py_compile tdv_nsx_multisheet.py tdv_nsx_auto.py tdv_nsx_workbench.py tdv_leadership_report.py tests/test_tdv_nsx_multisheet.py
+      - name: All synthetic regression tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Existing TDV application boots
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          test = AppTest.from_file('app.py', default_timeout=30).run()
+          assert not test.exception, str(list(test.exception))
+          print('TDV_SAME_ONLINE_APP_TEST_OK')
+          PY
