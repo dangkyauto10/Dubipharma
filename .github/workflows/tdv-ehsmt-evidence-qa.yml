@@ -1,0 +1,31 @@
+name: TDV E-HSMT source-citation and classification QA
+on:
+  push:
+    branches: [tdv-ehsmt-evidence-qa-20261022]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install supported dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile modified components
+        run: python -m py_compile see_pro_workbench.py see_pro_quality_gate.py see_pro_traceability.py tdv_leadership_report.py tests/test_tdv_ehsmt_real_audit_regression.py
+      - name: Full app and source test regressions
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Same private Streamlit app remains locked without configured Secrets
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          at=AppTest.from_file('app.py', default_timeout=30).run()
+          assert not at.exception, str(list(at.exception))
+          assert not at.sidebar.radio
+          print("TDV_EHSMT_QA_AUTH_FAIL_CLOSED_OK")
+          PY
