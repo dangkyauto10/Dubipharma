@@ -76,6 +76,18 @@ def _cell(text: str) -> str:
     return re.sub(r"^\d{1,2}:", "", text.strip()).strip()
 
 
+def _header_fragment(value: str) -> bool:
+    """An OCR table heading must not become a medicine field value."""
+    if "|" in value:
+        return True
+    normalized = normalize(value)
+    return bool(re.match(
+        r"^(?:hoat chat(?: chinh)?|dang bao(?: che)?|quy cach(?: dong goi)?|"
+        r"tieu chuan|tuoi tho|so dang ky|sodangky|ten thuoc|ham luong)"
+        r"(?:$| )", normalized,
+    ))
+
+
 def _evidence_pair(raw: str) -> list[tuple[str, str]]:
     """Return only exact *labeled* values; no speculative entity extraction."""
     bits = [_cell(x) for x in raw.split("|") if _cell(x)]
@@ -87,7 +99,8 @@ def _evidence_pair(raw: str) -> list[tuple[str, str]]:
             return []
         # A key-value row may have "Tên hoạt chất | Acenocoumarol".
         label = LOOKUP.get(normalize(bits[0].strip(":： ")))
-        if label:
+        # Multicolumn tables and next-column headings are NOT scalar values.
+        if label and len(bits) == 2 and not _header_fragment(bits[1]):
             pairs.append((label, bits[1]))
             return pairs
     for part in bits:
@@ -120,6 +133,7 @@ def _consecutive_pdf_fields(lines: list[dict]):
             continue
         value = str(following["text"]).strip()
         if (not 1 <= len(value) <= 140
+            or _header_fragment(value)
             or LOOKUP.get(normalize(value.strip(":： ")))
             or re.match(r"^[^:：]{2,80}\s*[:：]", value)):
             continue

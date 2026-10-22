@@ -172,3 +172,11 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Đã bổ sung `proof_contexts` chỉ đọc, trích tối đa 24 dòng có từ khóa trên mỗi PDF (giới hạn 5 dòng mỗi nguồn/trang), kèm dòng trước/sau **cùng trang**, SHA-256 từ tệp. Xuất Excel `DOAN_OCR_CAN_SO` để đối chiếu nguyên văn khi chưa tìm được nhãn SĐK/GMP. Không gán các đoạn này thành giá trị SĐK/GMP, không tự liên kết hoặc duyệt giấy.
 - Bản nhận biết `2026-10-22F`, sao lưu trước sửa `TDV_BACKUP_043_BEFORE_OCR_REVIEW_20261022`. Pipeline GitHub Actions `tdv-nsx-preview-quality.yml` chỉ kiểm thử bằng dữ liệu tổng hợp, không dùng Secrets, không gửi dữ liệu pháp lý.
 - **Chưa nghiệm thu**: cần xem GitHub Actions, Streamlit Cloud nhận bản F, lần test 14 tệp NSX và các dòng OCR thực tế trong Excel. SĐK, hiệu lực GMP, nhà máy và đáp ứng E-HSMT vẫn CHƯA XÁC MINH. `main` và OAuth/Secrets không chỉnh sửa.
+
+
+## NSX G — chặn nhận nhầm tiêu đề bảng OCR thành tên thuốc/hàm lượng (22/10/2026)
+- Bằng chứng trực tiếp từ workbook kết xuất E: `TRUY_XUAT_TUNG_TRUONG` ghi `PRODUCT_NAME` của AGICARVIR và AGIMOL 150 bằng phần tiêu đề bảng OCR `Hoạt chất chính- | Dạng bào ... | Sốđăngký`; `STRENGTH` AGIMOL có `chế`/các mảnh tiêu đề. Đây là trích sai cấu trúc, KHÔNG phải thuốc hay hàm lượng đã xác minh.
+- Bản G sửa `_evidence_pair` và `_consecutive_pdf_fields`: chỉ cho phép cặp nhãn–giá trị hai cột khi thực sự là hai cột, từ chối ký tự phân cách bảng `|` hoặc từ khóa tiêu đề bị coi là giá trị; giữ nguyên trích gốc/OCR để đối chiếu. Các cặp `Trường: Giá trị` có cấu trúc riêng vẫn đọc được.
+- Phân hệ gợi ý OCR chỉ dùng `sodangky` như tín hiệu tìm đoạn văn cần so bản gốc, tuyệt đối không tự suy SĐK từ hàng tiêu đề hay từ tên tệp.
+- Thêm hồi quy tổng hợp cho bảng OCR cắt sai và nhãn+giá trị PDF hợp lệ; không tự tăng số sản phẩm hay kết luận GMP/SĐK. Version `2026-10-22G`.
+- Sao lưu trước sửa `TDV_BACKUP_046_BEFORE_OCR_HEADER_FIX_20261022`. `main` giữ nguyên. Trạng thái nghiệm thu nghiệp vụ: CHƯA XÁC MINH trên 14 tệp nguồn; CI phải chạy lại bản G trước khi yêu cầu người vận hành test.
