@@ -20,6 +20,9 @@
 | 016 | `TDV_BACKUP_016_20261022` | `f8e84cab9a7bc7153381b2accfe1395b88ea2f5d` | Sao lưu Preview trước khi nâng SEE PRO kiểm toán chất lượng trích xuất |
 | 017 | `TDV_BACKUP_017_SEE_PRO_QUALITY_20261022` | `e45e0a3ce35d30c235f99e6213fd11d5c97dbcac` | Mã kiểm thử 190/190: kiểm đếm tệp Upload, lưu lỗi đọc, đo độ phủ trích dẫn riêng E-HSMT/NSX, cảnh báo kết quả xanh thiếu nguồn, thêm sheet E-HSMT `KIEM_TOAN_CHAT_LUONG`; không kiểm định độ chính xác bằng tài liệu thật |
 
+| 018 | `TDV_BACKUP_018_BEFORE_GOOGLE_AUTH_20261022` | `63c64dc227abb0843e01d327783ea8c9d384b547` | Preview trước khi thêm đăng nhập; bảo mật hồ sơ chưa tích hợp |
+| 019 | `TDV_BACKUP_019_GOOGLE_AUTH_20261022` | `5c16fda1f064fdde84f482235eb938691dc761a9` | Google OIDC fail-closed; chỉ email Google được xác minh và cho phép, vai trò admin/analyst/viewer; chặn toàn bộ nếu thiếu Secrets; GitHub CI 199/199 và AppTest khóa không có Secrets đạt; cần V tự cấu hình Google OAuth và Streamlit Secrets để thực sự đăng nhập |
+
 ## Ghi nhận và giới hạn
 
 1. Ảnh và Excel NSX người dùng cung cấp: 13 tài liệu đã đọc, 87 dòng trích xuất ban đầu, 0 liên kết sơ bộ. File Excel có các trường đăng ký pháp lý chủ yếu chưa gắn vào từng dòng sản phẩm. **Không** thể suy 0 liên kết thành kết luận không có chứng cứ hay không đủ điều kiện.
@@ -51,3 +54,17 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Excel E-HSMT có sáu sheet, gồm thêm `KIEM_TOAN_CHAT_LUONG`. Trên giao diện NSX hiện thị bảng độ phủ có nguồn, trường mâu thuẫn và tệp chưa đọc đủ.
 - `99,9999%` chỉ là **mục tiêu phát triển**, **không phải tỷ lệ chính xác đã kiểm định**. Cần tập dữ liệu gốc được chuyên gia gán nhãn, tập lỗi hiểm trọng và nghiệm thu độc lập. Bộ 190 bài kiểm thử tổng hợp chỉ xác nhận quy tắc/phần mềm hoạt động như thiết kế.
 - Không tạo tài khoản Cloud, không bật thanh toán, không ghi tài liệu lên GitHub/Drive, không bật quyền duyệt hồ sơ.
+
+
+## Cổng xác thực Google — 22/10/2026
+
+- Chỉ dùng **một** TDV QC7 Streamlit Preview, cùng repository; `main` không thay đổi.
+- Phân hệ đăng nhập: `tdv_auth.py`, Google OIDC qua Streamlit `st.login/st.user/st.logout`, phiên token Google phải đủ issuer, audience, email_verified, subject, iat, exp hợp lệ. Email phải có trong `[tdv_access.roles]` lưu tại Streamlit Cloud Secrets.
+- Bảo vệ mặc định: nếu thiếu hoặc cấu hình sai Secrets, người truy cập chỉ nhìn thấy **TDV QC7 ĐÃ KHÓA**, không thấy menu E-HSMT/NSX/Upload/báo cáo.
+- Người dùng `viewer` không thể mở các phân hệ nạp/đọc và Google Sheets. `admin` và `analyst` chỉ có quyền thao tác ở màn hình hiện tại; không phát sinh quyền duyệt pháp lý hoặc quyền ghi Drive.
+- Khi đổi danh tính Google, xóa dữ liệu công việc `tdv_*` khỏi Streamlit session; nút Đăng xuất xóa session.
+- Tài liệu cấu hình: `docs/TDV_GOOGLE_OIDC_SETUP_20261022.md`, trong đó có URI callback đúng cho **cùng app**.
+- Khoá OAuth và Cookie Secret không được đưa lên GitHub; `.gitignore` đã bổ sung loại trừ `.streamlit/secrets.toml` và .env.
+- Đăng nhập thực bằng 2–3 tài khoản chưa thể nghiệm thu ở môi trường GitHub Actions vì không có và **không được thu thập** OAuth Client Secret của V. V phải tạo OAuth Client trên Cloud hiện có và nhập thông số trong **Settings → Secrets** của app đang chạy.
+- Không xem Google OIDC là cơ chế ủy quyền cấp dự án hoàn chỉnh; đối với hồ sơ mật, vẫn cần đánh giá rủi ro Streamlit Community Cloud, Drive, lịch sử truy cập và sao lưu.
+- Khôi phục: bản cũ `TDV_BACKUP_018_BEFORE_GOOGLE_AUTH_20261022` là **mã chưa có chốt đăng nhập**; nếu rollback, sẽ làm mất bảo vệ. Ưu tiên sửa OAuth/Secrets trước, không rollback về mã công khai khi có hồ sơ mật.
