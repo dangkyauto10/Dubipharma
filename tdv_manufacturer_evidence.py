@@ -45,7 +45,9 @@ def audit_manufacturer_evidence(report: dict) -> dict:
     rows = []
     for doc in report.get("sources") or []:
         kind = doc.get("kind")
-        if kind not in PROOF_TYPES or doc.get("error"):
+        role_safety = str(doc.get("role_safety_review") or "")
+        is_review_only_gmp = (kind == "OTHER" and bool(role_safety))
+        if (kind not in PROOF_TYPES and not is_review_only_gmp) or doc.get("error"):
             continue
         filename = str(doc.get("filename") or "")
         digest = str(doc.get("sha256") or "").lower()
@@ -65,11 +67,13 @@ def audit_manufacturer_evidence(report: dict) -> dict:
                 "xác nhận duy trì GMP; KHÔNG được coi là giấy chứng nhận GMP. "
                 "Cần đối chiếu tiêu đề và nội dung PDF gốc."
             )
+        if role_safety:
+            warnings.append("CẢNH BÁO PHÂN LOẠI: " + role_safety)
         if not doc.get("complete_read"):
             warnings.append("Tệp chưa đọc đầy đủ; phải kiểm tra bản gốc")
         if not re.fullmatch(r"[0-9a-f]{64}", digest):
             warnings.append("Thiếu mã SHA-256 hợp lệ")
-        for field in REQUIRED_REVIEW_FIELDS[kind]:
+        for field in REQUIRED_REVIEW_FIELDS.get(kind, ("FACTORY",)):
             if field in conflicts:
                 warnings.append(f"Trường {field} có nhiều giá trị mâu thuẫn")
             elif not fields.get(field):
@@ -120,7 +124,8 @@ def audit_manufacturer_evidence(report: dict) -> dict:
             "Tệp chứng cứ": filename,
             "Loại chứng cứ gợi ý": (
                 "CẦN XÁC ĐỊNH LẠI LOẠI VĂN BẢN GMP"
-                if possible_supplement else LABELS[kind]
+                if possible_supplement or is_review_only_gmp
+                else LABELS[kind]
             ),
             "Nhà máy trong giấy": str(fields.get("FACTORY") or ""),
             "SĐK trong giấy": str(fields.get("REGISTRATION_NO") or ""),
