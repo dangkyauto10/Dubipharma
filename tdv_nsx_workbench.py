@@ -200,29 +200,60 @@ def render_nsx_workbench() -> None:
             'Các trường mâu thuẫn phải giữ trạng thái CHƯA ĐỦ CĂN CỨ '
             'cho đến khi so bản gốc; không tự tô xanh/đỏ.'
         )
-        with st.expander("Các dòng có trường mâu thuẫn — cần đối chiếu"):
+        st.caption(
+            "NSX · PHIÊN BẢN ĐỐI CHIẾU NGUỒN 2026-10-22B. "
+            "Nếu không thấy dòng này, ứng dụng vẫn đang chạy mã cũ."
+        )
+        source_pairs = compare_conflict_sources(conflicts)
+        with st.expander(
+            "ĐỐI CHIẾU 2 NGUỒN GỐC — GIÁ TRỊ THỰC TẾ CỦA TỪNG TRƯỜNG",
+            expanded=True,
+        ):
+            if source_pairs:
+                st.info(
+                    f"Đã xuất {len(source_pairs)} cặp giá trị khác nhau. "
+                    "Mỗi cặp hiển thị nguyên văn hai nguồn và vị trí ô; "
+                    "KHÔNG tự xác nhận đúng/sai hay gộp thuốc."
+                )
+                # Display the actual two-sided values FIRST, not after a
+                # scrolling 29-product index. Users should never have to
+                # guess where the comparison is buried.
+                focus_cols = [
+                    "Mã NSX", "Tên thuốc", "Trường cần đối chiếu",
+                    "Giá trị nguồn 1", "Ô nguồn 1",
+                    "Giá trị nguồn 2", "Ô nguồn 2", "Kết luận",
+                ]
+                st.dataframe(
+                    pd.DataFrame(source_pairs)[focus_cols],
+                    hide_index=True, use_container_width=True,
+                    height=420,
+                )
+                st.caption(
+                    "Tên tệp và SHA256 đầy đủ của cả hai nguồn ở bảng chứng cứ "
+                    "chi tiết phía dưới và sheet Excel MAU_THUAN_GIA_TRI_GOC."
+                )
+                with st.container(border=True):
+                    st.markdown("**Nguồn chi tiết: tệp, SHA256 và ô gốc**")
+                    st.dataframe(
+                        pd.DataFrame(source_pairs), hide_index=True,
+                        use_container_width=True, height=270,
+                    )
+            else:
+                st.error(
+                    "Có ứng viên mâu thuẫn nhưng KHÔNG TẠO ĐƯỢC BẢNG "
+                    "GIÁ TRỊ HAI NGUỒN. Đây là lỗi trích dẫn cần kiểm tra, "
+                    "không được đánh dấu đã xác minh."
+                )
+        with st.expander(
+            "Danh sách tổng hợp 29 ứng viên cần kiểm tra (xem sau bảng hai nguồn)",
+            expanded=False,
+        ):
             st.dataframe([{
                 "Mã": p["uid"], "Tên sản phẩm": p["fields"].get("PRODUCT_NAME", ""),
                 "Trường mâu thuẫn": ", ".join(sorted(p["conflicts"])),
                 "Số dòng nguồn": len(p.get("source_rows") or []),
                 "Trạng thái": "CHƯA XÁC MINH",
-            } for p in conflicts],hide_index=True,use_container_width=True)
-            source_pairs = compare_conflict_sources(conflicts)
-            if source_pairs:
-                st.markdown(
-                    "**Giá trị gốc cần đối chiếu — nguồn 1 so với nguồn 2**"
-                )
-                st.caption(
-                    "Hiển thị nguyên văn từng trường theo sheet, tệp và SHA256. "
-                    "Hai dòng cùng tên/NSX chưa đủ để xác nhận cùng một thuốc. "
-                    "Mọi kết luận để CHƯA XÁC MINH."
-                )
-                render_readable_table(
-                    st, pd.DataFrame(source_pairs),
-                    key="tdv_nsx_conflict_source_pairs",
-                    label="Hai nguồn gốc của từng trường mâu thuẫn",
-                    page_size=15, min_width=1350,
-                )
+            } for p in conflicts], hide_index=True, use_container_width=True)
 
     if stats["products"] == 0:
         st.error(
