@@ -5,6 +5,8 @@ product fields, create proof links, certify validity or approve a medicine.
 """
 from __future__ import annotations
 
+NSX_HINTS_RUNTIME_REV = "2026-10-22J"
+
 import re
 import unicodedata
 from collections import Counter
