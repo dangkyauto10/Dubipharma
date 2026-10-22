@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import re
 import pandas as pd
 import streamlit as st
 from tdv_ehsmt_intake import inspect_ehsmt_pdf, export_ehsmt_csv
@@ -15,6 +16,7 @@ from see_pro_multiformat import ACCEPTED, extract_file, identify_codes
 from see_pro_structured import identify_document
 from see_pro_adapters import parse_tabular_document
 from see_pro_pdf_geometry import extract_g1_technical
+from see_pro_structured import normalize as normalize_field
 from see_pro_traceability import build_audit_workbook
 from see_pro_pdf_viewer import render_original_pdf_viewer
 
@@ -70,6 +72,17 @@ def _append_xlsx_ehsmt_summary(result: dict, filename: str, package_id: str,
 
 
 
+def _compare_two_ingredient_strings(summary: str, technical: str) -> str:
+    """Compare only literal extracted strings, not chemical equivalents."""
+    if not summary:
+        return "THIEU_HOAT_CHAT_TONG_HOP"
+    if not technical:
+        return "THIEU_HOAT_CHAT_KY_THUAT"
+    left = re.sub(r"\\s+", "", normalize_field(summary))
+    right = re.sub(r"\\s+", "", normalize_field(technical))
+    return "CUNG_CHUOI_CHUA_XAC_MINH" if left and left == right else "KHAC_CHUOI_CAN_SO_GOC"
+
+
 def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = False,
                     deep_technical: bool = False) -> dict:
     """Classify before reading. Do not force every PDF to use G1.xxx."""
@@ -85,6 +98,24 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
             role = classification["type"]
             source = extract_file(filename, data, ocr=enable_ocr)
             tender_meta = detect_procurement_document(source["lines"])
+            if (tender_meta and role == "BANG_EHSMT_PDF" and
+                    tender_meta["kind"] == "KET_QUA_LCNT"):
+                # The header keyword is in conflict with independently detected
+                # E-HSMT G1/PP structure. Do not label a tender document as a
+                # winning-bid decision based on an incidental phrase.
+                tender_meta = {
+                    **tender_meta,
+                    "kind": "CAN_XAC_MINH_LOAI",
+                    "classification_conflict": ["BANG_EHSMT_PDF", "KET_QUA_LCNT"],
+                    "suggested_action": (
+                        "Tài liệu có cấu trúc bảng E-HSMT G1/PP nhưng vùng "
+                        "đầu chứa cụm 'kết quả lựa chọn nhà thầu'. "
+                        "Kiểm tra trang bìa/văn bản gốc trước khi phân loại."
+                    ),
+                }
+                result["warnings"].append(
+                    f"{filename}: mâu thuẫn loại tài liệu E-HSMT / "
+                    "KET_QUA_LCNT, cần kiểm tra trang đầu.")
             if tender_meta:
                 result["tender_documents"].append({
                     "filename": filename, "sha256": source["sha256"],
@@ -159,11 +190,35 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
                 result["warnings"].extend(f"{filename}: {w}" for w in report["warnings"])
                 for lot in report["lots"]:
                     tech = deep_by_code.get(lot["MA_THUOC"])
+                    summary_ingredient = lot.get("HOAT_CHAT_CHUAN") or ""
+                    summary_raw = lot.get("CHUNG_CU_BANG_TONG_HOP") or ""
+                    summary_page = lot.get("TRANG_BANG_TONG_HOP")
+                    # Field-level proof comes from original SUMMARY page, not
+                    # from a guessed technical-column value or product name.
+                    summary_evidence = ({
+                        "HOAT_CHAT_HSMT": {
+                            "source": filename, "file": filename,
+                            "page": summary_page, "row": lot.get("STT"),
+                            "raw": summary_raw, "value": summary_ingredient,
+                            "sha256": report["sha256"],
+                            "basis": "BANG_TONG_HOP_PDF",
+                            "verified": False,
+                        },
+                    } if summary_ingredient and summary_page and
+                    normalize_field(summary_ingredient) in normalize_field(summary_raw)
+                    else {})
+                    tech_ingredient = (
+                        tech.get("HOAT_CHAT_BANG_KY_THUAT", "") if tech else "")
                     result["rows"].append({
                         "FILE_NGUON": filename, "MA_GOI_THAU": "",
                         "MA_THUOC": lot["MA_THUOC"],
                         "MA_PHAN_LO": lot.get("MA_PHAN_LO", ""),
                         "HOAT_CHAT_HSMT": lot.get("HOAT_CHAT_CHUAN"),
+                        "HOAT_CHAT_KY_THUAT_NGUON": tech_ingredient,
+                        "DOI_CHIEU_HOAT_CHAT_HAI_BANG": (
+                            _compare_two_ingredient_strings(summary_ingredient, tech_ingredient)
+                            if deep_report else "CHUA_DOI_CHIEU_BANG_KY_THUAT"),
+                        "EVIDENCE": summary_evidence,
                         "GIA_UOC_TINH_PHAN": lot.get("GIA_TRI_UOC_TINH"),
                         "TIEN_BAO_DAM_DU_THAU": lot.get("BAO_DAM_DU_THAU"),
                         "TRANG_VI_TRI": lot.get("TRANG_BANG_TONG_HOP"),
