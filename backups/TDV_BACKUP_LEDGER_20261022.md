@@ -162,3 +162,13 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Caption nghiệp vụ NSX `2026-10-22E`. Không sửa cấu trúc giao diện hay tự gán chứng cứ. Giữ 47 ứng viên và 29 nhóm mâu thuẫn để kiểm tra thực tế, không tuyên bố đã kiểm chứng lại chúng.
 - 21/21 bài thử cục bộ đã chạy và đạt (17 đơn vị + 4 đọc PDF giả lập qua PyMuPDF). Sáu test bổ sung trong `test_tdv_nsx_proof_hints.py` và hai test nối luồng trong `test_tdv_nsx_proof_hints_flow.py` đã được đưa vào repo, nhưng chưa có xác nhận GitHub CI.
 - Chưa nghiệm thu với chính 14 tệp NSX gốc, chưa xác nhận Cloud đã nạp E. Chưa xác minh số SĐK, nhà máy, số/phạm vi/hiệu lực GMP hay điều kiện dự thầu. Không tự kết luận các hồ sơ AGICARVIR, AGIMOL 150 hoặc GCN GMP đủ hay thiếu pháp lý khi chưa đọc bản gốc.
+
+
+## NSX F — chẩn đoán OCR dựa trên Excel thực tế (22/10/2026)
+- Nguồn đầu vào đối soát: `TDV_NSX_SEE_PRO_KIEM_TOAN(1).xlsx` do người vận hành tải về từ TDV QC7 bản E. **Không tải workbook hoặc tài liệu pháp lý gốc lên GitHub.**
+- Số liệu xác nhận trong Excel: 14/14 tệp, 87 dòng nguồn, 47 ứng viên, 29 ứng viên có 51 cặp giá trị nguồn mâu thuẫn (24 `DOSAGE_FORM`, 23 `STRENGTH`, 4 `ROUTE`), 0 liên kết; 46 dòng cần xem, trong đó có 29 dòng mâu thuẫn và 2 dòng loại GMP cảnh báo mới.
+- `GOI_Y_NHAN_SDK_GMP` chỉ có hàng tiêu đề, số gợi ý là 0 cho cả 5 tài liệu trong `CHAN_DOAN_DOC_SDK_GMP`. AGICARVIR đọc 1.007 dòng (554 OCR), AGIMOL 150 đọc 852 dòng (527 OCR), GCN GMP 2023 đọc 141 dòng; **không được suy rằng bản gốc không có SĐK/GMP**.
+- Hai văn bản bổ sung GMP đã mang nhãn `OTHER` trong `TU_DONG_NHAN_DIEN` nhưng cảnh báo cũ trong `CAN_XAC_MINH` còn gán nhãn `GMP_CERT`. NSX F đồng bộ nhãn dòng cảnh báo cũ sang loại sau rà soát (chỉ khi tên tệp duy nhất) và giữ lại lý do gốc, trạng thái, lịch sử nguồn. Không đụng đến 29 mâu thuẫn.
+- Đã bổ sung `proof_contexts` chỉ đọc, trích tối đa 24 dòng có từ khóa trên mỗi PDF (giới hạn 5 dòng mỗi nguồn/trang), kèm dòng trước/sau **cùng trang**, SHA-256 từ tệp. Xuất Excel `DOAN_OCR_CAN_SO` để đối chiếu nguyên văn khi chưa tìm được nhãn SĐK/GMP. Không gán các đoạn này thành giá trị SĐK/GMP, không tự liên kết hoặc duyệt giấy.
+- Bản nhận biết `2026-10-22F`, sao lưu trước sửa `TDV_BACKUP_043_BEFORE_OCR_REVIEW_20261022`. Pipeline GitHub Actions `tdv-nsx-preview-quality.yml` chỉ kiểm thử bằng dữ liệu tổng hợp, không dùng Secrets, không gửi dữ liệu pháp lý.
+- **Chưa nghiệm thu**: cần xem GitHub Actions, Streamlit Cloud nhận bản F, lần test 14 tệp NSX và các dòng OCR thực tế trong Excel. SĐK, hiệu lực GMP, nhà máy và đáp ứng E-HSMT vẫn CHƯA XÁC MINH. `main` và OAuth/Secrets không chỉnh sửa.
