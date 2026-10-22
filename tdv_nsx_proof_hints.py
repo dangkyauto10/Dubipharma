@@ -12,12 +12,14 @@ from collections import Counter
 ALIASES = {
     "PRODUCT_NAME": (
         "ten thuoc", "ten thuoc dang ky", "ten biet duoc",
-        "ten thuong mai", "ten san pham", "product name", "trade name",
+        "ten thuong mai", "ten san pham", "ten thuoc duoc cap phep",
+        "product name", "trade name",
     ),
     "REGISTRATION_NO": (
         "so dang ky", "so dang ky luu hanh", "so dang ky luu hanh thuoc",
         "so giay dang ky luu hanh", "registration number", "registration no",
         "marketing authorization number", "ma so dang ky",
+        "so dk", "so dklh", "sdk", "registration no.",
     ),
     "GMP_NUMBER": (
         "so gmp", "so giay chung nhan gmp", "so chung nhan gmp",
@@ -45,8 +47,11 @@ _DATE = re.compile(r"(?<!\d)(?:[0-3]?\d[/.-][01]?\d[/.-](?:19|20)\d{2}|(?:19|20)
 def _norm(value: str) -> str:
     s = unicodedata.normalize("NFKD", str(value or "").replace("Đ", "D").replace("đ", "d"))
     s = "".join(c for c in s if not unicodedata.combining(c)).lower()
+    # Trim punctuation first so labels like "Tên thuốc (biệt dược):"
+    # still drop the trailing explanatory qualifier.
+    s = s.strip().rstrip(". :：;,-–").strip()
     s = re.sub(r"\s*\([^)]{1,24}\)\s*$", "", s).strip()
-    return " ".join(s.split()).rstrip(".")
+    return " ".join(s.split()).rstrip(". :：;,-–").strip()
 
 
 def _supported_value(field: str, value: str) -> bool:
@@ -61,7 +66,10 @@ def _supported_value(field: str, value: str) -> bool:
             and not name.startswith(("giay dang ky", "giay chung nhan", "so dang ky"))
         )
     if field in ("REGISTRATION_NO", "GMP_NUMBER"):
-        token = value.strip().upper()
+        token = re.sub(r"\s*([./-])\s*", r"\1", value.strip().upper())
+        # A date is not an unambiguous SĐK/GMP certificate number.
+        if _DATE.fullmatch(token):
+            return False
         return (len(token) <= 65 and
                 bool(re.fullmatch(r"[A-Z0-9]+(?:[./-][A-Z0-9]+)*", token)) and
                 sum(ch.isdigit() for ch in token) >= 2)
@@ -133,3 +141,32 @@ def extract_labeled_hints(
         if counts[row["field"]] > 1:
             row["status"] = "NHIEU_GIA_TRI_GOI_Y_CAN_DOI_CHIEU"
     return candidates
+
+
+def diagnose_proof_source(kind: str, source: dict, fields: dict,
+                          hints: list[dict]) -> dict | None:
+    """Read-only coverage diagnostics, not a verdict that the PDF lacks a field."""
+    relevant = FIELDS_BY_KIND.get(kind)
+    if source.get("type") != "pdf" or not relevant:
+        return None
+    lines = source.get("lines") or []
+    absent = [field for field in relevant if not (fields or {}).get(field)]
+    hinted = {item.get("field") for item in hints or []}
+    missing_hints = [field for field in absent if field not in hinted]
+    ocr_lines = sum("OCR" in str(row.get("source") or "").upper() for row in lines)
+    message = (
+        "CHUA_CO_GOI_Y_THEO_NHAN; CAN_SO_PDF_GOC" if missing_hints
+        else "CO_GOI_Y_CHUA_XAC_MINH" if hints
+        else "CAC_TRUONG_THEO_NHAN_DA_TRICH; CHUA_XAC_MINH"
+    )
+    return {
+        "kind": kind,
+        "pages": int(source.get("pages") or 0),
+        "source_lines": len(lines),
+        "ocr_lines": ocr_lines,
+        "fields_without_extracted_value": ", ".join(absent),
+        "fields_without_hint": ", ".join(missing_hints),
+        "hint_count": len(hints or []),
+        "status": message,
+        "verified": False,
+    }
