@@ -149,6 +149,24 @@ def _consecutive_pdf_fields(lines: list[dict]):
         }
 
 
+def _composition_sentence_not_scalar(field: str, value: str) -> bool:
+    """A full tablet/vial composition sentence is not a scalar ingredient.
+
+    Do not guess the ingredient from a noisy OCR sentence. Preserve the raw
+    citation separately for document review. Product tables are unaffected.
+    """
+    if field != "INGREDIENT":
+        return False
+    content = normalize(value)
+    is_dose_introduction = bool(re.match(
+        r"^(?:moi|m6i|m0i) (?:vien|ong|lo|chai|goi)\\b", content
+    ))
+    has_contains_verb = bool(re.search(
+        r"\\b(?:chua|chira|contains|contain)\\b", content
+    ))
+    return is_dose_introduction and has_contains_verb
+
+
 def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
               selected_product_index: int | None = None,
               source_document: dict | None = None) -> dict:
@@ -158,6 +176,7 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
         raise ValueError("Chưa hỗ trợ loại tệp")
     source = source_document if source_document is not None else extract_file(filename, raw, ocr=ocr)
     fields, evidence, conflicts = {}, {}, defaultdict(list)
+    rejected_scalar_candidates: list[dict] = []
     warnings = list(source["warnings"])
     if not source["complete"]:
         warnings.append("Chưa đọc đủ văn bản hoặc kết quả OCR chưa thể xác minh")
@@ -179,6 +198,13 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
                 "value": value,
                 "verified": False,
             }
+            if source["type"] == "pdf" and _composition_sentence_not_scalar(field, value):
+                if len(rejected_scalar_candidates) < 24:
+                    rejected_scalar_candidates.append({
+                        **citation, "field": field,
+                        "reason": "Câu mô tả thành phần mỗi viên/ống, không phải tên hoạt chất đơn lẻ",
+                    })
+                continue
             if field in fields and normalize(fields[field]) != normalize(value):
                 conflicts[field].append(citation)
             elif field not in fields:
@@ -193,6 +219,13 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
                 "source": location["source"], "raw": location["raw"][:700],
                 "value": value, "verified": False,
             }
+            if _composition_sentence_not_scalar(field, value):
+                if len(rejected_scalar_candidates) < 24:
+                    rejected_scalar_candidates.append({
+                        **citation, "field": field,
+                        "reason": "Câu mô tả thành phần mỗi viên/ống, không phải tên hoạt chất đơn lẻ",
+                    })
+                continue
             if field in fields and normalize(fields[field]) != normalize(value):
                 conflicts[field].append(citation)
             elif field not in fields:
@@ -231,6 +264,11 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
     if conflicts:
         warnings.append("Có trường ghi nhiều giá trị không thống nhất: " +
                         ", ".join(sorted(conflicts)))
+    if rejected_scalar_candidates:
+        warnings.append(
+            "Có câu mô tả thành phần PDF/OCR không được đưa vào trường hoạt chất chuẩn; "
+            "giữ trích gốc riêng để người thẩm định đối chiếu."
+        )
     # Supplementary, unverified candidates never alter fields/evidence/conflicts.
     # They are shown for document review but cannot become link identifiers.
     proof_hints = extract_labeled_hints(kind, source, fields)
@@ -248,6 +286,7 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
         "fields": fields, "evidence": evidence, "conflicts": dict(conflicts),
         "proof_hints": proof_hints,
         "proof_diagnostic": proof_diagnostic,
+        "rejected_scalar_candidates": rejected_scalar_candidates,
         "proof_contexts": proof_contexts,
         "catalogue_candidates": candidates,
         "catalogue_selected_index": chosen_index,
