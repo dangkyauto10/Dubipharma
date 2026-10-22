@@ -10,6 +10,8 @@ import hashlib
 import json
 
 import streamlit as st
+import pandas as pd
+from tdv_readable_tables import render_readable_table
 
 from see_pro_multiformat import ACCEPTED
 from tdv_nsx_auto import analyze_auto, export_auto_xlsx
@@ -254,7 +256,7 @@ def render_nsx_workbench() -> None:
         )
 
     st.markdown("**1. Tài liệu tự nhận diện**")
-    st.dataframe([
+    nsx_files_frame = pd.DataFrame([
         {
             "Tệp": d["filename"],
             "Loại gợi ý": d["kind_label"],
@@ -264,11 +266,14 @@ def render_nsx_workbench() -> None:
             "Lưu Drive": "KHÓA",
         }
         for d in report["files"]
-    ], hide_index=True, use_container_width=True)
+    ])
+    render_readable_table(st, nsx_files_frame, key="tdv_nsx_sources_readable",
+                          label="NSX: phân loại và nguồn tài liệu",
+                          page_size=20, min_width=1050)
 
     st.markdown("**2. Danh mục thuốc phát hiện trong bộ hồ sơ**")
     if report["products"]:
-        st.dataframe([
+        nsx_products_frame = pd.DataFrame([
             {
                 "Mã": p["uid"],
                 "Tên thuốc": p["fields"].get("PRODUCT_NAME", ""),
@@ -283,7 +288,11 @@ def render_nsx_workbench() -> None:
                 "Trạng thái": ("CÓ MÂU THUẪN NGUỒN — CHƯA XÁC MINH"
                               if p.get("conflicts") else "CHƯA XÁC MINH"),
             } for p in report["products"]
-        ], hide_index=True, use_container_width=True)
+        ])
+        render_readable_table(st, nsx_products_frame,
+                              key="tdv_nsx_products_readable",
+                              label="NSX: danh mục sản phẩm",
+                              page_size=25, min_width=1450)
     else:
         st.warning("Chưa nhận diện chắc chắn được danh mục thuốc. Hệ thống không tự tạo sản phẩm giả.")
 
@@ -358,7 +367,7 @@ def render_nsx_workbench() -> None:
 
     st.markdown("**4. Các điểm chưa rõ và cần xác minh**")
     if report["review_queue"]:
-        st.dataframe([
+        nsx_review_frame = pd.DataFrame([
             {
                 "Tệp": item["file"],
                 "Loại": KINDS.get(item["kind"], item["kind"]),
@@ -367,7 +376,11 @@ def render_nsx_workbench() -> None:
                 "Thuốc liên quan": ", ".join(item["candidate_products"]),
                 "Lý do": item["reason"],
             } for item in report["review_queue"]
-        ], hide_index=True, use_container_width=True)
+        ])
+        render_readable_table(st, nsx_review_frame,
+                              key="tdv_nsx_review_readable",
+                              label="NSX: danh sách chưa xác minh",
+                              page_size=25, min_width=1250)
     else:
         st.success("Không phát sinh mục mơ hồ trong các kiểm tra định danh đã thực hiện.")
     st.caption(
