@@ -6,6 +6,8 @@ No external API calls, no Google Drive writes and no model inference.
 """
 from __future__ import annotations
 
+NSX_AUTO_RUNTIME_REV = "2026-10-22J"
+
 from collections import defaultdict
 from io import BytesIO
 import hashlib
