@@ -12,6 +12,7 @@ import json
 import streamlit as st
 import pandas as pd
 from tdv_readable_tables import render_readable_table
+from tdv_nsx_source_diff import compare_conflict_sources
 
 from see_pro_multiformat import ACCEPTED
 from tdv_nsx_auto import analyze_auto, export_auto_xlsx
@@ -206,6 +207,22 @@ def render_nsx_workbench() -> None:
                 "Số dòng nguồn": len(p.get("source_rows") or []),
                 "Trạng thái": "CHƯA XÁC MINH",
             } for p in conflicts],hide_index=True,use_container_width=True)
+            source_pairs = compare_conflict_sources(conflicts)
+            if source_pairs:
+                st.markdown(
+                    "**Giá trị gốc cần đối chiếu — nguồn 1 so với nguồn 2**"
+                )
+                st.caption(
+                    "Hiển thị nguyên văn từng trường theo sheet, tệp và SHA256. "
+                    "Hai dòng cùng tên/NSX chưa đủ để xác nhận cùng một thuốc. "
+                    "Mọi kết luận để CHƯA XÁC MINH."
+                )
+                render_readable_table(
+                    st, pd.DataFrame(source_pairs),
+                    key="tdv_nsx_conflict_source_pairs",
+                    label="Hai nguồn gốc của từng trường mâu thuẫn",
+                    page_size=15, min_width=1350,
+                )
 
     if stats["products"] == 0:
         st.error(
