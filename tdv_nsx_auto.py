@@ -692,6 +692,21 @@ def export_auto_xlsx(report: dict) -> bytes:
     evidence_audit.append(audit_headers)
     for item in audit_manufacturer_evidence(report)["rows"]:
         evidence_audit.append([safe_cell(item.get(h, "")) for h in audit_headers])
+    proof_hints = wb.create_sheet("GOI_Y_NHAN_SDK_GMP")
+    proof_hints.append([
+        "Tệp", "Loại tài liệu", "Trường", "Giá trị gợi ý", "Trang/ô nguồn",
+        "Trích dẫn nguyên văn", "Cách đọc", "SHA256", "Trạng thái",
+    ])
+    for source in report.get("sources") or []:
+        for hint in source.get("proof_hints") or []:
+            proof_hints.append([safe_cell(v) for v in (
+                source.get("filename", ""),
+                KINDS.get(source.get("kind", ""), source.get("kind", "")),
+                hint.get("field", ""), hint.get("value", ""),
+                hint.get("source", ""), hint.get("raw", ""),
+                hint.get("reading_method", ""), hint.get("sha256", ""),
+                hint.get("status", "GOI_Y_CAN_SO_BAN_GOC"),
+            )])
     trace = wb.create_sheet("TRUY_XUAT_TUNG_TRUONG")
     trace.append(["Tệp", "Vai trò", "Trường", "Giá trị", "Trang hoặc ô nguồn", "SHA256", "Trích đoạn"])
     for p in report["products"]:
