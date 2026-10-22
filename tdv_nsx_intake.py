@@ -159,10 +159,10 @@ def _composition_sentence_not_scalar(field: str, value: str) -> bool:
         return False
     content = normalize(value)
     is_dose_introduction = bool(re.match(
-        r"^(?:moi|m6i|m0i) (?:vien|ong|lo|chai|goi)\\b", content
+        r"^(?:moi|m6i|m0i) (?:vien|ong|lo|chai|goi)\b", content
     ))
     has_contains_verb = bool(re.search(
-        r"\\b(?:chua|chira|contains|contain)\\b", content
+        r"\b(?:chua|chira|contains|contain)\b", content
     ))
     return is_dose_introduction and has_contains_verb
 
