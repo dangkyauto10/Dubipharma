@@ -16,7 +16,8 @@ from tdv_nsx_source_diff import compare_conflict_sources
 from tdv_manufacturer_evidence import audit_manufacturer_evidence
 
 from see_pro_multiformat import ACCEPTED
-from tdv_nsx_auto import analyze_auto, export_auto_xlsx
+from tdv_nsx_auto import export_auto_xlsx
+from tdv_nsx_gmp_guarded_auto import analyze_auto
 from tdv_nsx_intake import KINDS
 
 MAX_FILES = 24
@@ -200,7 +201,7 @@ def render_manufacturer_evidence_review(report: dict, st_module=None) -> None:
 def render_nsx_workbench() -> None:
     st.markdown("### SEE PRO · Hồ sơ NSX & Báo giá — đọc tự động")
     st.caption(
-        "PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22B · "
+        "PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22C · "
         "Đối chiếu giá trị hai nguồn đặt trước danh sách mâu thuẫn. "
         "Nếu chưa thấy mã này, Streamlit Cloud chưa nạp đúng bản mã mới."
     )
