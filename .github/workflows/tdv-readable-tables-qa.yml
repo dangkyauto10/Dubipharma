@@ -1,0 +1,30 @@
+name: TDV readable and accessible E-HSMT table QA
+on:
+  push:
+    branches: [tdv-readable-tables-20261022]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ui-safe-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements.txt
+      - name: Compile table renderer and E-HSMT UI
+        run: python -m py_compile tdv_readable_tables.py see_pro_workbench.py tests/test_tdv_readable_tables.py
+      - name: Full unit and E-HSMT business regression
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Google OIDC still denies access without Secrets
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          at=AppTest.from_file('app.py',default_timeout=30).run()
+          assert not at.exception, str(list(at.exception))
+          assert not at.sidebar.radio
+          print("TDV_TABLES_AUTH_FAIL_CLOSED_OK")
+          PY
