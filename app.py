@@ -1,4 +1,5 @@
 """TDV QC7 Online — module-based Preview; real records require source review and authorization."""
+# TDV QC7 Preview sync marker 2026-10-22E: no runtime behavior or permissions changed.
 from __future__ import annotations
 import re
 import unicodedata
