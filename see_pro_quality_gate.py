@@ -55,6 +55,36 @@ def audit_ehsmt(data):
                 or technical.get("pages") and technical.get("raw_tokens")):
                 anchors += 1
         coverage[field] = {"values":found,"field_cited":anchors}
+        missing = found - anchors
+        if missing:
+            issues.append({
+                "type":"TRUONG_EHSMT_THIEU_CHUNG_CU_RIENG",
+                "file":"", "field":field, "count":missing,
+                "reason":f"{field}: {missing} giá trị đã đọc nhưng không có "
+                         "nguồn riêng đủ kiểm tra; không tự kết luận đúng.",
+                "priority":2,
+            })
+    # A source row from the SUMMARY can be cited, while the separately read
+    # TECHNICAL ingredient must still be checked independently; provenance
+    # alone is not equality or chemical equivalence.
+    crosscheck = Counter(str(r.get("DOI_CHIEU_HOAT_CHAT_HAI_BANG") or "")
+                         for r in rows)
+    for status in ("KHAC_CHUOI_CAN_SO_GOC", "THIEU_HOAT_CHAT_KY_THUAT"):
+        if crosscheck[status]:
+            issues.append({
+                "type":"HOAT_CHAT_TONG_HOP_KY_THUAT_" + status,
+                "file":"", "field":"HOAT_CHAT_HSMT",
+                "count":crosscheck[status], "priority":2,
+                "reason":f"{crosscheck[status]} mã có tình trạng {status}. "
+                         "Giữ nguyên hai nguồn; chưa xác minh tương đương.",
+            })
+    # The upstream 'warnings' list includes classification/BP status and
+    # must not disappear from the global Quality Gate summary.
+    for warning in data.get("warnings") or []:
+        issues.append({
+            "type":"CANH_BAO_NGHIEP_VU_CHUA_GIAI_QUYET", "file":"",
+            "reason":str(warning)[:350], "priority":2,
+        })
     codes = Counter(str(r.get("MA_THUOC") or "") for r in rows)
     for code, n in codes.items():
         if code and n>1:
