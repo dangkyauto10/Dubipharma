@@ -16,6 +16,7 @@ from typing import Any
 from see_pro_multiformat import ACCEPTED, extract_file
 from tdv_nsx_adaptive import extract_product_rows, _read_grid, FIELD, normalize as norm
 from tdv_nsx_multisheet import reconcile_product_rows
+from tdv_nsx_source_diff import compare_conflict_sources
 from tdv_nsx_evidence_candidates import discover_evidence_candidates
 from tdv_nsx_intake import KINDS, _read_one
 from tdv_nsx_public_guard import detect_nonprimary_document
@@ -616,6 +617,16 @@ def export_auto_xlsx(report: dict) -> bytes:
                 original["file"], original["origin"], len(sources),
                 ", ".join(sorted(p.get("conflicts") or {})), "CHƯA XÁC MINH",
             )])
+    pairs_sheet = wb.create_sheet("MAU_THUAN_GIA_TRI_GOC")
+    headers = [
+        "Mã NSX", "Tên thuốc", "Trường cần đối chiếu",
+        "Giá trị nguồn 1", "Tệp nguồn 1", "Ô nguồn 1", "SHA256 nguồn 1",
+        "Giá trị nguồn 2", "Tệp nguồn 2", "Ô nguồn 2", "SHA256 nguồn 2",
+        "Kết luận",
+    ]
+    pairs_sheet.append(headers)
+    for row in compare_conflict_sources(report.get("products") or []):
+        pairs_sheet.append([safe_cell(row.get(h, "")) for h in headers])
     links = wb.create_sheet("LIEN_KET_CHUNG_CU")
     links.append(["Mã dòng", "Thuốc", "Loại chứng cứ", "Nguồn", "Vị trí", "Khớp trường",
                   "Trạng thái", "Giải thích", "Đã xác minh"])
