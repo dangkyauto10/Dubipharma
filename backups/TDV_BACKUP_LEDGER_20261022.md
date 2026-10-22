@@ -23,6 +23,9 @@
 | 018 | `TDV_BACKUP_018_BEFORE_GOOGLE_AUTH_20261022` | `63c64dc227abb0843e01d327783ea8c9d384b547` | Preview trước khi thêm đăng nhập; bảo mật hồ sơ chưa tích hợp |
 | 019 | `TDV_BACKUP_019_GOOGLE_AUTH_20261022` | `5c16fda1f064fdde84f482235eb938691dc761a9` | Google OIDC fail-closed; chỉ email Google được xác minh và cho phép, vai trò admin/analyst/viewer; chặn toàn bộ nếu thiếu Secrets; GitHub CI 199/199 và AppTest khóa không có Secrets đạt; cần V tự cấu hình Google OAuth và Streamlit Secrets để thực sự đăng nhập |
 
+| 020 | `TDV_BACKUP_020_BEFORE_EHSMT_QA_20261022` | `2d2d9fbf05c6c688b9312fc6b191306024347caf` | Trạng thái trước sửa sau khi user chạy E-HSMT G1-SYT PDF thật: 1/1 tệp, 596 trang, 770 mã, 770/770 hoạt chất có giá trị nhưng 0/770 ghi trích dẫn riêng, bảng chất lượng báo 0 vấn đề dù có 1 cảnh báo; tài liệu bị phân loại KET_QUA_LCNT cần kiểm tra |
+| 021 | `TDV_BACKUP_021_EHSMT_EVIDENCE_QA_20261022` | `f128228ba41e0806fbef0a7f539992c3dab99119` | Mã đã kiểm thử bằng PDF tạo tổng hợp: nguồn hoạt chất ghi tệp, trang, mã dòng, SHA256, đoạn gốc; trạng thái giữa bảng tổng hợp và kỹ thuật; cảnh báo nếu phân loại BANG_EHSMT_PDF / KET_QUA_LCNT mâu thuẫn; quality gate đếm lỗi thiếu chứng cứ & các cảnh báo chưa xử lý; Excel và so sánh truy xuất trang PDF; 206/206 bài kiểm thử + fail-closed Streamlit |
+
 ## Ghi nhận và giới hạn
 
 1. Ảnh và Excel NSX người dùng cung cấp: 13 tài liệu đã đọc, 87 dòng trích xuất ban đầu, 0 liên kết sơ bộ. File Excel có các trường đăng ký pháp lý chủ yếu chưa gắn vào từng dòng sản phẩm. **Không** thể suy 0 liên kết thành kết luận không có chứng cứ hay không đủ điều kiện.
@@ -68,3 +71,14 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Đăng nhập thực bằng 2–3 tài khoản chưa thể nghiệm thu ở môi trường GitHub Actions vì không có và **không được thu thập** OAuth Client Secret của V. V phải tạo OAuth Client trên Cloud hiện có và nhập thông số trong **Settings → Secrets** của app đang chạy.
 - Không xem Google OIDC là cơ chế ủy quyền cấp dự án hoàn chỉnh; đối với hồ sơ mật, vẫn cần đánh giá rủi ro Streamlit Community Cloud, Drive, lịch sử truy cập và sao lưu.
 - Khôi phục: bản cũ `TDV_BACKUP_018_BEFORE_GOOGLE_AUTH_20261022` là **mã chưa có chốt đăng nhập**; nếu rollback, sẽ làm mất bảo vệ. Ưu tiên sửa OAuth/Secrets trước, không rollback về mã công khai khi có hồ sơ mật.
+
+
+## Nghiệm thu E-HSMT G1-SYT — quan sát thực tế & sửa an toàn
+
+- Ảnh người dùng 22/10/2026: tệp E-HSMT 2,4MB, 596/596 trang, 770 G1, 770 dòng tổng hợp, 770 dòng kỹ thuật, 770 kiểm tra khớp tiền và mã phân; hoạt chất 770 giá trị nhưng 0 giá trị báo có chứng cứ riêng; 1 cảnh báo tổng thể, quality gate trước sửa lại báo 0 vấn đề.
+- Sai sót xác định từ mã: `HOAT_CHAT_HSMT` PDF được đọc từ `CHUNG_CU_BANG_TONG_HOP` có trang, nhưng `see_pro_workbench` chưa gắn EVIDENCE cho trường này; `see_pro_quality_gate.audit_ehsmt` không đưa độ thiếu chứng cứ và warnings vào issues.
+- Sửa: khi nguồn bảng tổng hợp có đúng chuỗi hoạt chất, gắn `EVIDENCE.HOAT_CHAT_HSMT` với tệp, trang, số dòng, giá trị gốc, SHA; không tạo nguồn từ filename hoặc dữ liệu suy đoán. Thêm giá trị hoạt chất gốc cột kỹ thuật và đối chiếu CHUỖI để phát hiện khác biệt; không kết luận tương đương hóa học.
+- Phân loại `KET_QUA_LCNT` trong khi parser nhận diện `BANG_EHSMT_PDF`: chuyển sang `CAN_XAC_MINH_LOAI`, giữ nguyên hai dấu hiệu mâu thuẫn, yêu cầu kiểm tra trang bìa; không tự tuyên bố E-HSMT/LCNT hợp lệ khi chưa so bản gốc.
+- Bảng quality gate giờ ghi rõ số trường thiếu nguồn, cảnh báo chưa xử lý và số mã có chuỗi hoạt chất khác/trích thiếu giữa hai bảng. Không nâng 770 câu khớp hay trích dẫn thành 770 trường được chứng nhận chính xác.
+- Thêm bài kiểm thử bằng PDF G1 dựng từ dữ liệu giả (không có tài liệu thầu riêng tư): nguồn hoạt chất, Excel tra trang, Word/báo cáo lãnh đạo, cảnh báo phân loại, kiểm đếm 770 tham chiếu vs kiểm định chính xác. GitHub Actions 206/206 bài và khóa Google OIDC fail-closed.
+- Chưa có tệp PDF G1-SYT gốc trong môi trường phát triển để tự nghiệm thu lại; cần V chạy lại trong phiên đã được cấp quyền và kiểm tra bảng quality gate, trích dẫn trang, cảnh báo. Không gửi nội dung tệp thật lên GitHub.
