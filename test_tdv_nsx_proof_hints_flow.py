@@ -112,5 +112,51 @@ class TestProofHintBoundary(unittest.TestCase):
         self.assertFalse(result["registration_confirmed"])
 
 
+    def test_split_ocr_strength_label_does_not_accept_word_fragment(self):
+        raw, source = self.source(
+            ("Trang 4 (OCR)", "Hàm lượng"),
+            ("Trang 4 (OCR)", "chế"),
+        )
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        self.assertNotIn("STRENGTH", result["fields"])
+        self.assertFalse(result["registration_confirmed"])
+
+    def test_inline_strength_label_does_not_accept_word_fragment(self):
+        raw, source = self.source(
+            ("Trang 4 (OCR)", "Hàm lượng: chế"),
+        )
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        self.assertNotIn("STRENGTH", result["fields"])
+
+    def test_credible_strength_remains_unverified_but_cited(self):
+        raw, source = self.source(
+            ("Trang 4", "Hàm lượng"),
+            ("Trang 4", "150mg"),
+        )
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        self.assertEqual(result["fields"].get("STRENGTH"), "150mg")
+        self.assertFalse(result["verified"])
+
+    def test_new_registration_hint_does_not_promote_to_fields_or_link(self):
+        raw, source = self.source(
+            ("Trang 8", "đối với thuốc có s6 dang kY: VD-99999-22."),
+        )
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        self.assertNotIn("REGISTRATION_NO", result["fields"])
+        self.assertTrue(any(
+            r["field"] == "REGISTRATION_NO" and r["value"] == "VD-99999-22"
+            for r in result["proof_hints"]
+        ))
+        self.assertFalse(result["registration_confirmed"])
+
+
 if __name__ == "__main__":
     unittest.main()
