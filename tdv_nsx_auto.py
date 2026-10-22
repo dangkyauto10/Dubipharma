@@ -17,6 +17,7 @@ from see_pro_multiformat import ACCEPTED, extract_file
 from tdv_nsx_adaptive import extract_product_rows, _read_grid, FIELD, normalize as norm
 from tdv_nsx_multisheet import reconcile_product_rows
 from tdv_nsx_source_diff import compare_conflict_sources
+from tdv_manufacturer_evidence import audit_manufacturer_evidence
 from tdv_nsx_evidence_candidates import discover_evidence_candidates
 from tdv_nsx_intake import KINDS, _read_one
 from tdv_nsx_public_guard import detect_nonprimary_document
@@ -681,6 +682,16 @@ def export_auto_xlsx(report: dict) -> bytes:
             item["type"], item["file"], item["sha256"],
             item["status"], item["reason"],
         )])
+    evidence_audit = wb.create_sheet("KIEM_TRA_CHUNG_CU_NSX")
+    audit_headers = [
+        "Tệp chứng cứ", "Loại chứng cứ gợi ý", "Nhà máy trong giấy",
+        "SĐK trong giấy", "Số GMP trong giấy", "Phạm vi GMP trong giấy",
+        "Hết hạn GMP ghi trên giấy", "Ứng viên liên kết", "Số liên kết sơ bộ",
+        "Vị trí trích xuất", "SHA256 tệp", "Điểm cần kiểm tra", "Xác minh pháp lý",
+    ]
+    evidence_audit.append(audit_headers)
+    for item in audit_manufacturer_evidence(report)["rows"]:
+        evidence_audit.append([safe_cell(item.get(h, "")) for h in audit_headers])
     trace = wb.create_sheet("TRUY_XUAT_TUNG_TRUONG")
     trace.append(["Tệp", "Vai trò", "Trường", "Giá trị", "Trang hoặc ô nguồn", "SHA256", "Trích đoạn"])
     for p in report["products"]:
