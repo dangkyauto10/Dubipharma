@@ -10,6 +10,10 @@ import unicodedata
 from collections import Counter
 
 ALIASES = {
+    "PRODUCT_NAME": (
+        "ten thuoc", "ten thuoc dang ky", "ten biet duoc",
+        "ten thuong mai", "ten san pham", "product name", "trade name",
+    ),
     "REGISTRATION_NO": (
         "so dang ky", "so dang ky luu hanh", "so dang ky luu hanh thuoc",
         "so giay dang ky luu hanh", "registration number", "registration no",
@@ -30,7 +34,7 @@ ALIASES = {
     ),
 }
 FIELDS_BY_KIND = {
-    "REGISTRATION": ("REGISTRATION_NO",),
+    "REGISTRATION": ("PRODUCT_NAME", "REGISTRATION_NO"),
     "GMP_CERT": ("GMP_NUMBER", "GMP_SCOPE", "GMP_EXPIRY"),
     "GMP_EXPLANATION": ("GMP_NUMBER", "GMP_SCOPE", "GMP_EXPIRY"),
 }
@@ -48,6 +52,14 @@ def _norm(value: str) -> str:
 def _supported_value(field: str, value: str) -> bool:
     if not 2 <= len(value) <= 250:
         return False
+    if field == "PRODUCT_NAME":
+        name = _norm(value)
+        return (
+            2 <= len(name) <= 100
+            and len(re.findall(r"[a-z]", name)) >= 2
+            and name not in {a for group in ALIASES.values() for a in group}
+            and not name.startswith(("giay dang ky", "giay chung nhan", "so dang ky"))
+        )
     if field in ("REGISTRATION_NO", "GMP_NUMBER"):
         token = value.strip().upper()
         return (len(token) <= 65 and
