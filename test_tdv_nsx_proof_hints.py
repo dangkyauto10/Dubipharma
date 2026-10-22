@@ -290,5 +290,19 @@ class TestLabeledProofHints(unittest.TestCase):
         self.assertEqual(result, [])
 
 
+    def test_partial_sdk_hint_coverage_does_not_claim_zero_hints(self):
+        source = doc(("Trang 8", "Số đăng ký: VD-12345-22"))
+        source["pages"] = 8
+        hints = extract_labeled_hints("REGISTRATION", source, {})
+        status = diagnose_proof_source("REGISTRATION", source, {}, hints)
+        self.assertEqual(status["hint_count"], 1)
+        self.assertIn("PRODUCT_NAME", status["fields_without_hint"])
+        self.assertEqual(
+            status["status"],
+            "DA_CO_GOI_Y_MOT_PHAN; CON_TRUONG_CAN_SO_PDF_GOC",
+        )
+        self.assertFalse(status["verified"])
+
+
 if __name__ == "__main__":
     unittest.main()
