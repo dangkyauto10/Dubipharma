@@ -6,6 +6,7 @@ uncertain GMP document for review; never promotes a filename into legal proof.
 from __future__ import annotations
 
 import hashlib
+from collections import Counter
 
 from tdv_nsx_auto import analyze_auto as _analyze_original
 from tdv_nsx_gmp_role_guard import inspect_gmp_role
@@ -43,6 +44,9 @@ def reconcile_gmp_roles(report: dict, files: list[tuple[str, bytes]],
         (name, hashlib.sha256(raw).hexdigest()): raw for name, raw in files
     }
     modified = False
+    # Review queue entries carry only filenames, not hashes; rewrite them
+    # only when filenames are unique within the actual uploaded batch.
+    filename_counts = Counter(m.get("filename") for m in report.get("files") or [])
     for meta, source in zip(report.get("files") or [], report.get("sources") or []):
         if meta.get("kind") != "GMP_CERT" or source.get("error"):
             continue
@@ -76,6 +80,23 @@ def reconcile_gmp_roles(report: dict, files: list[tuple[str, bytes]],
         report["links"] = [link for link in (report.get("links") or [])
                            if not (link.get("source_evidence") == name
                                    and link.get("source_sha256") == sha)]
+        if filename_counts.get(name, 0) == 1:
+            for queued in report.get("review_queue") or []:
+                # A warning from the first pass MUST NOT continue to label an
+                # explanation/maintenance letter as a GMP certificate.
+                if queued.get("file") == name and queued.get("kind") == "GMP_CERT":
+                    queued["original_kind"] = "GMP_CERT"
+                    queued["kind"] = kind
+                    queued["reason"] = (
+                        str(queued.get("reason") or "") +
+                        " [Vai trò giấy GMP ban đầu đã bị hủy sau kiểm tra "
+                        "bổ sung; KHÔNG dùng làm chứng nhận GMP.]"
+                    ).strip()
+        else:
+            report.setdefault("warnings", []).append(
+                f"{name}: có tệp trùng tên, không đổi nhãn dòng kiểm toán "
+                "không có SHA256; cần đối chiếu tên+SHA từng nguồn."
+            )
         report.setdefault("review_queue", []).append({
             "file": name, "kind": kind, "origin": "Trang đầu / tên tệp",
             "status": "CAN_XAC_DINH_LOAI_GMP",
