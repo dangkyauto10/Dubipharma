@@ -123,3 +123,13 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 ### Giới hạn phiên bản thực tế
 - GitHub Actions trên nhánh Preview là KIỂM THỬ MÃ NGUỒN, không phải kiểm chứng runtime Streamlit Cloud. Một khi người dùng vẫn nhìn thấy giao diện cũ, cần xem app deployment, GitHub branch liên kết, Cloud log hoặc thực hiện Reboot app sau khi lưu dữ liệu phiên.
 - Nhằm tránh bắt người dùng nạp lại 14 tài liệu để tìm bản cập nhật, mã phiên bản NSX được hiển thị ngay khi mở trang, kể cả không có uploads. Phiên bản đúng phải có `2026-10-22B` gần tiêu đề SEE PRO.
+
+
+## Tích hợp kiểm tra chứng cứ NSX vào phân hệ thật — 22/10/2026
+- BACKUP_030 trước khi sửa: `TDV_BACKUP_030_BEFORE_NSX_EVIDENCE_INTEGRATION_20261022`. BACKUP_031 sau thay đổi mã: `TDV_BACKUP_031_NSX_EVIDENCE_INTEGRATED_20261022`. Chỉ sửa `tdv-qc7-online-preview-20261020`, không sửa `main`; dùng một ứng dụng hiện tại.
+- Trang “🛡️ Chứng cứ nhà sản xuất” trước đây là kiểm tra theo lựa chọn ví dụ Mỹ Thới/Bình Hòa, không đọc thực tế bộ hồ sơ NSX. Đã bỏ lối vào DEMO riêng, đưa việc rà soát trực tiếp vào phần **3B. Kiểm tra chứng cứ nhà sản xuất** của `💊 Báo giá & hồ sơ NSX`, chạy khi có `tdv_nsx_auto_report` sau đọc tệp.
+- Bộ rà soát `tdv_manufacturer_evidence.audit_manufacturer_evidence` chỉ dùng `report.sources`, `report.products` và liên kết sơ bộ `report.links`; đọc SĐK, giấy GMP, giải trình, ủy quyền, báo giá. Nêu thiếu trích dẫn/định danh, sai khác nhà máy/SĐK/NSX ở liên kết sơ bộ; ghi vị trí nguồn, SHA256 được trích từ hồ sơ; **không tự kiểm tra tính xác thực pháp lý hay tính đúng SHA so với bytes gốc tại bước này**.
+- Không phê duyệt GMP, SĐK, ủy quyền, giá, thầu. Giải trình GMP không thay thế chứng nhận. Chỉ hiện **CHƯA XÁC MINH**. Không gộp hoặc sửa 47 ứng viên/29 trường hợp nguồn mâu thuẫn/0 liên kết đã được báo cáo.
+- Bổ sung sheet Excel `KIEM_TRA_CHUNG_CU_NSX`, dùng bộ định dạng và `safe_cell` sẵn có; không ghi Drive/Sheets và không tạo tài liệu hồ sơ thật trong GitHub.
+- Bộ test mới `test_tdv_manufacturer_evidence.py`: 6/6 tình huống đạt trên máy kiểm thử (GMP sai nhà máy, giải trình, SĐK thiếu, SHA nguồn không nhất quán, chứng cứ chưa liên kết, tài liệu OTHER không bị gán nhầm). Bài thử bổ sung bằng report nhân tạo 47/29/0 xác nhận không thay đổi dữ liệu và luôn giữ chưa xác minh.
+- Giới hạn: chưa có kiểm thử với 14 tệp NSX gốc, chưa có xác minh Streamlit Cloud triển khai mã mới. GitHub commit hiện không báo status CI; **không được coi nhánh có mã hoặc bài thử nhân tạo là nghiệm thu runtime**. IDP 3.0 ở mục riêng vẫn là bài kiểm tra DEMO, chưa được coi là bộ đọc đa tầng đã triển khai đầy đủ cho dữ liệu thật.
