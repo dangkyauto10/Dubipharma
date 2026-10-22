@@ -744,6 +744,20 @@ def export_auto_xlsx(report: dict) -> bytes:
                 source.get("sha256", ""), item.get("status", ""),
                 "CHUA_XAC_MINH",
             )])
+    rejected_sheet = wb.create_sheet("CAU_THANH_PHAN_CAN_SO")
+    rejected_sheet.append([
+        "Tệp PDF", "Trường phát hiện", "Văn bản chưa chuẩn hóa",
+        "Vị trí nguồn", "Trích gốc", "Lý do chưa dùng", "SHA256 tệp",
+        "Trạng thái",
+    ])
+    for source in report.get("sources") or []:
+        for item in source.get("rejected_scalar_candidates") or []:
+            rejected_sheet.append([safe_cell(v) for v in (
+                source.get("filename", ""), item.get("field", ""),
+                item.get("value", ""), item.get("source", ""),
+                item.get("raw", ""), item.get("reason", ""),
+                item.get("sha256", ""), "CHUA_XAC_MINH",
+            )])
     trace = wb.create_sheet("TRUY_XUAT_TUNG_TRUONG")
     trace.append(["Tệp", "Vai trò", "Trường", "Giá trị", "Trang hoặc ô nguồn", "SHA256", "Trích đoạn"])
     for p in report["products"]:
