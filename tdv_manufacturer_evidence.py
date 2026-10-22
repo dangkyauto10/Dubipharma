@@ -53,13 +53,29 @@ def audit_manufacturer_evidence(report: dict) -> dict:
         evidence = doc.get("evidence") or {}
         conflicts = doc.get("conflicts") or {}
         warnings = []
+        # Filename hints do not prove document type. They can only downgrade a
+        # purported certificate to "needs manual type review".
+        role_caution = inspect_gmp_role(filename, [])
+        possible_supplement = (
+            kind == "GMP_CERT" and role_caution["status"] == "NEEDS_REVIEW"
+        )
+        if possible_supplement:
+            warnings.append(
+                "CẢNH BÁO PHÂN LOẠI: tên tệp nêu công văn giải trình/"
+                "xác nhận duy trì GMP; KHÔNG được coi là giấy chứng nhận GMP. "
+                "Cần đối chiếu tiêu đề và nội dung PDF gốc."
+            )
         if not doc.get("complete_read"):
             warnings.append("Tệp chưa đọc đầy đủ; phải kiểm tra bản gốc")
         if not re.fullmatch(r"[0-9a-f]{64}", digest):
             warnings.append("Thiếu mã SHA-256 hợp lệ")
         for field in REQUIRED_REVIEW_FIELDS[kind]:
-            if not fields.get(field) or field in conflicts:
-                warnings.append(f"Thiếu/mâu thuẫn trường {field}")
+            if field in conflicts:
+                warnings.append(f"Trường {field} có nhiều giá trị mâu thuẫn")
+            elif not fields.get(field):
+                warnings.append(
+                    f"Chưa trích được trường {field}; không kết luận tệp gốc thiếu"
+                )
             else:
                 cite = evidence.get(field) or {}
                 if (not cite.get("source") or not cite.get("raw")
@@ -67,7 +83,19 @@ def audit_manufacturer_evidence(report: dict) -> dict:
                         or str(cite.get("sha256") or "").lower() != digest):
                     warnings.append(f"Trường {field} chưa có trích dẫn nguồn nhất quán")
         if kind == "GMP_EXPLANATION":
-            warnings.append("Công văn giải trình KHÔNG thay thế chứng nhận GMP")
+            warnings.append(
+                "Văn bản giải trình/xác nhận duy trì KHÔNG tự thay thế "
+                "chứng nhận GMP đang có hiệu lực"
+            )
+        if kind == "GMP_CERT" and fields.get("FACTORY"):
+            factory = _norm(fields["FACTORY"])
+            if factory.endswith(("cong ty co phan duoc pham",
+                                 "cong ty trach nhiem huu han duoc pham",
+                                 "chi nhanh cong ty co phan duoc pham")):
+                warnings.append(
+                    "Tên cơ sở/nhà máy trích xuất có dấu hiệu bị cắt; "
+                    "chưa đủ định danh để đối chiếu"
+                )
         matched = [l for l in links
                    if l.get("source_evidence") == filename
                    and l.get("source_sha256") == digest
@@ -90,7 +118,10 @@ def audit_manufacturer_evidence(report: dict) -> dict:
         warnings.append("Chưa xác thực giấy gốc, hiệu lực, phạm vi và cơ quan cấp")
         rows.append({
             "Tệp chứng cứ": filename,
-            "Loại chứng cứ gợi ý": LABELS[kind],
+            "Loại chứng cứ gợi ý": (
+                "CẦN XÁC ĐỊNH LẠI LOẠI VĂN BẢN GMP"
+                if possible_supplement else LABELS[kind]
+            ),
             "Nhà máy trong giấy": str(fields.get("FACTORY") or ""),
             "SĐK trong giấy": str(fields.get("REGISTRATION_NO") or ""),
             "Số GMP trong giấy": str(fields.get("GMP_NUMBER") or ""),
