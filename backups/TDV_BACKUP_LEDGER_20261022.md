@@ -180,3 +180,12 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Phân hệ gợi ý OCR chỉ dùng `sodangky` như tín hiệu tìm đoạn văn cần so bản gốc, tuyệt đối không tự suy SĐK từ hàng tiêu đề hay từ tên tệp.
 - Thêm hồi quy tổng hợp cho bảng OCR cắt sai và nhãn+giá trị PDF hợp lệ; không tự tăng số sản phẩm hay kết luận GMP/SĐK. Version `2026-10-22G`.
 - Sao lưu trước sửa `TDV_BACKUP_046_BEFORE_OCR_HEADER_FIX_20261022`. `main` giữ nguyên. Trạng thái nghiệm thu nghiệp vụ: CHƯA XÁC MINH trên 14 tệp nguồn; CI phải chạy lại bản G trước khi yêu cầu người vận hành test.
+
+
+## NSX H — bảo vệ trích xuất OCR và gợi ý mã SĐK theo ngữ cảnh (22/10/2026)
+- BACKUP_050 trước sửa: `TDV_BACKUP_050_BEFORE_OCR_SDK_HINT_REPAIR_20261022`. Chỉ sửa Preview của một TDV QC7 ONLINE, `main` không đổi.
+- Phân tích trên Excel kết xuất bản G (không tải tệp hồ sơ và dữ liệu pháp lý lên GitHub) phát hiện tiêu đề bảng nhiều cột bị nhận thành gợi ý `PRODUCT_NAME` và mảnh tiêu đề không có con số bị nhận thành `STRENGTH`. Cả hai phải được chặn.
+- `tdv_nsx_proof_hints.extract_labeled_hints`: từ chối giá trị gợi ý tên thuốc/GMP_SCOPE có dấu ngăn bảng `|`; phát hiện mã `VD/VN` với dấu chấm/gạch qua ngữ cảnh đăng ký cùng dòng hoặc ngay dòng trước cùng trang, không đoán từ nhãn bảng hay trang khác. Nhiều cách viết của cùng mã chỉ là bản ghi nguồn khác nhau, không phải hai mã trái ngược.
+- `tdv_nsx_intake`: trường `STRENGTH` bắt buộc có chữ số khi parse scalar OCR, không lấy từ một từ/mảnh tiêu đề; các giá trị thật có chữ số vẫn bảo toàn trích dẫn.
+- Tất cả mã mới trong `proof_hints` là GỢI Ý, chưa xác minh, có trang/SHA256/trích nguyên văn, không tự ghi vào `fields`, không tạo liên kết chứng cứ, không kết luận pháp lý/đủ điều kiện dự thầu.
+- Mã quan sát trên ứng dụng: `2026-10-22H`. Kiểm thử hồi quy bổ sung cho tiêu đề nhiều cột, SĐK OCR cùng dòng/sát dòng và cùng trang, mã khác nhau, bản viết khác dấu, hàm lượng mảnh tiêu đề, hàm lượng hợp lệ. Chỉ đưa bản này lên Preview sau khi so sánh với backup và chờ CI kiểm thử lại; không tuyên bố nghiệm thu với tệp pháp lý gốc.
