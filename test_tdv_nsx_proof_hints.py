@@ -25,6 +25,21 @@ class TestLabeledProofHints(unittest.TestCase):
         self.assertEqual(x[0]["sha256"], SHA)
         self.assertFalse(x[0]["verified"])
 
+    def test_product_name_labeled_in_registration_pdf_is_only_hint(self):
+        x = extract_labeled_hints(
+            "REGISTRATION", doc(("Trang 4", "Tên thương mại: AGIMOL 150")), {}
+        )
+        self.assertEqual(len(x), 1)
+        self.assertEqual(x[0]["field"], "PRODUCT_NAME")
+        self.assertEqual(x[0]["value"], "AGIMOL 150")
+        self.assertFalse(x[0]["verified"])
+
+    def test_unlabeled_brand_is_never_guessed(self):
+        x = extract_labeled_hints(
+            "REGISTRATION", doc(("Trang 4", "AGIMOL 150")), {}
+        )
+        self.assertEqual(x, [])
+
     def test_adjacent_ocr_value_same_page(self):
         x = extract_labeled_hints(
             "REGISTRATION", doc(
