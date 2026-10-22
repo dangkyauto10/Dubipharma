@@ -158,5 +158,46 @@ class TestProofHintBoundary(unittest.TestCase):
         self.assertFalse(result["registration_confirmed"])
 
 
+    def test_ocr_composition_sentence_not_scalar_ingredient(self):
+        raw, source = self.source(
+            ("Trang 12 (OCR)", "Thành phần hoạt chất:"),
+            ("Trang 12 (OCR)", "M6i vien AGICARVIR chira 0,5 mg Entecavir "
+             "(dum dang Entecavir monohydrate)."),
+        )
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        self.assertNotIn("INGREDIENT", result["fields"])
+        rejected = result["rejected_scalar_candidates"]
+        self.assertEqual(len(rejected), 1)
+        self.assertEqual(rejected[0]["field"], "INGREDIENT")
+        self.assertIn("AGICARVIR", rejected[0]["raw"])
+        self.assertEqual(rejected[0]["source"], "Trang 12 (OCR) (hai dòng liền kề)")
+        self.assertFalse(rejected[0]["verified"])
+
+    def test_legitimate_labeled_ingredient_remains_source_cited(self):
+        raw, source = self.source(
+            ("Trang 1", "Thành phần hoạt chất: Entecavir"),
+        )
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        self.assertEqual(result["fields"]["INGREDIENT"], "Entecavir")
+        self.assertEqual(result["rejected_scalar_candidates"], [])
+        self.assertFalse(result["verified"])
+
+    def test_sentence_guard_does_not_change_product_table(self):
+        raw, source = self.source(
+            ("Trang 1", "Tên thuốc: THUỐC MẪU"),
+            ("Trang 1", "Số đăng ký: VD-12345-22"),
+        )
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        self.assertEqual(result["fields"]["PRODUCT_NAME"], "THUỐC MẪU")
+        self.assertEqual(result["fields"]["REGISTRATION_NO"], "VD-12345-22")
+        self.assertFalse(result["registration_confirmed"])
+
+
 if __name__ == "__main__":
     unittest.main()
