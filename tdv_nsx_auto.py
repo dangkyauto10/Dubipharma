@@ -707,6 +707,26 @@ def export_auto_xlsx(report: dict) -> bytes:
                 hint.get("reading_method", ""), hint.get("sha256", ""),
                 hint.get("status", "GOI_Y_CAN_SO_BAN_GOC"),
             )])
+    diag_sheet = wb.create_sheet("CHAN_DOAN_DOC_SDK_GMP")
+    diag_sheet.append([
+        "Tệp nguồn", "Loại tài liệu gợi ý", "Trang", "Dòng chữ đọc được",
+        "Dòng OCR", "Trường chưa trích chắc chắn",
+        "Trường chưa tìm được gợi ý", "Số gợi ý có nguồn",
+        "Trạng thái", "SHA256 tệp", "Xác minh pháp lý",
+    ])
+    for source in report.get("sources") or []:
+        diagnosis = source.get("proof_diagnostic") or {}
+        if not diagnosis:
+            continue
+        diag_sheet.append([safe_cell(value) for value in (
+            source.get("filename", ""), KINDS.get(source.get("kind", ""), ""),
+            diagnosis.get("pages", 0), diagnosis.get("source_lines", 0),
+            diagnosis.get("ocr_lines", 0),
+            diagnosis.get("fields_without_extracted_value", ""),
+            diagnosis.get("fields_without_hint", ""),
+            diagnosis.get("hint_count", 0), diagnosis.get("status", ""),
+            source.get("sha256", ""), "CHUA_XAC_MINH",
+        )])
     trace = wb.create_sheet("TRUY_XUAT_TUNG_TRUONG")
     trace.append(["Tệp", "Vai trò", "Trường", "Giá trị", "Trang hoặc ô nguồn", "SHA256", "Trích đoạn"])
     for p in report["products"]:
