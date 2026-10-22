@@ -19,12 +19,41 @@ from see_pro_multiformat import ACCEPTED
 from tdv_nsx_auto import export_auto_xlsx
 from tdv_nsx_gmp_guarded_auto import analyze_auto
 from tdv_nsx_intake import KINDS
+import tdv_nsx_auto as _runtime_auto
+import tdv_nsx_intake as _runtime_intake
+import tdv_nsx_proof_hints as _runtime_hints
 
 MAX_FILES = 24
+NSX_EXPECTED_PIPELINE_VERSION = "2026-10-22J"
+
+
+def _runtime_revisions() -> dict:
+    """Versions of modules actually imported in this Streamlit process."""
+    return {
+        "intake": getattr(_runtime_intake, "NSX_INTAKE_RUNTIME_REV", None),
+        "hints": getattr(_runtime_hints, "NSX_HINTS_RUNTIME_REV", None),
+        "auto": getattr(_runtime_auto, "NSX_AUTO_RUNTIME_REV", None),
+    }
+
+
+def _runtime_is_consistent() -> bool:
+    return all(value == NSX_EXPECTED_PIPELINE_VERSION
+               for value in _runtime_revisions().values())
+
+
+def _report_from_current_pipeline(report: dict | None, fingerprint: str) -> bool:
+    return bool(
+        isinstance(report, dict)
+        and report.get("analysis_version") == NSX_EXPECTED_PIPELINE_VERSION
+        and report.get("analysis_fingerprint") == fingerprint
+    )
 
 
 def _signature(files: list[tuple[str, bytes]]) -> str:
     digest = hashlib.sha256()
+    digest.update(b"TDV-QC7-NSX-ANALYSIS\\0")
+    digest.update(NSX_EXPECTED_PIPELINE_VERSION.encode("utf-8"))
+    digest.update(b"\\0")
     for name, data in files:
         digest.update(name.encode("utf-8"))
         digest.update(len(data).to_bytes(8, "big"))
@@ -226,7 +255,7 @@ def render_manufacturer_evidence_review(report: dict, st_module=None) -> None:
 def render_nsx_workbench() -> None:
     st.markdown("### SEE PRO · Hồ sơ NSX & Báo giá — đọc tự động")
     st.caption(
-        "PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22I · "
+        "PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22J · "
         "Đối chiếu giá trị hai nguồn đặt trước danh sách mâu thuẫn. "
         "Nếu chưa thấy mã này, Streamlit Cloud chưa nạp đúng bản mã mới."
     )
@@ -251,6 +280,20 @@ def render_nsx_workbench() -> None:
         st.info("Xác nhận phạm vi bảo mật trước khi nạp một bộ hồ sơ.")
         return
 
+    revisions = _runtime_revisions()
+    if not _runtime_is_consistent():
+        st.error(
+            "Bộ đọc tài liệu đang nạp khác phiên bản với giao diện; "
+            "hệ thống tạm khóa xử lý để tránh xuất báo cáo cũ dưới mã phiên bản mới. "
+            "Không nạp lại tài liệu; cần đồng bộ tiến trình Streamlit Cloud."
+        )
+        st.caption(
+            "Phiên bản bộ đọc đã nạp: " +
+            ", ".join(f"{name}={rev or 'CHUA_NAP'}"
+                      for name, rev in revisions.items())
+        )
+        return
+
     uploads = st.file_uploader(
         "Nạp cả bộ hồ sơ NSX / GMP / SĐK / ủy quyền / báo giá",
         type=list(ACCEPTED), accept_multiple_files=True,
@@ -266,7 +309,15 @@ def render_nsx_workbench() -> None:
         return
 
     digest = _signature(files)
-    if st.session_state.get("tdv_nsx_auto_signature") != digest:
+    old_report = st.session_state.get("tdv_nsx_auto_report")
+    if (st.session_state.get("tdv_nsx_auto_signature") != digest
+            or (old_report and not _report_from_current_pipeline(old_report, digest))):
+        if old_report:
+            st.info(
+                "Báo cáo trong phiên làm việc là kết quả của bộ tệp hoặc phiên bản "
+                "phân tích cũ; đã bỏ khỏi phiên. Nhấn Đọc và kiểm toán để phân tích "
+                "bằng đúng phiên bản đang hiển thị."
+            )
         st.session_state.pop("tdv_nsx_auto_report", None)
         st.session_state.pop("tdv_nsx_auto_signature", None)
     st.caption(
@@ -279,6 +330,13 @@ def render_nsx_workbench() -> None:
         with st.spinner("Tự phân loại, trích xuất, liên kết và lập kiểm toán nguồn..."):
             try:
                 report = analyze_auto(files, enable_ocr=True)
+                if report.get("analysis_version") != NSX_EXPECTED_PIPELINE_VERSION:
+                    st.error(
+                        "Bộ đọc trả về báo cáo từ phiên bản không khớp; "
+                        "kết quả bị loại, không xuất Excel."
+                    )
+                    return
+                report["analysis_fingerprint"] = digest
             except Exception as exc:
                 st.error(
                     f"Không hoàn tất lượt đọc ({type(exc).__name__}). "
@@ -289,8 +347,13 @@ def render_nsx_workbench() -> None:
         st.session_state["tdv_nsx_auto_signature"] = digest
 
     report = st.session_state.get("tdv_nsx_auto_report")
-    if not report or st.session_state.get("tdv_nsx_auto_signature") != digest:
+    if (not _report_from_current_pipeline(report, digest)
+            or st.session_state.get("tdv_nsx_auto_signature") != digest):
         return
+    st.caption(
+        f"Phiên bản thực sự xử lý báo cáo: {report['analysis_version']} "
+        f"· Dấu vân tay dữ liệu: {digest[:12]}…"
+    )
 
     from see_pro_quality_gate import audit_nsx
     quality = audit_nsx(report)

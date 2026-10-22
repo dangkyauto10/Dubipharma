@@ -6,6 +6,8 @@ No external API calls, no Google Drive writes and no model inference.
 """
 from __future__ import annotations
 
+NSX_AUTO_RUNTIME_REV = "2026-10-22J"
+
 from collections import defaultdict
 from io import BytesIO
 import hashlib
@@ -553,6 +555,7 @@ def analyze_auto(files: list[tuple[str, bytes]], *, enable_ocr: bool = True) -> 
     source_candidates = discover_evidence_candidates(products, classified, detailed)
     report = {
         "mode": "NSX_AUTO_MULTI_DOCUMENT_READ_ONLY",
+        "analysis_version": NSX_AUTO_RUNTIME_REV,
         "tender_documents": tender_documents,
         "tender_index": tender_index,
         "files": classified, "sources": detailed,
@@ -588,6 +591,22 @@ def export_auto_xlsx(report: dict) -> bytes:
     wb = Workbook()
     overview = wb.active
     overview.title = "TU_DONG_NHAN_DIEN"
+    provenance = wb.create_sheet("PHIEN_BAN_XU_LY")
+    provenance.append(["Mục kiểm toán", "Giá trị thực tế", "Giải thích"])
+    recorded_version = str(report.get("analysis_version") or "CHUA_GHI_NHAN")
+    provenance.append(["Phiên bản tạo dữ liệu", recorded_version,
+                       "Lấy từ báo cáo khi chạy xử lý; không suy ra từ giao diện"])
+    provenance.append(["Phiên bản module xuất file", NSX_AUTO_RUNTIME_REV,
+                       "Dùng để phát hiện báo cáo cũ được xuất bằng mã mới"])
+    provenance.append(["Dấu vân tay lô dữ liệu / phiên bản",
+                       str(report.get("analysis_fingerprint") or "KHONG_CO"),
+                       "SHA-256 theo tệp và phiên bản từ ứng dụng"])
+    provenance.append(["Đối chiếu phiên bản xử lý",
+                       "TRUNG_KHOP" if recorded_version == NSX_AUTO_RUNTIME_REV
+                       else "CHUA_DU_CAN_CU_XAC_NHAN",
+                       "Không được coi báo cáo cũ là kết quả kiểm thử bản mới"])
+    provenance.append(["Thẩm định pháp lý", "CHUA_XAC_MINH",
+                       "Không tự xác minh GMP/SĐK hay điều kiện E-HSMT"])
     overview.append(["Tệp", "Loại nhận diện", "Độ chắc chắn", "SHA256", "Đọc đủ", "Cần duyệt"])
     for d in report["files"]:
         overview.append([safe_cell(x) for x in (

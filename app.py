@@ -1,5 +1,5 @@
 """TDV QC7 Online — module-based Preview; real records require source review and authorization."""
-# TDV QC7 Preview sync marker 2026-10-22G: no runtime behavior or permissions changed.
+# TDV QC7 Preview sync marker 2026-10-22J: recheck NSX runtime-module versions; no auth change.
 from __future__ import annotations
 import re
 import unicodedata
