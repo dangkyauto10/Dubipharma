@@ -214,6 +214,11 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
     # Supplementary, unverified candidates never alter fields/evidence/conflicts.
     # They are shown for document review but cannot become link identifiers.
     proof_hints = extract_labeled_hints(kind, source, fields)
+    if len(proof_hints) >= 18:
+        warnings.append(
+            "Đã tới giới hạn 18 gợi ý SĐK/GMP có nhãn; "
+            "danh sách không chứng minh đã tìm hết thông tin trong tệp."
+        )
     return {
         "kind": kind, "kind_label": KINDS[kind], "filename": filename,
         "sha256": source["sha256"], "type": source["type"], "pages": source["pages"],
