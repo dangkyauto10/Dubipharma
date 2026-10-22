@@ -32,6 +32,9 @@
 | 024 | `TDV_BACKUP_024_BEFORE_NSX_SOURCE_DIFF_20261022` | `002c4b2bad05e93fc5f76e68a4e028dbf0592fd9` | Trạng thái Preview trước sửa sau kiểm thử 14 tệp NSX, 47 ứng viên từ 87 dòng, 29 ứng viên xung đột và 0 liên kết SĐK/GMP; không khẳng định dữ liệu đã xác minh |
 | 025 | `TDV_BACKUP_025_NSX_SOURCE_DIFF_20261022` | `c32ed6a10b4b57d82e8f1139e1ea04e1b67946a9` | Phiên bản bổ sung bảng hai giá trị gốc theo sheet và Excel audit riêng `MAU_THUAN_GIA_TRI_GOC`, không tự hợp nhất hay kết luận thuốc hợp lệ, 218/218 unit tests và OIDC fail-closed |
 
+| 026 | `TDV_BACKUP_026_BEFORE_NSX_VISIBILITY_20261022` | `457a9039c35667c1005cb3d4b63a66d1ffa92deb` | Trước sửa lỗi bảng hai nguồn không hiển thị trên bản Streamlit thực tế dù mã có và GitHub CI đã thành công; hình V chụp chứng minh bản chạy chỉ có bảng 29 ứng viên và không có giá trị nguồn hai bên |
+| 027 | `TDV_BACKUP_027_NSX_VISIBILITY_20261022` | `a3f46f23b30703b2b00069d32fbf4170ccee0906` | Sau sửa: bảng hai nguồn được mở mặc định và đứng trước danh sách 29 ứng viên; thêm dấu nhận diện bản chạy 2026-10-22B, lỗi thiếu cặp nguồn phải thông báo; test renderer trực tiếp; 220/220 unit tests và OIDC fail-closed |
+
 ## Ghi nhận và giới hạn
 
 1. Ảnh và Excel NSX người dùng cung cấp: 13 tài liệu đã đọc, 87 dòng trích xuất ban đầu, 0 liên kết sơ bộ. File Excel có các trường đăng ký pháp lý chủ yếu chưa gắn vào từng dòng sản phẩm. **Không** thể suy 0 liên kết thành kết luận không có chứng cứ hay không đủ điều kiện.
@@ -105,3 +108,10 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Sửa hẹp, fail-closed: `tdv_nsx_source_diff.compare_conflict_sources` trích *hai giá trị gốc* từ `source_rows` và `evidence`, hiển thị tên sheet/ô nguồn, tệp và SHA cho từng trường; nhiều sheet giữ đủ các cặp, không giấu chuỗi gốc. Lưu Excel `MAU_THUAN_GIA_TRI_GOC`; giữ `GOP_DONG_NHIEU_SHEET` và `TRUY_XUAT_TUNG_TRUONG`. Không thay số thuốc/gộp dòng, nguồn, GMP/SĐK, yêu cầu gói hay phán quyết.
 - Lượt kiểm thử tổng hợp 218/218 đạt, OIDC fail-closed đạt; **chưa thử trực tiếp 14 tệp nguồn user vừa nạp**, phải kiểm tra bằng bản chạy thật sau đồng bộ Preview.
 - Rủi ro còn phải nghiên cứu sau khi có giá trị hai bên: phương thức gộp dòng dựa tên+NSX/nhà máy hiện có thể tạo 29 nhóm mâu thuẫn. Cần rà lại nhóm này để phân biệt dòng sản phẩm thật khác hàm lượng/dạng bào chế với lỗi biểu; không được tự sửa hoặc xóa dữ liệu nguồn.
+
+
+## Lỗi vận hành quan sát trong ứng dụng NSX (22/10/2026)
+- Ảnh người dùng chỉ hiển thị expander “Các dòng có trường mâu thuẫn — cần đối chiếu” gồm 29 mã; không có khối “Giá trị gốc cần đối chiếu — nguồn 1 so với nguồn 2” bên dưới hay bên ngoài. Không được tiếp tục hướng dẫn tìm kiếm một phần không hiển thị.
+- GitHub Preview branch đã chứa renderer, nhưng điều đó và CI không khẳng định Streamlit Community Cloud đang chạy đúng commit; không có quyền truy cập Cloud log/deployment để xác minh. Cần phân biệt code availability vs deployed runtime.
+- Bản sửa tăng khả năng quan sát: render expander “ĐỐI CHIẾU 2 NGUỒN GỐC” expanded=True trước bảng tổng hợp; hai giá trị và ô nguồn xuất hiện ở bảng đầu tiên; bảng SHA/file gốc riêng. Caption `NSX · PHIÊN BẢN ĐỐI CHIẾU NGUỒN 2026-10-22B` cho biết live app đã tải mã mới; thiếu nguồn sẽ báo rõ.
+- Bổ sung test giả lập trực tiếp `render_nsx_conflict_review` với 2 nguồn có 50 mg và 100 mg, kiểm soát vị trí/độ ưu tiên/mã build, tính fail-closed nếu không tạo được bảng; 220/220 tổng thể pass. Chưa có xác nhận trực quan từ Cloud; admin có thể phải reboot đúng app nếu mã không đồng bộ. Bảo toàn dữ liệu file gốc, không chỉnh SĐK/GMP, không làm thay đổi số ứng viên.
