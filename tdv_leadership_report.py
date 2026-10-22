@@ -51,9 +51,15 @@ def _comparable(value: str) -> str:
 def _field_evidence(lot: dict, field: str) -> dict:
     e = (lot.get("EVIDENCE") or {}).get(field)
     if isinstance(e, dict) and e.get("source"):
-        return {"file": e.get("source", lot.get("FILE_NGUON", "")),
-                "location": f'{e.get("sheet", "")}, dòng {e.get("row", "")}, cột {e.get("column", "")}',
-                "raw": e.get("raw", ""), "sha256": lot.get("SHA256", "")}
+        place = (
+            f'Trang {e["page"]}, dòng bảng {e.get("row", "")}'
+            if e.get("page") else
+            f'{e.get("sheet", "")}, dòng {e.get("row", "")}, cột {e.get("column", "")}'
+        )
+        return {"file": e.get("file") or e.get("source") or lot.get("FILE_NGUON", ""),
+                "location": place,
+                "raw": e.get("raw", ""),
+                "sha256": e.get("sha256") or lot.get("SHA256", "")}
     g = lot.get("EVIDENCE_KY_THUAT") or {}
     e = g.get(field) if isinstance(g, dict) else None
     if isinstance(e, dict):
