@@ -189,3 +189,11 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - `tdv_nsx_intake`: trường `STRENGTH` bắt buộc có chữ số khi parse scalar OCR, không lấy từ một từ/mảnh tiêu đề; các giá trị thật có chữ số vẫn bảo toàn trích dẫn.
 - Tất cả mã mới trong `proof_hints` là GỢI Ý, chưa xác minh, có trang/SHA256/trích nguyên văn, không tự ghi vào `fields`, không tạo liên kết chứng cứ, không kết luận pháp lý/đủ điều kiện dự thầu.
 - Mã quan sát trên ứng dụng: `2026-10-22H`. Kiểm thử hồi quy bổ sung cho tiêu đề nhiều cột, SĐK OCR cùng dòng/sát dòng và cùng trang, mã khác nhau, bản viết khác dấu, hàm lượng mảnh tiêu đề, hàm lượng hợp lệ. Chỉ đưa bản này lên Preview sau khi so sánh với backup và chờ CI kiểm thử lại; không tuyên bố nghiệm thu với tệp pháp lý gốc.
+
+
+## NSX I — Tách câu thành phần OCR khỏi trường hoạt chất (22/10/2026)
+- Nguồn chứng cứ: Excel bản H tải từ Streamlit, 5 PDF có cùng SHA với các lượt G. Kết quả H: 4 gợi ý SĐK cho **2 mã** (`VD-25114-16`, `VD-22790-15`), không còn gợi ý tên thuốc giả/từ "chế", 0 liên kết chứng cứ, cả hai văn bản bổ sung GMP vẫn bị chặn tự coi là chứng nhận.
+- Vấn đề mới: `TRUY_XUAT_TUNG_TRUONG` chứa `INGREDIENT` của AGICARVIR là toàn câu OCR `M6i vien AGICARVIR chira 0,5 mg Entecavir...` — không phải tên hoạt chất đơn lẻ. Bản I chặn riêng dạng câu mô tả thành phần này khỏi trường `INGREDIENT` trong PDF, **không suy thành Entecavir**; giữ nguyên trích đoạn/vị trí nguồn ở `rejected_scalar_candidates` và Excel `CAU_THANH_PHAN_CAN_SO`.
+- Chẩn đoán `CHAN_DOAN_DOC_SDK_GMP` đổi từ thông báo "không có gợi ý" sang "đã có một phần gợi ý" khi mã SĐK đã tìm được nhưng tên thuốc có nhãn chưa đủ. Không sửa thông tin công ty hoặc GMP đã trích có mâu thuẫn.
+- Cảnh báo pháp lý: Công văn giải trình GMP trong chính đoạn OCR có nhắc số chứng nhận và ngày hạn vào 01/2026. Đây là **nội dung do công văn nêu**, không thay kết quả xác minh bản gốc hoặc cơ quan cấp. Không tự quyết giấy hiện còn hiệu lực hoặc thuốc đáp ứng thầu.
+- BACKUP_052 trước sửa: `TDV_BACKUP_052_BEFORE_PDF_INGREDIENT_SCALAR_REPAIR_20261022`. Một ứng dụng TDV QC7 ONLINE, chỉ cập nhật Preview sau soát mã/CI, `main` và OAuth/Secrets không thay đổi. Phiên bản dự kiến `2026-10-22I`.
