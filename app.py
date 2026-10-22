@@ -565,8 +565,9 @@ def exact_simple_dose(text: str):
         return None
 
 def tdv_open_section(destination: str) -> None:
-    """Streamlit callback runs before widgets are recreated on navigation."""
-    st.session_state["tdv_sidebar_nav"] = destination
+    """Navigation never elevates roles or opens a page outside the allowlist."""
+    if destination in ALLOWED_PAGES:
+        st.session_state["tdv_sidebar_nav"] = destination
 
 with st.container(key="tdv_main_scroll"):
     st.markdown('<div class="tdv-notice">🛡️ <b>TDV QC7 ONLINE — PREVIEW NGHIỆM THU THEO PHÂN HỆ.</b>'
