@@ -1,0 +1,11 @@
+# Do not publish TDV authentication material or bidder/manufacturer documents.
+.streamlit/secrets.toml
+.streamlit/secrets.*.toml
+.env
+.env.*
+*.pem
+*.key
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
