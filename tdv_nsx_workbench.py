@@ -196,6 +196,31 @@ def render_manufacturer_evidence_review(report: dict, st_module=None) -> None:
         "Công văn giải trình không thay thế chứng nhận GMP. "
         "SĐK, giá và ủy quyền phải được đối chiếu bản gốc và cơ quan có thẩm quyền."
     )
+    hints = [
+        {"Tệp nguồn": source.get("filename", ""),
+         "Loại tài liệu": KINDS.get(source.get("kind", ""), source.get("kind", "")),
+         "Trường có nhãn": item.get("field", ""),
+         "Giá trị gợi ý": item.get("value", ""),
+         "Trang/nguồn": item.get("source", ""),
+         "Trích nguyên văn": item.get("raw", ""),
+         "Cách đọc": item.get("reading_method", ""),
+         "Trạng thái": item.get("status", ""),
+         "SHA256 tệp": item.get("sha256", "")}
+        for source in report.get("sources") or []
+        for item in source.get("proof_hints") or []
+    ]
+    if hints:
+        with st_ui.expander(
+            f"Giá trị SĐK/GMP có nhãn nhưng chưa được trích chắc chắn ({len(hints)})",
+            expanded=True,
+        ):
+            st_ui.caption(
+                "Chỉ là GIÁ TRỊ GỢI Ý có vị trí nguồn, chưa kiểm chứng PDF/OCR. "
+                "Không ghi vào SĐK/GMP của sản phẩm và không dùng tạo liên kết."
+            )
+            st_ui.dataframe(
+                pd.DataFrame(hints), hide_index=True, use_container_width=True
+            )
 
 
 def render_nsx_workbench() -> None:
