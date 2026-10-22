@@ -163,6 +163,11 @@ def render_nsx_conflict_review(conflicts: list[dict], st_module=None) -> None:
 def render_nsx_workbench() -> None:
     st.markdown("### SEE PRO · Hồ sơ NSX & Báo giá — đọc tự động")
     st.caption(
+        "PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22B · "
+        "Đối chiếu giá trị hai nguồn đặt trước danh sách mâu thuẫn. "
+        "Nếu chưa thấy mã này, Streamlit Cloud chưa nạp đúng bản mã mới."
+    )
+    st.caption(
         "Nạp cả bộ hồ sơ một lần. SEE PRO tự nhận diện tài liệu, phát hiện "
         "các thuốc, đối chiếu định danh và đưa các vấn đề chưa rõ vào danh sách cần xem lại."
     )
