@@ -6,6 +6,8 @@ No uploads to third-party AI, Google Sheets, Drive, GitHub or disk.
 """
 from __future__ import annotations
 
+NSX_INTAKE_RUNTIME_REV = "2026-10-22J"
+
 from collections import defaultdict
 from io import BytesIO
 import hashlib
