@@ -478,7 +478,12 @@ PAGES = [
     "☁️ Tình trạng Online",
 ]
 
-ALLOWED_PAGES = [p for p in PAGES if may_open_section(TDV_ROLE, p)]
+ALLOWED_PAGES = [p for p in PAGES
+                 if p != PAGES[4] and may_open_section(TDV_ROLE, p)]
+# Previously selected standalone manufacturer-evidence page now lives inside NSX.
+if (st.session_state.get("tdv_sidebar_nav") == PAGES[4]
+        and PAGES[2] in ALLOWED_PAGES):
+    st.session_state["tdv_sidebar_nav"] = PAGES[2]
 if "tdv_section" not in st.session_state or st.session_state.tdv_section not in ALLOWED_PAGES:
     st.session_state.tdv_section = ALLOWED_PAGES[0]
 if st.session_state.get("tdv_sidebar_nav") not in ALLOWED_PAGES:
@@ -851,20 +856,6 @@ with st.container(key="tdv_main_scroll"):
     elif page == PAGES[5]:
         from tdv_comparison_ui import render_comparison_view
         render_comparison_view()
-    elif page == PAGES[4]:
-        st.markdown('<div class="tdv-page-title">🛡️ Chứng cứ nhà sản xuất · Kiểm tra nhà máy và loại văn bản</div>',
-                    unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        with c1:
-            factory = st.selectbox("Nhà máy ghi trong văn bản (mẫu)", ["Mỹ Thới", "Bình Hòa", "Chưa rõ"])
-            kind = st.selectbox("Loại văn bản (mẫu)", ["Giấy chứng nhận GMP", "Công văn giải trình", "Quyết định đánh giá"])
-        with c2:
-            target = st.selectbox("Nhà máy sản xuất sản phẩm (mẫu)", ["Bình Hòa", "Mỹ Thới", "Chưa rõ"])
-        x = legal_evidence(kind, "" if factory == "Chưa rõ" else factory,
-                           "" if target == "Chưa rõ" else target)
-        st.write("**Kết quả quy tắc:**", x["status"])
-        st.info(x["note"])
-        st.caption("Không có giấy GMP thật được lưu hoặc xác nhận trên trang này.")
     elif page == PAGES[6]:
         from tdv_comparison_ui import render_leadership_view
         render_leadership_view()
