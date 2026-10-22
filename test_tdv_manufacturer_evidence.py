@@ -38,7 +38,7 @@ class EvidenceTests(unittest.TestCase):
 
     def test_explanation_does_not_replace_gmp(self):
         result = audit_manufacturer_evidence({"sources": [doc("GMP_EXPLANATION", {"FACTORY": "Mỹ Thới"})]})
-        self.assertIn("KHÔNG thay thế", result["rows"][0]["Điểm cần kiểm tra"])
+        self.assertIn("KHÔNG tự thay thế", result["rows"][0]["Điểm cần kiểm tra"])
 
     def test_ambiguous_registration_never_approves(self):
         result = audit_manufacturer_evidence({"sources": [doc("REGISTRATION", {"PRODUCT_NAME": "Thuốc A"})]})
