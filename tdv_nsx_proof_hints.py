@@ -212,7 +212,10 @@ def diagnose_proof_source(kind: str, source: dict, fields: dict,
     missing_hints = [field for field in absent if field not in hinted]
     ocr_lines = sum("OCR" in str(row.get("source") or "").upper() for row in lines)
     message = (
-        "CHUA_CO_GOI_Y_THEO_NHAN; CAN_SO_PDF_GOC" if missing_hints
+        "DA_CO_GOI_Y_MOT_PHAN; CON_TRUONG_CAN_SO_PDF_GOC"
+        if hints and missing_hints
+        else "CHUA_CO_GOI_Y_THEO_NHAN; CAN_SO_PDF_GOC"
+        if missing_hints
         else "CO_GOI_Y_CHUA_XAC_MINH" if hints
         else "CAC_TRUONG_THEO_NHAN_DA_TRICH; CHUA_XAC_MINH"
     )
