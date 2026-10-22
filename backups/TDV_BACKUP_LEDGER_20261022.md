@@ -35,6 +35,9 @@
 | 026 | `TDV_BACKUP_026_BEFORE_NSX_VISIBILITY_20261022` | `457a9039c35667c1005cb3d4b63a66d1ffa92deb` | Trước sửa lỗi bảng hai nguồn không hiển thị trên bản Streamlit thực tế dù mã có và GitHub CI đã thành công; hình V chụp chứng minh bản chạy chỉ có bảng 29 ứng viên và không có giá trị nguồn hai bên |
 | 027 | `TDV_BACKUP_027_NSX_VISIBILITY_20261022` | `a3f46f23b30703b2b00069d32fbf4170ccee0906` | Sau sửa: bảng hai nguồn được mở mặc định và đứng trước danh sách 29 ứng viên; thêm dấu nhận diện bản chạy 2026-10-22B, lỗi thiếu cặp nguồn phải thông báo; test renderer trực tiếp; 220/220 unit tests và OIDC fail-closed |
 
+| 028 | `TDV_BACKUP_028_BEFORE_VISIBLE_BUILD_20261022` | `9e55c47c25b1f72aab73bee54ac18b53d40f7581` | Sao lưu trước bổ sung mã bản nghiệp vụ ở ĐẦU trang NSX, giúp kiểm tra liệu Streamlit Cloud đã đồng bộ bản code mà không cần nạp lại 14 file |
+| 029 | `TDV_BACKUP_029_NSX_VISIBLE_BUILD_20261022` | `c28d1b695c533d7375e6f2ca7c27deb58b92d31d` | Trang NSX hiện `PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22B` trước uploader, kiểm tra trực tiếp renderer ngay cả khi chưa nạp hồ sơ; 221/221 unit + bảo vệ OAuth fail-closed |
+
 ## Ghi nhận và giới hạn
 
 1. Ảnh và Excel NSX người dùng cung cấp: 13 tài liệu đã đọc, 87 dòng trích xuất ban đầu, 0 liên kết sơ bộ. File Excel có các trường đăng ký pháp lý chủ yếu chưa gắn vào từng dòng sản phẩm. **Không** thể suy 0 liên kết thành kết luận không có chứng cứ hay không đủ điều kiện.
@@ -115,3 +118,8 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - GitHub Preview branch đã chứa renderer, nhưng điều đó và CI không khẳng định Streamlit Community Cloud đang chạy đúng commit; không có quyền truy cập Cloud log/deployment để xác minh. Cần phân biệt code availability vs deployed runtime.
 - Bản sửa tăng khả năng quan sát: render expander “ĐỐI CHIẾU 2 NGUỒN GỐC” expanded=True trước bảng tổng hợp; hai giá trị và ô nguồn xuất hiện ở bảng đầu tiên; bảng SHA/file gốc riêng. Caption `NSX · PHIÊN BẢN ĐỐI CHIẾU NGUỒN 2026-10-22B` cho biết live app đã tải mã mới; thiếu nguồn sẽ báo rõ.
 - Bổ sung test giả lập trực tiếp `render_nsx_conflict_review` với 2 nguồn có 50 mg và 100 mg, kiểm soát vị trí/độ ưu tiên/mã build, tính fail-closed nếu không tạo được bảng; 220/220 tổng thể pass. Chưa có xác nhận trực quan từ Cloud; admin có thể phải reboot đúng app nếu mã không đồng bộ. Bảo toàn dữ liệu file gốc, không chỉnh SĐK/GMP, không làm thay đổi số ứng viên.
+
+
+### Giới hạn phiên bản thực tế
+- GitHub Actions trên nhánh Preview là KIỂM THỬ MÃ NGUỒN, không phải kiểm chứng runtime Streamlit Cloud. Một khi người dùng vẫn nhìn thấy giao diện cũ, cần xem app deployment, GitHub branch liên kết, Cloud log hoặc thực hiện Reboot app sau khi lưu dữ liệu phiên.
+- Nhằm tránh bắt người dùng nạp lại 14 tài liệu để tìm bản cập nhật, mã phiên bản NSX được hiển thị ngay khi mở trang, kể cả không có uploads. Phiên bản đúng phải có `2026-10-22B` gần tiêu đề SEE PRO.
