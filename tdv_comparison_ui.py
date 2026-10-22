@@ -9,6 +9,7 @@ import pandas as pd
 import streamlit as st
 
 from see_pro_quality_gate import audit_comparison
+from tdv_readable_tables import render_readable_table
 from tdv_leadership_report import (
     compare_sources, export_leadership_xlsx, export_leadership_docx,
     GREEN, YELLOW, RED,
@@ -213,7 +214,7 @@ def render_leadership_view():
         str(issue["muc_uu_tien"]) == chosen_priority
     ]
     if issues:
-        st.dataframe(pd.DataFrame([{
+        leadership_priorities_frame = pd.DataFrame([{
             "Ưu tiên": issue["muc_uu_tien"],
             "Nhóm": issue["van_de"], "Mã / nhà máy": issue["ma"],
             "Chi tiết": issue["chi_tiet"],
@@ -221,7 +222,11 @@ def render_leadership_view():
             "Trang/dòng": issue["vi_tri_nguon"],
             "Cần làm": issue["viec_can_lam"],
             "Tình trạng": "CHƯA XÁC MINH",
-        } for issue in issues[:100]]), hide_index=True, use_container_width=True)
+        } for issue in issues[:100]])
+        render_readable_table(st, leadership_priorities_frame,
+                              key="tdv_leadership_priorities_readable",
+                              label="Báo cáo lãnh đạo: việc cần ưu tiên",
+                              page_size=25, min_width=1200)
     else:
         st.info("Chưa phát hiện vấn đề thuộc mức đã lọc trong các dòng đang hiển thị.")
     if priority["truncated"]:
@@ -235,13 +240,17 @@ def render_leadership_view():
              if r["SO_TIEU_CHI_KHONG_KHOP"] or r["SO_TIEU_CHI_CHUA_DAT"]]
     st.caption(f'{len(at_risk)} / {len(report["comparison"])} mã còn ít nhất một tiêu chí chưa thể xác nhận.')
     if at_risk:
-        st.dataframe(pd.DataFrame([{
+        leadership_risks_frame = pd.DataFrame([{
             "Mã":r["MA_THUOC_EHSMT"],"Hoạt chất":r["HOAT_CHAT_EHSMT"],
             "Không khớp":r["SO_TIEU_CHI_KHONG_KHOP"],
             "Chưa đủ":r["SO_TIEU_CHI_CHUA_DAT"],
             "Vị trí chứng cứ":r["VI_TRI_EHSMT"],
             "Lý do":r["TRANG_THAI_DOI_CHIEU"],
-        } for r in at_risk[:1000]]),hide_index=True,use_container_width=True)
+        } for r in at_risk[:1000]])
+        render_readable_table(st, leadership_risks_frame,
+                              key="tdv_leadership_risks_readable",
+                              label="Báo cáo lãnh đạo: mã cần kiểm tra",
+                              page_size=25, min_width=1050)
     st.download_button("Tải Excel đối chiếu và chứng cứ (sơ bộ)",
                        export_leadership_xlsx(report),
                        file_name="TDV_BAO_CAO_DOI_CHIEU_SO_BO.xlsx",
