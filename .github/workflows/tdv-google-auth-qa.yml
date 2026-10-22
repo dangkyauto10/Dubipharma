@@ -27,8 +27,8 @@ jobs:
           from streamlit.testing.v1 import AppTest
           test = AppTest.from_file("app.py", default_timeout=30).run()
           assert not test.exception, str(list(test.exception))
-          assert any("ĐÃ KHÓA" in x.message for x in test.error), [
-              x.message for x in test.error
+          assert any("ĐÃ KHÓA" in x.value for x in test.error), [
+              x.value for x in test.error
           ]
           assert not test.sidebar.radio, "Unauthenticated visitors must not see a business menu"
           print("TDV_GOOGLE_OIDC_FAIL_CLOSED_OK")
