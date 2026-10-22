@@ -142,3 +142,13 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Báo cáo mục 3B vẫn giữ các tệp `OTHER` do kiểm soát GMP chuyển vào, đánh dấu **CẦN XÁC ĐỊNH LẠI LOẠI VĂN BẢN GMP**. Excel `KIEM_TRA_CHUNG_CU_NSX` dùng cùng audit; không sửa số thuốc, trường nguồn hoặc tự phê duyệt.
 - Phiên bản quan sát trực tiếp sau triển khai dự kiến là `2026-10-22C`. Đã có 8/8 bài thử cục bộ trên báo cáo giả lập, bao gồm tình huống SHA tệp không khớp và giữ 47 ứng viên, 29 nhóm mâu thuẫn, 51 cặp so nguồn. `test_tdv_nsx_gmp_guarded_auto.py` được đưa vào repo, **chưa có xác nhận GitHub CI**.
 - Giới hạn chưa nghiệm thu: chưa kiểm thử với đủ 14 tệp gốc, chưa xác nhận Streamlit Cloud nạp mã C, văn bản scan không đọc được chữ phải kiểm tra thủ công; chưa giải quyết triệt để trích trường SĐK/GMP qua OCR và đối chiếu E-HSMT.
+
+
+## NSX bản D — tìm giá trị SĐK/GMP có nhãn chưa được trích chắc chắn (22/10/2026)
+- Sao lưu **trước sửa**: `TDV_BACKUP_037_BEFORE_SDK_GMP_EXTRACTION_20261022`; thao tác chỉ trên nhánh Preview hiện tại, `main` và OAuth/Secrets không thay đổi. Chỉ một ứng dụng TDV QC7 ONLINE.
+- Bộ quét mới `tdv_nsx_proof_hints.py` chỉ tìm theo nhãn rõ trong chữ PDF/OCR đã được đọc, cùng trang hoặc ngay cùng dòng, không đoán từ tên tệp hay suy thuốc tương đương. Với giấy SĐK kiểm tra tên thuốc có nhãn và SĐK; với GMP kiểm tra số GMP, phạm vi, ngày hết hạn **ghi trong văn bản**.
+- Gợi ý được lưu `source.proof_hints` **tách khỏi** `fields`/`evidence`. Không thêm sản phẩm, không thay SĐK/GMP chính, không tự tạo liên kết, không phê duyệt. Nhiều giá trị cùng trường giữ cả hai và cảnh báo. Giới hạn 18 gợi ý/tệp được thông báo, không tuyên bố đầy đủ.
+- Mục 3B trong hồ sơ NSX có bảng nguồn gốc cho gợi ý trích nhãn. Excel NSX bổ sung sheet `GOI_Y_NHAN_SDK_GMP` (tệp, loại tài liệu, trường, giá trị, vị trí, trích gốc, phương pháp, SHA256, trạng thái).
+- Caption phiên bản `2026-10-22D` xác định Streamlit Cloud đã nhận cập nhật khi quan sát được trên app. Cảnh báo bảo mật sửa từ `chưa đăng nhập` thành `đã có Google OIDC cơ bản nhưng chưa có phân quyền dự án và kho hồ sơ đạt chuẩn doanh nghiệp`.
+- **14/14 bài kiểm thử đơn vị cục bộ đạt** với mã helper và file tests có Git blob SHA khớp chính xác GitHub; 3 bài kiểm thử luồng `test_tdv_nsx_proof_hints_flow.py` đã thêm nhưng **chưa chạy tích hợp**. GitHub CI và triển khai trực tiếp trên Streamlit chưa được xác nhận; chưa có dữ liệu gốc 14 tệp để nghiệm thu.
+- Các mốc 14 tệp, 87 dòng nguồn, 47 ứng viên, 29 trường hợp mâu thuẫn, 51 cặp gốc, 0 liên kết là **kết quả test trước**, không phải kết quả sau sửa D. Giữ trạng thái pháp lý chưa xác minh và cảnh báo nghiệp vụ.
