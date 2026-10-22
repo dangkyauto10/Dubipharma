@@ -28,6 +28,19 @@ st.set_page_config(
     page_icon="💊", layout="wide", initial_sidebar_state="expanded"
 )
 
+# SECURITY BOUNDARY: No navigation, upload, cache or business code is rendered
+# before Google OIDC sign-in + a live verified-email allowlist succeeds.
+from tdv_auth import require_google_access, may_open_section
+TDV_ROLE, TDV_EMAIL = require_google_access(st)
+TDV_SUBJECT = str(st.user.get("sub") or "")
+TDV_IDENTITY = (TDV_SUBJECT, TDV_ROLE)
+if st.session_state.get("tdv_authenticated_identity") != TDV_IDENTITY:
+    # Avoid recycling prior user's live tender/NSX data between sign-ins.
+    for key in list(st.session_state):
+        if str(key).startswith("tdv_"):
+            del st.session_state[key]
+    st.session_state["tdv_authenticated_identity"] = TDV_IDENTITY
+
 ROOT = Path(__file__).resolve().parent
 
 def asset_base64(filename: str) -> str:
@@ -465,8 +478,11 @@ PAGES = [
     "☁️ Tình trạng Online",
 ]
 
-if "tdv_section" not in st.session_state:
-    st.session_state.tdv_section = PAGES[0]
+ALLOWED_PAGES = [p for p in PAGES if may_open_section(TDV_ROLE, p)]
+if "tdv_section" not in st.session_state or st.session_state.tdv_section not in ALLOWED_PAGES:
+    st.session_state.tdv_section = ALLOWED_PAGES[0]
+if st.session_state.get("tdv_sidebar_nav") not in ALLOWED_PAGES:
+    st.session_state["tdv_sidebar_nav"] = ALLOWED_PAGES[0]
 
 logo = (f'<img alt="Logo DUBIPHARMA" style="width:110px;max-height:92px;object-fit:contain" '
         f'src="data:image/{LOGO_MIME};base64,{LOGO_DISPLAY_DATA}">' if LOGO_DISPLAY_DATA else
@@ -496,19 +512,25 @@ with st.sidebar:
                     unsafe_allow_html=True)
         page = st.radio(
             "Chọn chức năng",
-            PAGES, key="tdv_sidebar_nav", label_visibility="collapsed"
+            ALLOWED_PAGES, key="tdv_sidebar_nav", label_visibility="collapsed"
         )
-        st.markdown('<div class="tdv-left-note">🔒 PREVIEW CHƯA TÍCH HỢP ĐĂNG NHẬP.'
-                    ' Không nhập hồ sơ mật hoặc báo giá nội bộ vào môi trường chưa có phân quyền.</div>',
-                    unsafe_allow_html=True)
+        st.markdown(
+            '<div class="tdv-left-note">🔐 Google đã xác thực · chỉ tài khoản '
+            'trong danh sách được V duyệt. Preview vẫn chưa có kho hồ sơ '
+            'và phân quyền pháp lý cấp dự án.</div>',
+            unsafe_allow_html=True)
+        st.caption(f"Người dùng: {TDV_EMAIL} · Vai trò: {TDV_ROLE}")
+        if st.button("Đăng xuất", key="tdv_google_logout"):
+            st.session_state.clear()
+            st.logout()
         st.divider()
-        st.caption("Ứng dụng: Streamlit Preview")
+        st.caption("Ứng dụng: Streamlit Preview · Google OIDC")
         st.caption("Dữ liệu nghiệp vụ: CHƯA KẾT NỐI")
-        st.caption("Tài khoản nội bộ: CHƯA TÍCH HỢP")
+        st.caption("Tài khoản: ĐÃ XÁC THỰC VÀ KIỂM TRA QUYỀN")
         st.caption("Báo cáo: dữ liệu trích xuất chưa thay thế thẩm định")
 
 with st.container(key="tdv_main_fixed"):
-    st.markdown('<div class="tdv-globalbar"><div class="tdv-globalbar-search">🔎 Tìm kiếm dự án, gói thầu, thuốc… (đang tích hợp)</div><div class="tdv-globalbar-status">🔒 TDV QC7 · PREVIEW CHƯA PHÂN QUYỀN</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="tdv-globalbar"><div class="tdv-globalbar-search">🔎 Tìm kiếm dự án, gói thầu, thuốc… (đang tích hợp)</div><div class="tdv-globalbar-status">🔐 TDV QC7 · GOOGLE ĐÃ XÁC THỰC</div></div>', unsafe_allow_html=True)
     st.markdown(
         '<section class="tdv-main-hero">' + art + art_small +
         '<div class="tdv-main-logo">' + logo + '</div>'
@@ -549,8 +571,9 @@ def tdv_open_section(destination: str) -> None:
 with st.container(key="tdv_main_scroll"):
     st.markdown('<div class="tdv-notice">🛡️ <b>TDV QC7 ONLINE — PREVIEW NGHIỆM THU THEO PHÂN HỆ.</b>'
                 ' SEE PRO đã qua các bài kiểm tra đã xác nhận; phần NSX đang thử nghiệm nghiệp vụ.'
-                ' Chưa có đăng nhập doanh nghiệp hoặc kho Drive được phê duyệt.'
-                ' Chỉ nạp tài liệu công khai hoặc đã được phép và ẩn dữ liệu nhạy cảm;'
+                ' Đã có đăng nhập Google và phân quyền chức năng mức cơ bản, nhưng chưa có'
+                ' phân quyền dự án/Drive và lưu hồ sơ mật đạt chuẩn doanh nghiệp.'
+                ' Chỉ nạp tài liệu được phép và hạn chế dữ liệu nhạy cảm;'
                 ' chức năng tự ghi Drive/Sheets vẫn khóa.</div>',
                 unsafe_allow_html=True)
     st.markdown(f'<div class="tdv-crumb">🏠 TDV QC7 &nbsp;›&nbsp; {page}</div>',
@@ -850,7 +873,7 @@ with st.container(key="tdv_main_scroll"):
             {"Hạng mục":"Giao diện / menu","Trạng thái":"Preview có giao diện"},
             {"Hạng mục":"Quyền xem Streamlit","Trạng thái":"Thiết lập riêng tư; cần duy trì kiểm tra"},
             {"Hạng mục":"GitHub","Trạng thái":"Nhánh thử nghiệm, không chứa dữ liệu mật"},
-            {"Hạng mục":"Đăng nhập và phân quyền nghiệp vụ","Trạng thái":"CHƯA TÍCH HỢP"},
+            {"Hạng mục":"Đăng nhập và phân quyền nghiệp vụ","Trạng thái":"Google OIDC + danh sách cho phép; phân quyền dự án/chứng cứ CHƯA TÍCH HỢP"},
             {"Hạng mục":"Google Sheets","Trạng thái":"CHƯA KẾT NỐI / KHÔNG GHI"},
             {"Hạng mục":"Dữ liệu và kho chứng cứ","Trạng thái":"CHƯA KẾT NỐI"},
             {"Hạng mục":"Bộ đọc đa tầng IDP 3.0","Trạng thái":"ĐANG THỬ TRÊN PDF NHÂN TẠO; hồ sơ thật chưa kết nối"},
