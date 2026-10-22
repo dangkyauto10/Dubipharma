@@ -727,6 +727,23 @@ def export_auto_xlsx(report: dict) -> bytes:
             diagnosis.get("hint_count", 0), diagnosis.get("status", ""),
             source.get("sha256", ""), "CHUA_XAC_MINH",
         )])
+    context_sheet = wb.create_sheet("DOAN_OCR_CAN_SO")
+    context_sheet.append([
+        "Tệp PDF", "Loại tài liệu", "Vị trí trang", "Từ khóa phát hiện",
+        "Dòng văn bản gốc", "Dòng trước cùng trang", "Dòng sau cùng trang",
+        "Cách đọc", "SHA256", "Trạng thái", "Xác minh",
+    ])
+    for source in report.get("sources") or []:
+        for item in source.get("proof_contexts") or []:
+            context_sheet.append([safe_cell(value) for value in (
+                source.get("filename", ""),
+                KINDS.get(source.get("kind", ""), source.get("kind", "")),
+                item.get("source", ""), item.get("keywords", ""),
+                item.get("line", ""), item.get("previous_line", ""),
+                item.get("next_line", ""), item.get("reading_method", ""),
+                source.get("sha256", ""), item.get("status", ""),
+                "CHUA_XAC_MINH",
+            )])
     trace = wb.create_sheet("TRUY_XUAT_TUNG_TRUONG")
     trace.append(["Tệp", "Vai trò", "Trường", "Giá trị", "Trang hoặc ô nguồn", "SHA256", "Trích đoạn"])
     for p in report["products"]:
