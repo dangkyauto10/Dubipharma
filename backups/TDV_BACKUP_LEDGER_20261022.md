@@ -133,3 +133,12 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Bổ sung sheet Excel `KIEM_TRA_CHUNG_CU_NSX`, dùng bộ định dạng và `safe_cell` sẵn có; không ghi Drive/Sheets và không tạo tài liệu hồ sơ thật trong GitHub.
 - Bộ test mới `test_tdv_manufacturer_evidence.py`: 6/6 tình huống đạt trên máy kiểm thử (GMP sai nhà máy, giải trình, SĐK thiếu, SHA nguồn không nhất quán, chứng cứ chưa liên kết, tài liệu OTHER không bị gán nhầm). Bài thử bổ sung bằng report nhân tạo 47/29/0 xác nhận không thay đổi dữ liệu và luôn giữ chưa xác minh.
 - Giới hạn: chưa có kiểm thử với 14 tệp NSX gốc, chưa có xác minh Streamlit Cloud triển khai mã mới. GitHub commit hiện không báo status CI; **không được coi nhánh có mã hoặc bài thử nhân tạo là nghiệm thu runtime**. IDP 3.0 ở mục riêng vẫn là bài kiểm tra DEMO, chưa được coi là bộ đọc đa tầng đã triển khai đầy đủ cho dữ liệu thật.
+
+
+## Sửa lớp phân loại GMP trong luồng NSX — 22/10/2026
+- BACKUP_035 trước sửa: `TDV_BACKUP_035_BEFORE_GMP_CORE_GUARD_20261022`. Mã chính vẫn chạy trên **cùng app Streamlit Preview**, nhánh `tdv-qc7-online-preview-20261020`; `main` không đổi.
+- Tích hợp `tdv_nsx_gmp_guarded_auto.analyze_auto` vào lệnh đọc NSX hiện hữu. Sau khi đọc, đối chiếu loại `GMP_CERT` nghi vấn bằng nội dung chữ sẵn có ở tối đa hai trang đầu và dấu hiệu hạn chế từ tên tệp. Không dùng tên tệp để xác nhận loại hợp lệ; PDF quét không đủ chữ -> xếp `OTHER` để kiểm tra, không tự suy đoán.
+- Nếu văn bản thể hiện rõ giải trình/xác nhận duy trì GMP, phân loại sơ bộ `GMP_EXPLANATION`; nếu thiếu rõ ràng hoặc chữ chứng nhận mâu thuẫn, chuyển `OTHER`. Xóa mọi liên kết GMP sơ bộ đã tạo từ tệp được đổi loại; đưa vào hàng đợi `CAN_XAC_DINH_LOAI_GMP`, tính lại số liên kết, gợi ý GMP, thống kê và truy xuất ngược.
+- Báo cáo mục 3B vẫn giữ các tệp `OTHER` do kiểm soát GMP chuyển vào, đánh dấu **CẦN XÁC ĐỊNH LẠI LOẠI VĂN BẢN GMP**. Excel `KIEM_TRA_CHUNG_CU_NSX` dùng cùng audit; không sửa số thuốc, trường nguồn hoặc tự phê duyệt.
+- Phiên bản quan sát trực tiếp sau triển khai dự kiến là `2026-10-22C`. Đã có 8/8 bài thử cục bộ trên báo cáo giả lập, bao gồm tình huống SHA tệp không khớp và giữ 47 ứng viên, 29 nhóm mâu thuẫn, 51 cặp so nguồn. `test_tdv_nsx_gmp_guarded_auto.py` được đưa vào repo, **chưa có xác nhận GitHub CI**.
+- Giới hạn chưa nghiệm thu: chưa kiểm thử với đủ 14 tệp gốc, chưa xác nhận Streamlit Cloud nạp mã C, văn bản scan không đọc được chữ phải kiểm tra thủ công; chưa giải quyết triệt để trích trường SĐK/GMP qua OCR và đối chiếu E-HSMT.
