@@ -29,6 +29,9 @@
 | 022 | `TDV_BACKUP_022_BEFORE_TABLE_UI_20261022` | `62b0f2b30a11b174b233b98d8c36de16646fe21c` | Sao lưu trước yêu cầu căn giữa/đậm rõ ba bảng E-HSMT và chuẩn hóa giao diện các trang nghiệp vụ |
 | 023 | `TDV_BACKUP_023_READABLE_TABLES_20261022` | `964cbc52806766a5a5a075700cf68b62a0adde7e` | Bản mã UI được kiểm thử 213/213: header căn giữa, giá trị ngắn/số căn giữa, văn bản dài tự xuống dòng, giữ SHA đầy đủ, bảng 770 mã chia trang; E-HSMT/NSX/Báo cáo Lãnh đạo; không thay dữ liệu, bộ so sánh màu, đăng nhập |
 
+| 024 | `TDV_BACKUP_024_BEFORE_NSX_SOURCE_DIFF_20261022` | `002c4b2bad05e93fc5f76e68a4e028dbf0592fd9` | Trạng thái Preview trước sửa sau kiểm thử 14 tệp NSX, 47 ứng viên từ 87 dòng, 29 ứng viên xung đột và 0 liên kết SĐK/GMP; không khẳng định dữ liệu đã xác minh |
+| 025 | `TDV_BACKUP_025_NSX_SOURCE_DIFF_20261022` | `c32ed6a10b4b57d82e8f1139e1ea04e1b67946a9` | Phiên bản bổ sung bảng hai giá trị gốc theo sheet và Excel audit riêng `MAU_THUAN_GIA_TRI_GOC`, không tự hợp nhất hay kết luận thuốc hợp lệ, 218/218 unit tests và OIDC fail-closed |
+
 ## Ghi nhận và giới hạn
 
 1. Ảnh và Excel NSX người dùng cung cấp: 13 tài liệu đã đọc, 87 dòng trích xuất ban đầu, 0 liên kết sơ bộ. File Excel có các trường đăng ký pháp lý chủ yếu chưa gắn vào từng dòng sản phẩm. **Không** thể suy 0 liên kết thành kết luận không có chứng cứ hay không đủ điều kiện.
@@ -94,3 +97,11 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Trang danh mục lớn phân trang 25 dòng; có nút mở bảng native để xem, sắp xếp, sao chép nguyên giá trị. CSV/XLSX và dữ liệu phiên không bị chỉnh sửa; không ẩn/viết lại SHA256 hoặc chứng cứ dài.
 - CI kiểm thử với 770 mã nhân tạo, tràn văn bản, HTML injection, email/khóa không lộ, phân trang và quyền Google fail-closed: 213/213 pass trên mã trước khi cập nhật nhật ký. **Chưa có ảnh chụp browser của bản UI mới**; cần V kiểm tra lại trên cùng ứng dụng Preview đang chạy.
 - Không tạo Streamlit thứ hai, không thêm phí Cloud, không thay nhánh `main`, không bật phê duyệt GMP/SĐK/báo giá.
+
+
+## NSX nghiệp vụ — truy xuất nguyên văn hai sheet, 22/10/2026
+- Người dùng gửi các bảng trích xuất 14 tài liệu / 87 dòng danh mục / 47 ứng viên / 29 có mâu thuẫn / 0 liên kết / 44 chờ rà soát. Tên thuốc lặp giữa các sheet, nhiều thuốc khác nhà sản xuất với nhóm giấy chứng nhận Agimexpharm; chưa kết luận hệ thống sai vì 0 liên kết.
+- Vấn đề cần giải: `STRENGTH`, `DOSAGE_FORM`, `ROUTE` trong 29 mã chỉ hiện tên trường mâu thuẫn; không thể kết luận từ bảng này sự khác biệt là thật hay do biểu mẫu.
+- Sửa hẹp, fail-closed: `tdv_nsx_source_diff.compare_conflict_sources` trích *hai giá trị gốc* từ `source_rows` và `evidence`, hiển thị tên sheet/ô nguồn, tệp và SHA cho từng trường; nhiều sheet giữ đủ các cặp, không giấu chuỗi gốc. Lưu Excel `MAU_THUAN_GIA_TRI_GOC`; giữ `GOP_DONG_NHIEU_SHEET` và `TRUY_XUAT_TUNG_TRUONG`. Không thay số thuốc/gộp dòng, nguồn, GMP/SĐK, yêu cầu gói hay phán quyết.
+- Lượt kiểm thử tổng hợp 218/218 đạt, OIDC fail-closed đạt; **chưa thử trực tiếp 14 tệp nguồn user vừa nạp**, phải kiểm tra bằng bản chạy thật sau đồng bộ Preview.
+- Rủi ro còn phải nghiên cứu sau khi có giá trị hai bên: phương thức gộp dòng dựa tên+NSX/nhà máy hiện có thể tạo 29 nhóm mâu thuẫn. Cần rà lại nhóm này để phân biệt dòng sản phẩm thật khác hàm lượng/dạng bào chế với lỗi biểu; không được tự sửa hoặc xóa dữ liệu nguồn.
