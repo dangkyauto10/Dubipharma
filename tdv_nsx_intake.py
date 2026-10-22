@@ -15,6 +15,7 @@ import unicodedata
 from typing import Any
 
 from see_pro_multiformat import ACCEPTED, extract_file
+from tdv_nsx_proof_hints import extract_labeled_hints
 
 MAX_DOCUMENTS = 24
 MAX_LINE_COUNT = 10_000
@@ -210,11 +211,20 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
     if conflicts:
         warnings.append("Có trường ghi nhiều giá trị không thống nhất: " +
                         ", ".join(sorted(conflicts)))
+    # Supplementary, unverified candidates never alter fields/evidence/conflicts.
+    # They are shown for document review but cannot become link identifiers.
+    proof_hints = extract_labeled_hints(kind, source, fields)
+    if len(proof_hints) >= 18:
+        warnings.append(
+            "Đã tới giới hạn 18 gợi ý SĐK/GMP có nhãn; "
+            "danh sách không chứng minh đã tìm hết thông tin trong tệp."
+        )
     return {
         "kind": kind, "kind_label": KINDS[kind], "filename": filename,
         "sha256": source["sha256"], "type": source["type"], "pages": source["pages"],
         "complete_read": source["complete"] and not truncated and catalogue_complete,
         "fields": fields, "evidence": evidence, "conflicts": dict(conflicts),
+        "proof_hints": proof_hints,
         "catalogue_candidates": candidates,
         "catalogue_selected_index": chosen_index,
         "catalogue_selection_required": selection_required,
