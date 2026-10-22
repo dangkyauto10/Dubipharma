@@ -13,6 +13,7 @@ import streamlit as st
 import pandas as pd
 from tdv_readable_tables import render_readable_table
 from tdv_nsx_source_diff import compare_conflict_sources
+from tdv_manufacturer_evidence import audit_manufacturer_evidence
 
 from see_pro_multiformat import ACCEPTED
 from tdv_nsx_auto import analyze_auto, export_auto_xlsx
@@ -158,6 +159,42 @@ def render_nsx_conflict_review(conflicts: list[dict], st_module=None) -> None:
             "Trạng thái": "CHƯA XÁC MINH",
         } for p in conflicts], hide_index=True, use_container_width=True)
 
+
+
+
+def render_manufacturer_evidence_review(report: dict, st_module=None) -> None:
+    """Integrated read-only audit over the SAME uploaded NSX batch."""
+    st_ui = st_module if st_module is not None else st
+    audit = audit_manufacturer_evidence(report)
+    st_ui.markdown("**3B. Kiểm tra chứng cứ nhà sản xuất trên hồ sơ NSX thật**")
+    st_ui.caption(
+        "Tự kiểm tra ngay sau khi đọc bộ hồ sơ: SĐK, GMP, giải trình GMP, "
+        "ủy quyền và báo giá. Dùng chính tệp nguồn, SHA256 và vị trí trích xuất; "
+        "không tải lại hồ sơ và không tự xác minh hiệu lực pháp lý."
+    )
+    if not audit["rows"]:
+        st_ui.info(
+            "Chưa phân loại được giấy SĐK/GMP/ủy quyền/báo giá trong bộ hồ sơ. "
+            "Không suy luận rằng hồ sơ thiếu giấy tờ; cần kiểm tra tệp gốc."
+        )
+        return
+    st_ui.caption(
+        f'Giấy tờ được kiểm tra sơ bộ: {audit["documents_reviewed"]} · '
+        f'Liên kết đề xuất: {audit["provisional_links"]} · '
+        'Giấy tờ đã xác minh pháp lý: 0. '
+        'Không có kết quả tự phê duyệt.'
+    )
+    st_ui.dataframe(
+        pd.DataFrame(audit["rows"]),
+        hide_index=True,
+        use_container_width=True,
+        height=min(470, 65 + 35 * len(audit["rows"])),
+    )
+    st_ui.warning(
+        "Giấy cùng nhà máy chưa chứng minh đúng phạm vi GMP cho từng thuốc. "
+        "Công văn giải trình không thay thế chứng nhận GMP. "
+        "SĐK, giá và ủy quyền phải được đối chiếu bản gốc và cơ quan có thẩm quyền."
+    )
 
 
 def render_nsx_workbench() -> None:
@@ -424,6 +461,8 @@ def render_nsx_workbench() -> None:
         "phạm vi dây chuyền/sản phẩm, hiệu lực, thay đổi/thu hồi và yêu cầu "
         "riêng của E-HSMT. Ngày ghi trên giấy không tự chứng minh hiệu lực pháp lý."
     )
+
+    render_manufacturer_evidence_review(report)
 
     st.markdown("**4. Các điểm chưa rõ và cần xác minh**")
     if report["review_queue"]:
