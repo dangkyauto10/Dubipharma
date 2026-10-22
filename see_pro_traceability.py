@@ -120,7 +120,7 @@ def _source_lines(record: dict):
             package, part, drug, field,
             evidence.get("source", file_name), evidence.get("sheet", ""),
             evidence.get("row", ""), evidence.get("column", ""),
-            "", evidence.get("raw", ""), "CHUA_XAC_MINH",
+            evidence.get("page", ""), evidence.get("raw", ""), "CHUA_XAC_MINH",
         )
     for field, evidence in (record.get("EVIDENCE_KY_THUAT") or {}).items():
         if not isinstance(evidence, dict):
