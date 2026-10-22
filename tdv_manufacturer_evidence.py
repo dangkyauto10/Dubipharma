@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from tdv_nsx_gmp_role_guard import inspect_gmp_role
 
 PROOF_TYPES = frozenset({
     "GMP_CERT", "GMP_EXPLANATION", "REGISTRATION", "AUTHORIZATION", "QUOTE",
