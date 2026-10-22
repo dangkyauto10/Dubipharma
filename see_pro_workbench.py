@@ -18,6 +18,7 @@ from see_pro_pdf_geometry import extract_g1_technical
 from see_pro_structured import normalize as normalize_field
 from see_pro_traceability import build_audit_workbook
 from see_pro_pdf_viewer import render_original_pdf_viewer
+from tdv_readable_tables import render_readable_table
 
 from tdv_ehsmt_xlsx import inspect_ehsmt_xlsx
 from see_pro_quality_gate import audit_ehsmt
@@ -326,27 +327,33 @@ def render_ehsmt_workbench() -> None:
     st.caption(quality["note"] + " Mốc 99,9999% là mục tiêu, chưa nghiệm thu.")
     st.caption(f'Tệp đầu vào: {quality["files"]} · Mã/dòng trích xuất: {quality["entries"]} · '
                f'Vấn đề phát hiện: {quality["issue_count"]}')
-    st.dataframe(pd.DataFrame([{
-        "Trường E-HSMT":key, "Có giá trị":value["values"],
-        "Có nguồn riêng":value["field_cited"],
-        "Thiếu nguồn riêng":value["values"]-value["field_cited"]
-    } for key,value in quality["coverage"].items()]),hide_index=True,use_container_width=True)
+    render_readable_table(st, pd.DataFrame([{
+        "Trường E-HSMT": key, "Có giá trị": value["values"],
+        "Có nguồn riêng": value["field_cited"],
+        "Thiếu nguồn riêng": value["values"]-value["field_cited"],
+    } for key,value in quality["coverage"].items()]),
+        key="tdv_ehsmt_quality_visible", label="Kiểm toán độ phủ chứng cứ",
+        page_size=25, min_width=720)
     if quality["issues"]:
         with st.expander("Chi tiết tệp lỗi, mã trùng và nguồn chưa đầy đủ"):
             st.dataframe(pd.DataFrame(quality["issues"]),hide_index=True,use_container_width=True)
     if not docs.empty:
         st.markdown("**Tệp và nguồn chứng cứ**")
-        st.dataframe(docs, hide_index=True, use_container_width=True)
+        render_readable_table(st, docs, key="tdv_ehsmt_source_files_visible",
+                              label="Tệp và nguồn chứng cứ E-HSMT", page_size=20,
+                              min_width=1000)
     render_original_pdf_viewer(files, analysis)
     if analysis.get("tender_documents"):
         st.markdown("**Tài liệu liên quan cùng gói thầu (tự nhận diện)**")
-        st.dataframe([{
+        related = pd.DataFrame([{
             "Tệp": d["filename"], "Loại": d["kind"],
             "Mã BP": ", ".join(d["package_ids"]),
             "Phiên bản": d["revision_status"], "Hướng xử lý": d["suggested_action"],
             "SHA256": d["sha256"],
-        } for d in analysis["tender_documents"]],
-            hide_index=True, use_container_width=True)
+        } for d in analysis["tender_documents"]])
+        render_readable_table(st, related, key="tdv_ehsmt_related_visible",
+                              label="Tài liệu cùng gói thầu tự nhận diện",
+                              page_size=20, min_width=1080)
     if analysis.get("structured_tables"):
         st.markdown("**Danh sách phần/lô theo từng mã gói thầu**")
         st.dataframe(pd.DataFrame(analysis["structured_tables"]), hide_index=True, use_container_width=True)
@@ -360,7 +367,9 @@ def render_ehsmt_workbench() -> None:
         st.caption("Số lô công bố trong thông báo không phải số lô đã trích xuất. Chỉ liên kết các tài liệu cùng mã BP.")
     if not pdfs.empty:
         st.markdown("**Kiểm kê bảng tổng hợp PDF E-HSMT**")
-        st.dataframe(pdfs, hide_index=True, use_container_width=True)
+        render_readable_table(st, pdfs, key="tdv_ehsmt_inventory_visible",
+                              label="Kiểm kê bảng tổng hợp PDF E-HSMT",
+                              page_size=20, min_width=1320)
     if not rows.empty:
         evidence_rows = rows.drop(columns=["EVIDENCE", "EVIDENCE_KY_THUAT", "verified"], errors="ignore")
         term = st.text_input("Tìm theo mã G1, mã PP, hoạt chất hoặc chứng cứ", key="tdv_see_pro_keyword")
@@ -370,7 +379,9 @@ def render_ehsmt_workbench() -> None:
             shown = evidence_rows[mask]
         else:
             shown = evidence_rows
-        st.dataframe(shown.fillna(""), hide_index=True, use_container_width=True)
+        render_readable_table(st, shown.fillna(""), key="tdv_ehsmt_lots_visible",
+                              label="Danh mục mã thuốc và chứng cứ",
+                              page_size=25, min_width=1450)
         st.download_button("Tải bảng kiểm kê CSV (chưa xác minh)",
                            data=evidence_rows.fillna("").to_csv(index=False).encode("utf-8-sig"),
                            file_name="TDV_SEE_PRO_KIEM_KE.csv", mime="text/csv",
