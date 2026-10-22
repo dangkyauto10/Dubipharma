@@ -1,0 +1,31 @@
+name: TDV NSX two-source conflict QA
+on:
+  push:
+    branches: [tdv-nsx-source-diff-20261022]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-diff-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile changed modules
+        run: python -m py_compile tdv_nsx_source_diff.py tdv_nsx_workbench.py tdv_nsx_auto.py tests/test_tdv_nsx_source_diff.py
+      - name: Full unit and business regression suite
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Google OAuth entry gate stays locked without secrets
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          at=AppTest.from_file('app.py',default_timeout=30).run()
+          assert not at.exception, str(list(at.exception))
+          assert not at.sidebar.radio
+          print("TDV_NSX_SOURCE_QA_AUTH_FAIL_CLOSED_OK")
+          PY
