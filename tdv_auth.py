@@ -68,6 +68,8 @@ def role_from_claims(claims: Mapping, auth: Mapping, access: Mapping) -> str | N
     email = claims.get("email")
     if not isinstance(email, str) or not email.strip():
         return None
+    if not isinstance(claims.get("sub"), str) or not claims["sub"].strip():
+        return None
     issued = claims.get("iat")
     expiry = claims.get("exp")
     try:
