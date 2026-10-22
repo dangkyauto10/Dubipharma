@@ -210,6 +210,7 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
                         tech.get("HOAT_CHAT_BANG_KY_THUAT", "") if tech else "")
                     result["rows"].append({
                         "FILE_NGUON": filename, "MA_GOI_THAU": "",
+                        "SHA256": report["sha256"],
                         "MA_THUOC": lot["MA_THUOC"],
                         "MA_PHAN_LO": lot.get("MA_PHAN_LO", ""),
                         "HOAT_CHAT_HSMT": lot.get("HOAT_CHAT_CHUAN"),
