@@ -95,6 +95,71 @@ def summarize_product_field_coverage(report: dict) -> dict:
     }
 
 
+def render_nsx_conflict_review(conflicts: list[dict], st_module=None) -> None:
+    """Front-end business QA: always show original paired source values first."""
+    st_ui = st_module if st_module is not None else st
+    st_ui.warning(
+        f'{len(conflicts)} ứng viên có trường khác nhau giữa các sheet. '
+        'Các trường mâu thuẫn phải giữ trạng thái CHƯA ĐỦ CĂN CỨ '
+        'cho đến khi so bản gốc; không tự tô xanh/đỏ.'
+    )
+    st_ui.caption(
+        "NSX · PHIÊN BẢN ĐỐI CHIẾU NGUỒN 2026-10-22B. "
+        "Nếu không thấy dòng này, ứng dụng vẫn đang chạy mã cũ."
+    )
+    source_pairs = compare_conflict_sources(conflicts)
+    with st_ui.expander(
+        "ĐỐI CHIẾU 2 NGUỒN GỐC — GIÁ TRỊ THỰC TẾ CỦA TỪNG TRƯỜNG",
+        expanded=True,
+    ):
+        if source_pairs:
+            st_ui.info(
+                f"Đã xuất {len(source_pairs)} cặp giá trị khác nhau. "
+                "Mỗi cặp hiển thị nguyên văn hai nguồn và vị trí ô; "
+                "KHÔNG tự xác nhận đúng/sai hay gộp thuốc."
+            )
+            # Display the actual two-sided values FIRST, not after a
+            # scrolling 29-product index. Users should never have to
+            # guess where the comparison is buried.
+            focus_cols = [
+                "Mã NSX", "Tên thuốc", "Trường cần đối chiếu",
+                "Giá trị nguồn 1", "Ô nguồn 1",
+                "Giá trị nguồn 2", "Ô nguồn 2", "Kết luận",
+            ]
+            st_ui.dataframe(
+                pd.DataFrame(source_pairs)[focus_cols],
+                hide_index=True, use_container_width=True,
+                height=420,
+            )
+            st_ui.caption(
+                "Tên tệp và SHA256 đầy đủ của cả hai nguồn ở bảng chứng cứ "
+                "chi tiết phía dưới và sheet Excel MAU_THUAN_GIA_TRI_GOC."
+            )
+            with st_ui.container(border=True):
+                st_ui.markdown("**Nguồn chi tiết: tệp, SHA256 và ô gốc**")
+                st_ui.dataframe(
+                    pd.DataFrame(source_pairs), hide_index=True,
+                    use_container_width=True, height=270,
+                )
+        else:
+            st_ui.error(
+                "Có ứng viên mâu thuẫn nhưng KHÔNG TẠO ĐƯỢC BẢNG "
+                "GIÁ TRỊ HAI NGUỒN. Đây là lỗi trích dẫn cần kiểm tra, "
+                "không được đánh dấu đã xác minh."
+            )
+    with st_ui.expander(
+        "Danh sách tổng hợp 29 ứng viên cần kiểm tra (xem sau bảng hai nguồn)",
+        expanded=False,
+    ):
+        st_ui.dataframe([{
+            "Mã": p["uid"], "Tên sản phẩm": p["fields"].get("PRODUCT_NAME", ""),
+            "Trường mâu thuẫn": ", ".join(sorted(p["conflicts"])),
+            "Số dòng nguồn": len(p.get("source_rows") or []),
+            "Trạng thái": "CHƯA XÁC MINH",
+        } for p in conflicts], hide_index=True, use_container_width=True)
+
+
+
 def render_nsx_workbench() -> None:
     st.markdown("### SEE PRO · Hồ sơ NSX & Báo giá — đọc tự động")
     st.caption(
@@ -195,65 +260,7 @@ def render_nsx_workbench() -> None:
         )
     if any(p.get("conflicts") for p in report.get("products", [])):
         conflicts = [p for p in report["products"] if p.get("conflicts")]
-        st.warning(
-            f'{len(conflicts)} ứng viên có trường khác nhau giữa các sheet. '
-            'Các trường mâu thuẫn phải giữ trạng thái CHƯA ĐỦ CĂN CỨ '
-            'cho đến khi so bản gốc; không tự tô xanh/đỏ.'
-        )
-        st.caption(
-            "NSX · PHIÊN BẢN ĐỐI CHIẾU NGUỒN 2026-10-22B. "
-            "Nếu không thấy dòng này, ứng dụng vẫn đang chạy mã cũ."
-        )
-        source_pairs = compare_conflict_sources(conflicts)
-        with st.expander(
-            "ĐỐI CHIẾU 2 NGUỒN GỐC — GIÁ TRỊ THỰC TẾ CỦA TỪNG TRƯỜNG",
-            expanded=True,
-        ):
-            if source_pairs:
-                st.info(
-                    f"Đã xuất {len(source_pairs)} cặp giá trị khác nhau. "
-                    "Mỗi cặp hiển thị nguyên văn hai nguồn và vị trí ô; "
-                    "KHÔNG tự xác nhận đúng/sai hay gộp thuốc."
-                )
-                # Display the actual two-sided values FIRST, not after a
-                # scrolling 29-product index. Users should never have to
-                # guess where the comparison is buried.
-                focus_cols = [
-                    "Mã NSX", "Tên thuốc", "Trường cần đối chiếu",
-                    "Giá trị nguồn 1", "Ô nguồn 1",
-                    "Giá trị nguồn 2", "Ô nguồn 2", "Kết luận",
-                ]
-                st.dataframe(
-                    pd.DataFrame(source_pairs)[focus_cols],
-                    hide_index=True, use_container_width=True,
-                    height=420,
-                )
-                st.caption(
-                    "Tên tệp và SHA256 đầy đủ của cả hai nguồn ở bảng chứng cứ "
-                    "chi tiết phía dưới và sheet Excel MAU_THUAN_GIA_TRI_GOC."
-                )
-                with st.container(border=True):
-                    st.markdown("**Nguồn chi tiết: tệp, SHA256 và ô gốc**")
-                    st.dataframe(
-                        pd.DataFrame(source_pairs), hide_index=True,
-                        use_container_width=True, height=270,
-                    )
-            else:
-                st.error(
-                    "Có ứng viên mâu thuẫn nhưng KHÔNG TẠO ĐƯỢC BẢNG "
-                    "GIÁ TRỊ HAI NGUỒN. Đây là lỗi trích dẫn cần kiểm tra, "
-                    "không được đánh dấu đã xác minh."
-                )
-        with st.expander(
-            "Danh sách tổng hợp 29 ứng viên cần kiểm tra (xem sau bảng hai nguồn)",
-            expanded=False,
-        ):
-            st.dataframe([{
-                "Mã": p["uid"], "Tên sản phẩm": p["fields"].get("PRODUCT_NAME", ""),
-                "Trường mâu thuẫn": ", ".join(sorted(p["conflicts"])),
-                "Số dòng nguồn": len(p.get("source_rows") or []),
-                "Trạng thái": "CHƯA XÁC MINH",
-            } for p in conflicts], hide_index=True, use_container_width=True)
+        render_nsx_conflict_review(conflicts)
 
     if stats["products"] == 0:
         st.error(
