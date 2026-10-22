@@ -72,7 +72,7 @@ class NsXVisibilityQA(unittest.TestCase):
         from unittest.mock import patch
         with patch("tdv_nsx_workbench.st",ui):
             render_nsx_workbench()
-        self.assertTrue(any("2026-10-22B" in value for value in ui.captions))
+        self.assertTrue(any("PHIÊN BẢN NGHIỆP VỤ NSX:" in value for value in ui.captions))
         self.assertTrue(any("SEE PRO" in value for value in ui.titles))
         self.assertTrue(ui.warnings)
 
