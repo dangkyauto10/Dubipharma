@@ -505,7 +505,7 @@ def render_nsx_workbench() -> None:
                 st.warning(warning)
 
     st.download_button(
-        "Tải Excel NSX + hồ sơ thầu truy xuất ngược (11 Sheet)",
+        "Tải Excel NSX + chứng cứ nguồn và đối chiếu mâu thuẫn",
         data=export_auto_xlsx(report),
         file_name="TDV_NSX_SEE_PRO_KIEM_TOAN.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
