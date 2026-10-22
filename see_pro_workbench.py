@@ -8,7 +8,6 @@ from __future__ import annotations
 import hashlib
 import io
 import json
-import re
 import pandas as pd
 import streamlit as st
 from tdv_ehsmt_intake import inspect_ehsmt_pdf, export_ehsmt_csv
@@ -78,8 +77,8 @@ def _compare_two_ingredient_strings(summary: str, technical: str) -> str:
         return "THIEU_HOAT_CHAT_TONG_HOP"
     if not technical:
         return "THIEU_HOAT_CHAT_KY_THUAT"
-    left = re.sub(r"\\s+", "", normalize_field(summary))
-    right = re.sub(r"\\s+", "", normalize_field(technical))
+    left = "".join(normalize_field(summary).split())
+    right = "".join(normalize_field(technical).split())
     return "CUNG_CHUOI_CHUA_XAC_MINH" if left and left == right else "KHAC_CHUOI_CAN_SO_GOC"
 
 
