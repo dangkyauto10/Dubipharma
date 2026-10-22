@@ -226,7 +226,7 @@ def render_manufacturer_evidence_review(report: dict, st_module=None) -> None:
 def render_nsx_workbench() -> None:
     st.markdown("### SEE PRO · Hồ sơ NSX & Báo giá — đọc tự động")
     st.caption(
-        "PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22D · "
+        "PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22E · "
         "Đối chiếu giá trị hai nguồn đặt trước danh sách mâu thuẫn. "
         "Nếu chưa thấy mã này, Streamlit Cloud chưa nạp đúng bản mã mới."
     )
