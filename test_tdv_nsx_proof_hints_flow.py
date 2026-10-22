@@ -78,5 +78,39 @@ class TestProofHintBoundary(unittest.TestCase):
         self.assertFalse(result["registration_confirmed"])
 
 
+    def test_ocr_table_headers_are_not_product_name_or_strength(self):
+        raw, source = self.source(
+            ("Trang 4 (OCR)", "Tên thuốc"),
+            ("Trang 4 (OCR)", "Hoạt chất chính- | Dạng bào chế | Quy cách đóng gói | Tiêu | Tuổi | Sốđăngký | Số"),
+            ("Trang 4 (OCR)", "Hàm lượng"),
+            ("Trang 4 (OCR)", "chuẩn | thọ"),
+        )
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        self.assertNotIn("PRODUCT_NAME", result["fields"])
+        self.assertNotIn("STRENGTH", result["fields"])
+        self.assertFalse(result["registration_confirmed"])
+
+    def test_single_pdf_heading_fragment_is_not_product_name(self):
+        raw, source = self.source(("Trang 4 (OCR)", "Tên thuốc | Hoạt chất chính-"))
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        self.assertNotIn("PRODUCT_NAME", result["fields"])
+
+    def test_true_adjacent_pdf_name_remains_source_cited(self):
+        raw, source = self.source(
+            ("Trang 1", "Tên thuốc"),
+            ("Trang 1", "THUỐC MẪU 500"),
+        )
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        self.assertEqual(result["fields"]["PRODUCT_NAME"], "THUỐC MẪU 500")
+        self.assertEqual(result["evidence"]["PRODUCT_NAME"]["source"], "Trang 1 (hai dòng liền kề)")
+        self.assertFalse(result["registration_confirmed"])
+
+
 if __name__ == "__main__":
     unittest.main()
