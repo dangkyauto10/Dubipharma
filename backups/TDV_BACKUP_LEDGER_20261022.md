@@ -152,3 +152,13 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Caption phiên bản `2026-10-22D` xác định Streamlit Cloud đã nhận cập nhật khi quan sát được trên app. Cảnh báo bảo mật sửa từ `chưa đăng nhập` thành `đã có Google OIDC cơ bản nhưng chưa có phân quyền dự án và kho hồ sơ đạt chuẩn doanh nghiệp`.
 - **14/14 bài kiểm thử đơn vị cục bộ đạt** với mã helper và file tests có Git blob SHA khớp chính xác GitHub; 3 bài kiểm thử luồng `test_tdv_nsx_proof_hints_flow.py` đã thêm nhưng **chưa chạy tích hợp**. GitHub CI và triển khai trực tiếp trên Streamlit chưa được xác nhận; chưa có dữ liệu gốc 14 tệp để nghiệm thu.
 - Các mốc 14 tệp, 87 dòng nguồn, 47 ứng viên, 29 trường hợp mâu thuẫn, 51 cặp gốc, 0 liên kết là **kết quả test trước**, không phải kết quả sau sửa D. Giữ trạng thái pháp lý chưa xác minh và cảnh báo nghiệp vụ.
+
+
+## NSX E — Khắc phục nhãn SĐK/GMP bị bỏ sót khi PDF xuống dòng (22/10/2026)
+- Sao lưu trước sửa `TDV_BACKUP_039_BEFORE_SDK_GMP_HINT_REPAIR_20261022`; chỉ cập nhật nhánh `tdv-qc7-online-preview-20261020`, không thay đổi `main` hoặc cấu hình OAuth/Secrets, không tạo ứng dụng thứ hai.
+- Phát hiện lỗi thực tế trong helper: dấu hai chấm kết thúc nhãn `Số đăng ký:`, `Số đăng ký lưu hành (SĐK):`, `Tên thuốc (biệt dược):` ngăn so khớp nhãn với giá trị ở dòng sau. Đã chuẩn hóa nhãn trước khi đối chiếu, thêm biệt danh có nhãn, bảo toàn giá trị và vị trí gốc.
+- Hạn chế nhiễu: từ chối ngày dạng 20/10/2026 nếu bị nhận là SĐK/số GMP; không suy ra mã từ chuỗi không nhãn; không ghép hai trang; cho phép dấu cách quanh dấu gạch trong gợi ý nhưng không sửa giá trị nguyên văn; giữ nhiều giá trị nghi vấn.
+- `tdv_nsx_intake._read_one` ghi `proof_diagnostic` cùng `proof_hints`, **không** tự điền vào trường thuốc/SĐK/GMP, không tăng liên kết hoặc phê duyệt. Excel bổ sung `CHAN_DOAN_DOC_SDK_GMP` với số trang, dòng đọc được, dòng OCR, trường chưa trích được, số gợi ý và trạng thái `CHUA_XAC_MINH`; giữ sheet `GOI_Y_NHAN_SDK_GMP`.
+- Caption nghiệp vụ NSX `2026-10-22E`. Không sửa cấu trúc giao diện hay tự gán chứng cứ. Giữ 47 ứng viên và 29 nhóm mâu thuẫn để kiểm tra thực tế, không tuyên bố đã kiểm chứng lại chúng.
+- 21/21 bài thử cục bộ đã chạy và đạt (17 đơn vị + 4 đọc PDF giả lập qua PyMuPDF). Sáu test bổ sung trong `test_tdv_nsx_proof_hints.py` và hai test nối luồng trong `test_tdv_nsx_proof_hints_flow.py` đã được đưa vào repo, nhưng chưa có xác nhận GitHub CI.
+- Chưa nghiệm thu với chính 14 tệp NSX gốc, chưa xác nhận Cloud đã nạp E. Chưa xác minh số SĐK, nhà máy, số/phạm vi/hiệu lực GMP hay điều kiện dự thầu. Không tự kết luận các hồ sơ AGICARVIR, AGIMOL 150 hoặc GCN GMP đủ hay thiếu pháp lý khi chưa đọc bản gốc.
