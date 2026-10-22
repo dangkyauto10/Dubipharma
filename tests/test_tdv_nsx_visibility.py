@@ -2,7 +2,7 @@
 from contextlib import nullcontext
 import unittest
 
-from tdv_nsx_workbench import render_nsx_conflict_review
+from tdv_nsx_workbench import render_nsx_conflict_review, render_nsx_workbench
 
 
 class FakeStreamlit:
@@ -64,6 +64,17 @@ class NsXVisibilityQA(unittest.TestCase):
         self.assertIn("Danh sách tổng hợp",ui.expanders[1][0])
         self.assertFalse(ui.errors)
         self.assertEqual(ui.frames[2][0]["Trạng thái"],"CHƯA XÁC MINH")
+
+    def test_build_marker_at_page_top_even_without_uploaded_files(self):
+        ui=FakeStreamlit()
+        ui.session_state={}
+        ui.checkbox=lambda *args,**kwargs: False
+        from unittest.mock import patch
+        with patch("tdv_nsx_workbench.st",ui):
+            render_nsx_workbench()
+        self.assertTrue(any("2026-10-22B" in value for value in ui.captions))
+        self.assertTrue(any("SEE PRO" in value for value in ui.titles))
+        self.assertTrue(ui.warnings)
 
     def test_failure_is_visible_never_silently_missing(self):
         ui=FakeStreamlit()
