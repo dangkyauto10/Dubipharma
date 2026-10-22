@@ -25,4 +25,4 @@ jobs:
       - name: Compile NSX core
         run: python -m py_compile tdv_nsx_proof_hints.py tdv_nsx_intake.py tdv_nsx_auto.py tdv_nsx_gmp_guarded_auto.py tdv_nsx_workbench.py tdv_manufacturer_evidence.py
       - name: Synthetic safety regression tests
-        run: python -m unittest -v test_tdv_nsx_proof_hints test_tdv_nsx_proof_hints_flow test_tdv_nsx_gmp_guarded_auto test_tdv_manufacturer_evidence test_tdv_gmp_role_guard
+        run: python -m unittest -v test_tdv_nsx_runtime_cache test_tdv_nsx_proof_hints test_tdv_nsx_proof_hints_flow test_tdv_nsx_gmp_guarded_auto test_tdv_manufacturer_evidence test_tdv_gmp_role_guard
