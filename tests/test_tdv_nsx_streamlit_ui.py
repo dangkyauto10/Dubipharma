@@ -13,7 +13,7 @@ class NSXPreviewNavigationTest(unittest.TestCase):
         unconfigured = AppTest.from_file(str(entry), default_timeout=45).run()
         self.assertEqual(len(unconfigured.exception), 0, str(unconfigured.exception))
         self.assertFalse(unconfigured.sidebar.radio)
-        self.assertTrue(any("ĐÃ KHÓA" in x.message for x in unconfigured.error))
+        self.assertTrue(any("ĐÃ KHÓA" in x.value for x in unconfigured.error))
         # Navigation smoke only: inject an approved identity at the module
         # boundary, never insert fake login credentials or real secrets.
         with patch("tdv_auth.require_google_access",
