@@ -226,7 +226,7 @@ def render_manufacturer_evidence_review(report: dict, st_module=None) -> None:
 def render_nsx_workbench() -> None:
     st.markdown("### SEE PRO · Hồ sơ NSX & Báo giá — đọc tự động")
     st.caption(
-        "PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22C · "
+        "PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22D · "
         "Đối chiếu giá trị hai nguồn đặt trước danh sách mâu thuẫn. "
         "Nếu chưa thấy mã này, Streamlit Cloud chưa nạp đúng bản mã mới."
     )
@@ -235,9 +235,9 @@ def render_nsx_workbench() -> None:
         "các thuốc, đối chiếu định danh và đưa các vấn đề chưa rõ vào danh sách cần xem lại."
     )
     st.warning(
-        "Preview chưa có đăng nhập và phân quyền doanh nghiệp. Tệp được xử lý "
-        "trên máy chủ Streamlit. Chỉ sử dụng tài liệu công khai hoặc đã ẩn "
-        "thông tin nhạy cảm và được phép xử lý trên Preview này. "
+        "Preview đã có Google OIDC và vai trò cơ bản nhưng chưa có phân quyền "
+        "theo dự án/kho hồ sơ đạt chuẩn doanh nghiệp. Tệp xử lý trên máy chủ "
+        "Streamlit; chỉ dùng tài liệu đã được phép và không có dữ liệu mật. "
         "Không tự gửi Gemini, không ghi Google Drive hoặc Google Sheets."
     )
     allowed = st.checkbox(
