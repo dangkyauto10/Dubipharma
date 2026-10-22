@@ -1,7 +1,7 @@
 """Focused synthetic regression tests for source-only SĐK/GMP recovery hints."""
 import hashlib
 import unittest
-from tdv_nsx_proof_hints import extract_labeled_hints, diagnose_proof_source
+from tdv_nsx_proof_hints import extract_labeled_hints, diagnose_proof_source, collect_proof_contexts
 
 
 SHA = hashlib.sha256(b"synthetic-pdf-no-private-document").hexdigest()
@@ -187,6 +187,39 @@ class TestLabeledProofHints(unittest.TestCase):
             doc(("Trang 2", "Số đăng ký: VD - 12345 - 22")), {},
         )
         self.assertEqual(x[0]["value"], "VD - 12345 - 22")
+
+
+    def test_ocr_context_keeps_source_not_suggested_sdk(self):
+        source = doc(
+            ("Trang 4 (OCR)", "Số đăng ký bị OCR cắt"),
+            ("Trang 4 (OCR)", "893110123456"),
+        )
+        got = collect_proof_contexts("REGISTRATION", source)
+        self.assertEqual(got[0]["source"], "Trang 4 (OCR)")
+        self.assertEqual(got[0]["next_line"], "893110123456")
+        self.assertEqual(got[0]["status"], "DOAN_VAN_CAN_SO_BAN_GOC")
+        self.assertFalse(got[0]["verified"])
+        self.assertNotIn("value", got[0])
+
+    def test_no_cross_page_context(self):
+        got = collect_proof_contexts(
+            "REGISTRATION", doc(
+                ("Trang 4", "Số đăng ký"),
+                ("Trang 5", "VD-12345-22"),
+            )
+        )
+        self.assertEqual(got[0]["next_line"], "")
+
+    def test_limit_and_per_page_cap(self):
+        source = doc(*[("Trang 2", "Thông tin đăng ký sản phẩm") for _ in range(10)])
+        got = collect_proof_contexts("REGISTRATION", source)
+        self.assertEqual(len(got), 5)
+        self.assertTrue(all(not row["verified"] for row in got))
+
+    def test_context_only_for_known_pdf_roles(self):
+        source = doc(("Trang 1", "GMP certificate number 123"))
+        self.assertEqual(collect_proof_contexts("OTHER", source), [])
+        self.assertEqual(collect_proof_contexts("REGISTRATION", source), [])
 
 
 if __name__ == "__main__":

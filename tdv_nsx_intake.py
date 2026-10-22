@@ -15,7 +15,7 @@ import unicodedata
 from typing import Any
 
 from see_pro_multiformat import ACCEPTED, extract_file
-from tdv_nsx_proof_hints import extract_labeled_hints, diagnose_proof_source
+from tdv_nsx_proof_hints import extract_labeled_hints, diagnose_proof_source, collect_proof_contexts
 
 MAX_DOCUMENTS = 24
 MAX_LINE_COUNT = 10_000
@@ -215,6 +215,7 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
     # They are shown for document review but cannot become link identifiers.
     proof_hints = extract_labeled_hints(kind, source, fields)
     proof_diagnostic = diagnose_proof_source(kind, source, fields, proof_hints)
+    proof_contexts = collect_proof_contexts(kind, source) if proof_diagnostic and proof_diagnostic.get("fields_without_hint") else []
     if len(proof_hints) >= 18:
         warnings.append(
             "Đã tới giới hạn 18 gợi ý SĐK/GMP có nhãn; "
@@ -227,6 +228,7 @@ def _read_one(filename: str, kind: str, raw: bytes, ocr: bool, *,
         "fields": fields, "evidence": evidence, "conflicts": dict(conflicts),
         "proof_hints": proof_hints,
         "proof_diagnostic": proof_diagnostic,
+        "proof_contexts": proof_contexts,
         "catalogue_candidates": candidates,
         "catalogue_selected_index": chosen_index,
         "catalogue_selection_required": selection_required,

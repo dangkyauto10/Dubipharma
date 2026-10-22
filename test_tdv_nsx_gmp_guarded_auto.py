@@ -115,5 +115,36 @@ class GMPTypeBoundaryTests(unittest.TestCase):
         self.assertEqual(sum(bool(p["conflicts"]) for p in actual["products"]), 29)
 
 
+    def test_existing_review_entries_do_not_keep_old_gmp_certificate_label(self):
+        report, files = batch("3.1 Công văn giải trình GMP AGP.pdf")
+        report["review_queue"] = [{
+            "file": files[0][0],
+            "kind": "GMP_CERT",
+            "status": "CHUA_DU_CHUNG_CU",
+            "candidate_products": [],
+            "reason": "Không tìm được liên kết duy nhất",
+        }]
+        actual = guard.reconcile_gmp_roles(
+            report, files, heading_reader=lambda name, raw: []
+        )
+        self.assertEqual(actual["review_queue"][0]["kind"], "OTHER")
+        self.assertIn("bị hủy", actual["review_queue"][0]["reason"])
+        self.assertEqual(actual["review_queue"][0]["status"], "CHUA_DU_CHUNG_CU")
+        self.assertEqual(actual["review_queue"][1]["status"], "CAN_XAC_DINH_LOAI_GMP")
+        self.assertEqual(actual["summary"]["review"], 2)
+
+    def test_review_does_not_change_unrelated_product_label(self):
+        report, files = batch("3.3 Giấy xác nhận duy trì GMP - Mỹ Thới.pdf")
+        report["review_queue"] = [
+            {"file": "Biểu 05 .xlsx", "kind": "PRODUCT", "status": "MAU_THUAN_GIUA_CAC_SHEET",
+             "reason": "Nguồn gốc mâu thuẫn", "candidate_products": ["P0001"]},
+        ]
+        actual = guard.reconcile_gmp_roles(
+            report, files, heading_reader=lambda name, raw: []
+        )
+        self.assertEqual(actual["review_queue"][0]["kind"], "PRODUCT")
+        self.assertEqual(actual["review_queue"][0]["status"], "MAU_THUAN_GIUA_CAC_SHEET")
+
+
 if __name__ == "__main__":
     unittest.main()

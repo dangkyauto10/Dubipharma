@@ -170,3 +170,64 @@ def diagnose_proof_source(kind: str, source: dict, fields: dict,
         "status": message,
         "verified": False,
     }
+
+
+# Conservative OCR/text context for human source inspection. These are NOT
+# extracted SĐK/GMP fields. Adjacent text can help diagnose broken OCR labels.
+_CONTEXT_TERMS = {
+    "REGISTRATION": (
+        "dang ky", "sdk", "s d k", "so dk", "dklh",
+        "registration", "luu hanh", "giay phep",
+    ),
+    "GMP_CERT": (
+        "gmp", "thuc hanh tot", "pham vi", "chung nhan",
+        "hieu luc", "het han", "giay chung nhan",
+    ),
+    "GMP_EXPLANATION": (
+        "gmp", "thuc hanh tot", "pham vi", "chung nhan",
+        "hieu luc", "het han",
+    ),
+}
+
+
+def collect_proof_contexts(kind: str, source: dict, *, limit: int = 24) -> list[dict]:
+    """Sample matching source/OCR lines with SAME-page neighbours for review.
+
+    A hit is only a string-search result. This function neither infers a
+    registration number nor changes evidence or legal status. Limits are
+    documented in the exported data.
+    """
+    if source.get("type") != "pdf" or kind not in _CONTEXT_TERMS or limit < 1:
+        return []
+    lines = (source.get("lines") or [])[:10000]
+    keywords = _CONTEXT_TERMS[kind]
+    found: list[dict] = []
+    by_page: dict[str, int] = {}
+    for idx, line in enumerate(lines):
+        location = str(line.get("source") or "")
+        text = str(line.get("text") or "").strip()
+        if not location or not text:
+            continue
+        lowered = _norm(text)
+        matched = [term for term in keywords if term in lowered]
+        if not matched or by_page.get(location, 0) >= 5:
+            continue
+        before = str(lines[idx - 1].get("text") or "").strip() if idx and str(
+            lines[idx - 1].get("source") or "") == location else ""
+        after = str(lines[idx + 1].get("text") or "").strip() if idx + 1 < len(lines) and str(
+            lines[idx + 1].get("source") or "") == location else ""
+        found.append({
+            "source": location,
+            "keywords": ", ".join(matched),
+            "line": text[:230],
+            "previous_line": before[:160],
+            "next_line": after[:160],
+            "reading_method": "OCR chưa đối chiếu" if "OCR" in location.upper()
+                              else "Lớp chữ PDF chưa đối chiếu",
+            "status": "DOAN_VAN_CAN_SO_BAN_GOC",
+            "verified": False,
+        })
+        by_page[location] = by_page.get(location, 0) + 1
+        if len(found) >= limit:
+            break
+    return found
