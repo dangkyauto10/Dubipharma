@@ -1,0 +1,28 @@
+name: TDV QC7 NSX Preview Quality Gate
+on:
+  push:
+    branches:
+      - tdv-qc7-online-preview-20261020
+    paths:
+      - "tdv_nsx_*.py"
+      - "tdv_manufacturer_evidence.py"
+      - "test_tdv_*.py"
+      - ".github/workflows/tdv-nsx-preview-quality.yml"
+permissions:
+  contents: read
+jobs:
+  synthetic-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Compile NSX core
+        run: python -m py_compile tdv_nsx_proof_hints.py tdv_nsx_intake.py tdv_nsx_auto.py tdv_nsx_gmp_guarded_auto.py tdv_nsx_workbench.py tdv_manufacturer_evidence.py
+      - name: Synthetic safety regression tests
+        run: python -m unittest -v test_tdv_nsx_proof_hints test_tdv_nsx_proof_hints_flow test_tdv_nsx_gmp_guarded_auto test_tdv_manufacturer_evidence test_tdv_gmp_role_guard
