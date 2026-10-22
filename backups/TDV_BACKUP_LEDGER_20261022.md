@@ -26,6 +26,9 @@
 | 020 | `TDV_BACKUP_020_BEFORE_EHSMT_QA_20261022` | `2d2d9fbf05c6c688b9312fc6b191306024347caf` | Trạng thái trước sửa sau khi user chạy E-HSMT G1-SYT PDF thật: 1/1 tệp, 596 trang, 770 mã, 770/770 hoạt chất có giá trị nhưng 0/770 ghi trích dẫn riêng, bảng chất lượng báo 0 vấn đề dù có 1 cảnh báo; tài liệu bị phân loại KET_QUA_LCNT cần kiểm tra |
 | 021 | `TDV_BACKUP_021_EHSMT_EVIDENCE_QA_20261022` | `f128228ba41e0806fbef0a7f539992c3dab99119` | Mã đã kiểm thử bằng PDF tạo tổng hợp: nguồn hoạt chất ghi tệp, trang, mã dòng, SHA256, đoạn gốc; trạng thái giữa bảng tổng hợp và kỹ thuật; cảnh báo nếu phân loại BANG_EHSMT_PDF / KET_QUA_LCNT mâu thuẫn; quality gate đếm lỗi thiếu chứng cứ & các cảnh báo chưa xử lý; Excel và so sánh truy xuất trang PDF; 206/206 bài kiểm thử + fail-closed Streamlit |
 
+| 022 | `TDV_BACKUP_022_BEFORE_TABLE_UI_20261022` | `62b0f2b30a11b174b233b98d8c36de16646fe21c` | Sao lưu trước yêu cầu căn giữa/đậm rõ ba bảng E-HSMT và chuẩn hóa giao diện các trang nghiệp vụ |
+| 023 | `TDV_BACKUP_023_READABLE_TABLES_20261022` | `964cbc52806766a5a5a075700cf68b62a0adde7e` | Bản mã UI được kiểm thử 213/213: header căn giữa, giá trị ngắn/số căn giữa, văn bản dài tự xuống dòng, giữ SHA đầy đủ, bảng 770 mã chia trang; E-HSMT/NSX/Báo cáo Lãnh đạo; không thay dữ liệu, bộ so sánh màu, đăng nhập |
+
 ## Ghi nhận và giới hạn
 
 1. Ảnh và Excel NSX người dùng cung cấp: 13 tài liệu đã đọc, 87 dòng trích xuất ban đầu, 0 liên kết sơ bộ. File Excel có các trường đăng ký pháp lý chủ yếu chưa gắn vào từng dòng sản phẩm. **Không** thể suy 0 liên kết thành kết luận không có chứng cứ hay không đủ điều kiện.
@@ -82,3 +85,12 @@ Nếu bản Preview mới lỗi: đối chiếu mã commit và hiệu lực tr�
 - Bảng quality gate giờ ghi rõ số trường thiếu nguồn, cảnh báo chưa xử lý và số mã có chuỗi hoạt chất khác/trích thiếu giữa hai bảng. Không nâng 770 câu khớp hay trích dẫn thành 770 trường được chứng nhận chính xác.
 - Thêm bài kiểm thử bằng PDF G1 dựng từ dữ liệu giả (không có tài liệu thầu riêng tư): nguồn hoạt chất, Excel tra trang, Word/báo cáo lãnh đạo, cảnh báo phân loại, kiểm đếm 770 tham chiếu vs kiểm định chính xác. GitHub Actions 206/206 bài và khóa Google OIDC fail-closed.
 - Chưa có tệp PDF G1-SYT gốc trong môi trường phát triển để tự nghiệm thu lại; cần V chạy lại trong phiên đã được cấp quyền và kiểm tra bảng quality gate, trích dẫn trang, cảnh báo. Không gửi nội dung tệp thật lên GitHub.
+
+
+## Chuẩn giao diện dữ liệu dùng chung — 22/10/2026
+- Mục tiêu theo ảnh khoanh đỏ của V: tăng tương phản chữ và tiêu đề, header căn giữa hai chiều, ô số/mã/trạng thái căn giữa, nội dung tệp/nguồn/hướng xử lý dài căn theo dòng và tự xuống dòng, hàng có padding và gạch phân cách đều; trên màn hình hẹp cho phép cuộn ngang thay vì mất dữ liệu.
+- Đã bổ sung `tdv_readable_tables.py` với HTML/CSS escape toàn bộ nội dung đầu vào, không script, không gọi API; tiêu đề cột đậm 13,5 px, dữ liệu 14 px và `vertical-align:middle`.
+- Các bảng nguồn, tài liệu gói thầu, kiểm kê E-HSMT, tìm 770 mã, kiểm toán chất lượng, danh mục NSX, rà soát NSX và công việc ưu tiên lãnh đạo cùng mẫu hiển thị. Bảng xanh/vàng/đỏ trong SO SÁNH giữ nguyên vì có đánh giá màu nghiệp vụ và thanh tiến độ riêng.
+- Trang danh mục lớn phân trang 25 dòng; có nút mở bảng native để xem, sắp xếp, sao chép nguyên giá trị. CSV/XLSX và dữ liệu phiên không bị chỉnh sửa; không ẩn/viết lại SHA256 hoặc chứng cứ dài.
+- CI kiểm thử với 770 mã nhân tạo, tràn văn bản, HTML injection, email/khóa không lộ, phân trang và quyền Google fail-closed: 213/213 pass trên mã trước khi cập nhật nhật ký. **Chưa có ảnh chụp browser của bản UI mới**; cần V kiểm tra lại trên cùng ứng dụng Preview đang chạy.
+- Không tạo Streamlit thứ hai, không thêm phí Cloud, không thay nhánh `main`, không bật phê duyệt GMP/SĐK/báo giá.
