@@ -1,7 +1,7 @@
 """Focused synthetic regression tests for source-only SĐK/GMP recovery hints."""
 import hashlib
 import unittest
-from tdv_nsx_proof_hints import extract_labeled_hints
+from tdv_nsx_proof_hints import extract_labeled_hints, diagnose_proof_source
 
 
 SHA = hashlib.sha256(b"synthetic-pdf-no-private-document").hexdigest()
@@ -135,6 +135,58 @@ class TestLabeledProofHints(unittest.TestCase):
             "OTHER", doc(("Trang 1", "Số đăng ký: VD-12345-22")), {}
         )
         self.assertEqual(x, [])
+
+
+    def test_split_colon_registration_label(self):
+        x = extract_labeled_hints(
+            "REGISTRATION", doc(
+                ("Trang 4", "Số đăng ký lưu hành:"),
+                ("Trang 4", "VD-12345-22"),
+            ), {},
+        )
+        self.assertEqual(len(x), 1)
+        self.assertEqual(x[0]["value"], "VD-12345-22")
+        self.assertFalse(x[0]["verified"])
+
+    def test_split_parenthetical_product_name_label(self):
+        x = extract_labeled_hints(
+            "REGISTRATION", doc(
+                ("Trang 4", "Tên thuốc (biệt dược):"),
+                ("Trang 4", "AGIMOL 150"),
+            ), {},
+        )
+        self.assertEqual(x[0]["value"], "AGIMOL 150")
+
+    def test_split_ocr_registration_abbreviation(self):
+        x = extract_labeled_hints(
+            "REGISTRATION", doc(
+                ("Trang 12 (OCR)", "Số ĐK:"),
+                ("Trang 12 (OCR)", "893110123456"),
+            ), {},
+        )
+        self.assertEqual(x[0]["field"], "REGISTRATION_NO")
+        self.assertIn("OCR", x[0]["reading_method"])
+
+    def test_date_not_registration_number(self):
+        self.assertEqual(extract_labeled_hints(
+            "REGISTRATION", doc(("Trang 1", "Số đăng ký: 20/10/2026")), {}
+        ), [])
+
+    def test_diagnostic_does_not_claim_missing_document(self):
+        source = doc(("Trang 4", "Văn bản chưa tách được nhãn SĐK"))
+        source["pages"] = 8
+        diagnosis = diagnose_proof_source("REGISTRATION", source, {}, [])
+        self.assertEqual(diagnosis["hint_count"], 0)
+        self.assertEqual(diagnosis["pages"], 8)
+        self.assertIn("CAN_SO_PDF_GOC", diagnosis["status"])
+        self.assertFalse(diagnosis["verified"])
+
+    def test_multi_value_spacing_preserves_raw_value(self):
+        x = extract_labeled_hints(
+            "REGISTRATION",
+            doc(("Trang 2", "Số đăng ký: VD - 12345 - 22")), {},
+        )
+        self.assertEqual(x[0]["value"], "VD - 12345 - 22")
 
 
 if __name__ == "__main__":
