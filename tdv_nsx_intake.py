@@ -100,7 +100,8 @@ def _evidence_pair(raw: str) -> list[tuple[str, str]]:
         # A key-value row may have "Tên hoạt chất | Acenocoumarol".
         label = LOOKUP.get(normalize(bits[0].strip(":： ")))
         # Multicolumn tables and next-column headings are NOT scalar values.
-        if label and len(bits) == 2 and not _header_fragment(bits[1]):
+        if (label and len(bits) == 2 and not _header_fragment(bits[1])
+                and (label != "STRENGTH" or bool(re.search(r"\d", bits[1])))):
             pairs.append((label, bits[1]))
             return pairs
     for part in bits:
@@ -109,7 +110,11 @@ def _evidence_pair(raw: str) -> list[tuple[str, str]]:
             continue
         field = LOOKUP.get(normalize(found.group(1)))
         if field:
-            pairs.append((field, found.group(2).strip()))
+            value = found.group(2).strip()
+            if _header_fragment(value) or (
+                    field == "STRENGTH" and not re.search(r"\d", value)):
+                continue
+            pairs.append((field, value))
     return pairs
 
 
@@ -134,6 +139,7 @@ def _consecutive_pdf_fields(lines: list[dict]):
         value = str(following["text"]).strip()
         if (not 1 <= len(value) <= 140
             or _header_fragment(value)
+            or (field == "STRENGTH" and not re.search(r"\d", value))
             or LOOKUP.get(normalize(value.strip(":： ")))
             or re.match(r"^[^:：]{2,80}\s*[:：]", value)):
             continue

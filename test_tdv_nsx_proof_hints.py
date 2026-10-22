@@ -222,5 +222,73 @@ class TestLabeledProofHints(unittest.TestCase):
         self.assertEqual(collect_proof_contexts("REGISTRATION", source), [])
 
 
+    def test_table_heading_never_becomes_product_name_hint(self):
+        result = extract_labeled_hints(
+            "REGISTRATION", doc(("Trang 4 (OCR)",
+                "Tên thuốc | Hoạt chất chính- | Dạng bào chế | Sốđăngký")), {}
+        )
+        self.assertEqual(result, [])
+
+    def test_registration_ocr_same_line_code_hint_not_verification(self):
+        result = extract_labeled_hints(
+            "REGISTRATION", doc(("Trang 8",
+                "thuốc mẫu, s6 dang kY: VD-99999-22.")), {}
+        )
+        codes = [r for r in result if r["field"] == "REGISTRATION_NO"]
+        self.assertEqual([r["value"] for r in codes], ["VD-99999-22"])
+        self.assertFalse(codes[0]["verified"])
+        self.assertEqual(codes[0]["source"], "Trang 8")
+
+    def test_registration_ocr_previous_line_same_page(self):
+        result = extract_labeled_hints(
+            "REGISTRATION", doc(
+                ("Trang 7", "thay đổi đối với thuốc có s6 dang kY:"),
+                ("Trang 7", "VD-99999-22."),
+            ), {}
+        )
+        codes = [r for r in result if r["field"] == "REGISTRATION_NO"]
+        self.assertEqual(len(codes), 1)
+        self.assertEqual(codes[0]["value"], "VD-99999-22")
+
+    def test_registration_wrong_page_or_unlabeled_ignored(self):
+        result = extract_labeled_hints(
+            "REGISTRATION", doc(
+                ("Trang 1", "số đăng ký"),
+                ("Trang 2", "VD-99999-22"),
+                ("Trang 3", "VD-88888-22"),
+            ), {}
+        )
+        self.assertEqual(result, [])
+
+    def test_multiple_punctuation_of_same_code_not_mismatch(self):
+        result = extract_labeled_hints(
+            "REGISTRATION", doc(
+                ("Trang 1", "Số giấy phép lưu hành: VD.99999.22"),
+                ("Trang 2", "s6 dang ky: VD-99999-22"),
+            ), {}
+        )
+        codes = [r for r in result if r["field"] == "REGISTRATION_NO"]
+        self.assertEqual(len(codes), 2)
+        self.assertTrue(all("NHIEU_GIA_TRI" not in r["status"] for r in codes))
+
+    def test_different_registration_codes_are_flagged_as_conflicting_hints(self):
+        result = extract_labeled_hints(
+            "REGISTRATION", doc(
+                ("Trang 1", "s6 dang ky: VD-99999-22"),
+                ("Trang 2", "s6 dang ky: VD-88888-22"),
+            ), {}
+        )
+        codes = [r for r in result if r["field"] == "REGISTRATION_NO"]
+        self.assertEqual(len(codes), 2)
+        self.assertTrue(all("NHIEU_GIA_TRI" in r["status"] for r in codes))
+
+    def test_registration_candidate_never_taken_from_ocr_table_pipe(self):
+        result = extract_labeled_hints(
+            "REGISTRATION", doc(("Trang 4 (OCR)",
+                "Tên thuốc | Số đăng ký | VD-99999-22")), {}
+        )
+        self.assertEqual(result, [])
+
+
 if __name__ == "__main__":
     unittest.main()

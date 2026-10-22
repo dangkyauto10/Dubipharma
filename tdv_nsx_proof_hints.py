@@ -42,6 +42,13 @@ FIELDS_BY_KIND = {
 }
 _LABEL_VALUE = re.compile(r"^(.{3,95}?)(?:\s*[:：]\s*|\s+[-–]\s+)(.{2,250})$")
 _DATE = re.compile(r"(?<!\d)(?:[0-3]?\d[/.-][01]?\d[/.-](?:19|20)\d{2}|(?:19|20)\d{2}[/.-][01]?\d[/.-][0-3]?\d)(?!\d)")
+# Strict source-context candidates, NOT legal SĐK verification.
+_REGISTRATION_CONTEXT = ("dang ky", "dangky", "giay phep luu hanh",
+                         "registration", "so dk", "s8k", "sdk", "dklh")
+_REGISTRATION_CODE = re.compile(
+    r"(?<![A-Za-z0-9])(?:VD|VN)\s*[.\-]\s*\d{3,6}\s*[.\-]\s*\d{2}(?![A-Za-z0-9])",
+    re.IGNORECASE,
+)
 
 
 def _norm(value: str) -> str:
@@ -58,6 +65,9 @@ def _supported_value(field: str, value: str) -> bool:
     if not 2 <= len(value) <= 250:
         return False
     if field == "PRODUCT_NAME":
+        # Multi-column OCR headings are NOT drug names.
+        if "|" in value:
+            return False
         name = _norm(value)
         return (
             2 <= len(name) <= 100
@@ -76,6 +86,8 @@ def _supported_value(field: str, value: str) -> bool:
     if field == "GMP_EXPIRY":
         return bool(_DATE.search(value))
     if field == "GMP_SCOPE":
+        if "|" in value:
+            return False
         return 5 <= len(value) <= 250 and not any(
             _norm(value) in aliases for aliases in ALIASES.values()
         )
@@ -136,9 +148,54 @@ def extract_labeled_hints(
                 break
         if len(candidates) >= limit:
             break
-    counts = Counter(row["field"] for row in candidates)
+    # Weak, explicitly unverified fallback: an SĐK-shaped token may sit on
+    # the same line as a registration label or immediately after it on the
+    # SAME page. Do not read unrelated annex/table rows or unlabeled numbers.
+    if kind == "REGISTRATION" and "REGISTRATION_NO" in missing and len(candidates) < limit:
+        for index, line in enumerate(lines):
+            place = str(line.get("source") or "")
+            raw = str(line.get("text") or "").strip()
+            if not place or "|" in raw:
+                continue
+            this_context = _norm(raw)
+            previous_context = ""
+            if index and str(lines[index - 1].get("source") or "") == place:
+                previous_context = _norm(str(lines[index - 1].get("text") or ""))
+            if not any(key in this_context or key in previous_context
+                       for key in _REGISTRATION_CONTEXT):
+                continue
+            for match in _REGISTRATION_CODE.finditer(raw):
+                value = match.group(0).strip()
+                identity = ("REGISTRATION_NO", place, _norm(value))
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                candidates.append({
+                    "field": "REGISTRATION_NO",
+                    "value": value,
+                    "source": place,
+                    "raw": raw[:450],
+                    "sha256": str(source.get("sha256") or ""),
+                    "reading_method": "OCR (chưa đối chiếu)" if "OCR" in place.upper()
+                                      else "Lớp chữ PDF (chưa đối chiếu)",
+                    "status": "GOI_Y_MA_DANG_KY_CAN_SO_BAN_GOC",
+                    "verified": False,
+                })
+                if len(candidates) >= limit:
+                    break
+            if len(candidates) >= limit:
+                break
+    # Different punctuation across OCR/native pages should not be reported
+    # as conflicting numbers when the underlying registration token agrees.
+    by_field: dict[str, set[str]] = {}
     for row in candidates:
-        if counts[row["field"]] > 1:
+        value = str(row["value"])
+        normalized_value = (re.sub(r"[^A-Z0-9]", "", value.upper())
+                            if row["field"] == "REGISTRATION_NO"
+                            else _norm(value))
+        by_field.setdefault(row["field"], set()).add(normalized_value)
+    for row in candidates:
+        if len(by_field[row["field"]]) > 1:
             row["status"] = "NHIEU_GIA_TRI_GOI_Y_CAN_DOI_CHIEU"
     return candidates
 
