@@ -176,7 +176,7 @@ def diagnose_proof_source(kind: str, source: dict, fields: dict,
 # extracted SĐK/GMP fields. Adjacent text can help diagnose broken OCR labels.
 _CONTEXT_TERMS = {
     "REGISTRATION": (
-        "dang ky", "sdk", "s d k", "so dk", "dklh",
+        "dang ky", "dangky", "sodangky", "sdk", "s d k", "so dk", "dklh",
         "registration", "luu hanh", "giay phep",
     ),
     "GMP_CERT": (
