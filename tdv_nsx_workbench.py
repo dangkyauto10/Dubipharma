@@ -36,6 +36,11 @@ def _runtime_revisions() -> dict:
     }
 
 
+def _runtime_is_consistent() -> bool:
+    return all(value == NSX_EXPECTED_PIPELINE_VERSION
+               for value in _runtime_revisions().values())
+
+
 def _report_from_current_pipeline(report: dict | None, fingerprint: str) -> bool:
     return bool(
         isinstance(report, dict)
@@ -276,8 +281,7 @@ def render_nsx_workbench() -> None:
         return
 
     revisions = _runtime_revisions()
-    if any(revision != NSX_EXPECTED_PIPELINE_VERSION
-           for revision in revisions.values()):
+    if not _runtime_is_consistent():
         st.error(
             "Bộ đọc tài liệu đang nạp khác phiên bản với giao diện; "
             "hệ thống tạm khóa xử lý để tránh xuất báo cáo cũ dưới mã phiên bản mới. "
