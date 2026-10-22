@@ -53,6 +53,30 @@ class TestProofHintBoundary(unittest.TestCase):
         self.assertEqual(result["proof_hints"][0]["field"], "GMP_NUMBER")
         self.assertFalse(result["gmp_confirmed"])
 
+    def test_labeled_product_name_hint_remains_outside_core(self):
+        raw, source = self.source(
+            ("Trang 4", "Tên thuốc (biệt dược):"),
+            ("Trang 4", "AGIMOL 150"),
+        )
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        self.assertNotIn("PRODUCT_NAME", result["fields"])
+        self.assertIn("AGIMOL 150", [x["value"] for x in result["proof_hints"]])
+        self.assertFalse(result["registration_confirmed"])
+        self.assertEqual(result["proof_diagnostic"]["hint_count"], 1)
+
+    def test_diagnostic_reports_unread_field_not_missing_legal_document(self):
+        raw, source = self.source(("Trang 1", "Mã hồ sơ không có nhãn"))
+        result = _read_one(
+            "fake.pdf", "REGISTRATION", raw, False, source_document=source,
+        )
+        d = result["proof_diagnostic"]
+        self.assertEqual(d["hint_count"], 0)
+        self.assertIn("REGISTRATION_NO", d["fields_without_hint"])
+        self.assertFalse(d["verified"])
+        self.assertFalse(result["registration_confirmed"])
+
 
 if __name__ == "__main__":
     unittest.main()
