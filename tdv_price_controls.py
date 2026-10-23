@@ -97,6 +97,8 @@ def calculate_price(*, quote_before, quote_after, supplier_vat_percent,
     after = _money(quote_after, "Giá NSX sau VAT", required=False)
     if before is None and after is None:
         raise ValueError("Cần giá NSX trước hoặc sau VAT")
+    if (before is not None and before <= 0) or (after is not None and after <= 0):
+        raise ValueError("Giá NSX phải lớn hơn 0")
     vat = _percentage(supplier_vat_percent, "VAT báo giá NSX")
     factor = Decimal("1") + vat / Decimal("100")
     if before is None:
@@ -161,7 +163,7 @@ def append_draft(existing, *, permission, global_role, scope, lot_id, nsx_id,
     if not may_price(permission, "prepare", global_role):
         raise PermissionError("Không có quyền nhập giá")
     bound = validate_scope(scope)
-    if not bound or not re.fullmatch(r"G\d+[.．]\d{2,4}", str(lot_id or "")):
+    if not bound or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{1,79}", str(lot_id or "")):
         raise ValueError("Thiếu phạm vi hoặc mã E-HSMT")
     if not nsx_id or not str(nsx_id).strip():
         raise ValueError("Mặt hàng chưa liên kết sản phẩm NSX duy nhất")
