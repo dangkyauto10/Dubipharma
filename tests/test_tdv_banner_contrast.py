@@ -22,7 +22,7 @@ class BannerContrastQA(unittest.TestCase):
         self.assertIn('drop-shadow(0 14px 11px',self.style)
         self.assertIn('tdv_logo.webp.b64',self.code)
         self.assertIn('tdv_art.webp.b64',self.code)
-        self.assertIn('logo + art_small', self.code)
+        self.assertIn("'<section class=\"tdv-main-hero\">' + art + art_small", self.code)
 
     def test_two_small_text_regions_have_opaque_contrasting_background(self):
         pill=self.style.rsplit('.tdv-main-hero .tdv-pill{',1)[1].split('}',1)[0]
