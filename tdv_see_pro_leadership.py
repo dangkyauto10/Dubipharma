@@ -5,6 +5,7 @@ from io import BytesIO
 DAT="ĐẠT"
 CHUA="CHƯA ĐẠT"
 KHONG="KHÔNG ĐẠT"
+CHO="CHỜ ĐỐI CHIẾU"
 
 def _s(value):
     return str(value).strip() if value is not None else ""
@@ -41,7 +42,7 @@ def build_register(report,scope_ok=False,reason=""):
                      "hoat_chat":_s(drug.get("HOAT_CHAT_EHSMT")),
                      "ma_nsx":_s(drug.get("MA_THUOC_NSX")),
                      "ten_nsx":_s(drug.get("TEN_THUOC_NSX")),
-                     "trang_thai":CHUA,"nguyen_nhan":why,
+                     "trang_thai":CHO if not drug.get("MA_THUOC_NSX") else CHUA,"nguyen_nhan":why,
                      "khop_so_bo":sum(f.get("status")=="DAT_SO_BO" for f in fields),
                      "thieu_chung_cu":len(yellow),"khac_so_bo":len(red),
                      "file_ehsmt":_s(drug.get("NGUON_EHSMT")),
