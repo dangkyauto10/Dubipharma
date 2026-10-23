@@ -54,7 +54,7 @@ def build_register(report,scope_ok=False,reason=""):
             criteria.append({"ma_ehsmt":code,"ma_nsx":_s(drug.get("MA_THUOC_NSX")),
                              "tieu_chi":_s(field.get("label")),
                              "ehsmt":_s(field.get("ehsmt")),"nsx":_s(field.get("nsx")),
-                             "so_bo":_s(field.get("status")),"nguyen_nhan":_reason(field),
+                             "trang_thai_so_bo":_s(field.get("status")),"nguyen_nhan":_reason(field),
                              "file_ehsmt":_s(a.get("file")),"vi_tri_ehsmt":_s(a.get("location")),
                              "trich_goc_ehsmt":_s(a.get("raw")),"sha_ehsmt":_s(a.get("sha256")),
                              "file_nsx":_s(b.get("file")),"vi_tri_nsx":_s(b.get("location")),
@@ -130,7 +130,7 @@ def export_docx(register, scope):
     doc.add_heading("Các tiêu chí cần truy cứu và chứng cứ",level=1)
     doc.add_paragraph("Bảng đầy đủ tất cả tiêu chí nằm tại sheet 06_HAI_NGUON_LY_DO "
                       "của Excel xuất kèm. Dưới đây là tối đa 20 điểm cần rà soát.")
-    needs=[x for x in register["criteria"] if x["so_bo"]!="DAT_SO_BO"][:20]
+    needs=[x for x in register["criteria"] if x["trang_thai_so_bo"]!="DAT_SO_BO"][:20]
     for f in needs:
         doc.add_heading(f["ma_ehsmt"]+" — "+f["tieu_chi"],level=2)
         doc.add_paragraph("E-HSMT: "+(f["ehsmt"] or "CHƯA ĐỌC ĐƯỢC")+" | "+
