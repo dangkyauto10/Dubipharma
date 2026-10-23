@@ -10,7 +10,7 @@ import streamlit as st
 
 from see_pro_quality_gate import audit_comparison
 from tdv_see_pro_scope import check_scope
-from tdv_see_pro_leadership import build_register, export_xlsx, DAT, CHUA, KHONG, CHO
+from tdv_see_pro_leadership import build_register, export_xlsx, export_docx, DAT, CHUA, KHONG, CHO
 from tdv_readable_tables import render_readable_table
 from tdv_leadership_report import (
     compare_sources, export_leadership_xlsx, export_leadership_docx,
@@ -256,6 +256,11 @@ def _leader_by_product(report):
                        file_name="SEE_PRO_BAO_CAO_LANH_DAO_THEO_THUOC_SO_BO.xlsx",
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                        key="tdv_leader_per_drug_xlsx")
+    st.download_button("Tải Word Lãnh đạo: 4 nhóm, danh sách và nguyên nhân",
+                       export_docx(register,st.session_state["tdv_see_pro_active_scope"]),
+                       file_name="SEE_PRO_BAO_CAO_LANH_DAO_THEO_THUOC_SO_BO.docx",
+                       mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                       key="tdv_leader_per_drug_word")
     st.caption("Mẫu số theo mã E-HSMT, không phải số tài liệu/ứng viên NSX. "
                "Đối chiếu chỉ đang ở mức sơ bộ và phạm vi người dùng khai báo.")
 
