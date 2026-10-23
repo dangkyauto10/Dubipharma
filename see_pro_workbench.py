@@ -21,6 +21,7 @@ from see_pro_pdf_viewer import render_original_pdf_viewer
 from tdv_readable_tables import render_readable_table
 
 from tdv_ehsmt_xlsx import inspect_ehsmt_xlsx
+from tdv_see_pro_scope import bind_report, validate_scope
 from see_pro_quality_gate import audit_ehsmt
 from tdv_tender_context import (
     detect_procurement_document, index_tender_documents, PUBLIC_REFERENCES,
