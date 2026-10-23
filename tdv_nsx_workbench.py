@@ -16,6 +16,10 @@ from tdv_nsx_source_diff import compare_conflict_sources
 from tdv_manufacturer_evidence import audit_manufacturer_evidence
 
 from see_pro_multiformat import ACCEPTED
+from tdv_see_pro_scope import bind_report, validate_scope
+from tdv_see_pro_nsx_batches import (
+    stage_append, manifest_for_report, payload_for_analysis, verify_ledger,
+)
 from tdv_nsx_auto import export_auto_xlsx
 from tdv_nsx_gmp_guarded_auto import analyze_auto
 from tdv_nsx_intake import KINDS
@@ -253,6 +257,7 @@ def render_manufacturer_evidence_review(report: dict, st_module=None) -> None:
 
 
 def render_nsx_workbench() -> None:
+    scope = validate_scope(st.session_state.get("tdv_see_pro_active_scope"))
     st.markdown("### SEE PRO · Hồ sơ NSX & Báo giá — đọc tự động")
     st.caption(
         "PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22J · "
@@ -280,6 +285,10 @@ def render_nsx_workbench() -> None:
         st.info("Xác nhận phạm vi bảo mật trước khi nạp một bộ hồ sơ.")
         return
 
+    if not scope:
+        st.warning("Chọn dự án / BP / phiên bản E-HSMT trước khi đọc hồ sơ NSX.")
+        return
+
     revisions = _runtime_revisions()
     if not _runtime_is_consistent():
         st.error(
@@ -294,61 +303,81 @@ def render_nsx_workbench() -> None:
         )
         return
 
+    # Each NSX intake may arrive in successive batches; committed sources are
+    # staged append-only in RAM and never replaced by the current uploader.
+    scope_key = "::".join(scope[k] for k in ("project_id", "package_id", "ehsmt_revision_id"))
+    ledger_store = st.session_state.setdefault("tdv_nsx_batches_in_ram", {})
+    records = ledger_store.get(scope_key, [])
+    if records and not verify_ledger(records):
+        st.error("Kho tạm NSX sai SHA-256; khóa xử lý, giữ nguyên kết quả cũ.")
+        return
     uploads = st.file_uploader(
-        "Nạp cả bộ hồ sơ NSX / GMP / SĐK / ủy quyền / báo giá",
+        "Bổ sung hồ sơ NSX đợt mới (tệp cũ vẫn giữ trong phiên)",
         type=list(ACCEPTED), accept_multiple_files=True,
-        key="tdv_nsx_auto_batch",
-        help="Chọn nhiều tệp cùng lúc. Không cần phân loại tệp hoặc chọn sản phẩm.",
+        key="tdv_nsx_auto_batch_" + "_".join(scope.values()),
+        help="Mỗi đợt chọn các tệp mới. Trùng SHA không được tính hai lần.",
     )
-    files = [(f.name, f.getvalue()) for f in uploads or []]
-    if len(files) > MAX_FILES:
-        st.error(f"Mỗi lần nhận tối đa {MAX_FILES} tài liệu; cần chia thành các đợt hồ sơ.")
-        return
-    if not files:
-        st.caption("Chưa có tài liệu để đọc.")
-        return
-
-    digest = _signature(files)
-    old_report = st.session_state.get("tdv_nsx_auto_report")
-    if (st.session_state.get("tdv_nsx_auto_signature") != digest
-            or (old_report and not _report_from_current_pipeline(old_report, digest))):
-        if old_report:
-            st.info(
-                "Báo cáo trong phiên làm việc là kết quả của bộ tệp hoặc phiên bản "
-                "phân tích cũ; đã bỏ khỏi phiên. Nhấn Đọc và kiểm toán để phân tích "
-                "bằng đúng phiên bản đang hiển thị."
-            )
-        st.session_state.pop("tdv_nsx_auto_report", None)
-        st.session_state.pop("tdv_nsx_auto_signature", None)
-    st.caption(
-        f"Đã nhận {len(files)} tệp. Loại tài liệu và số thuốc sẽ được nhận diện tự động."
-    )
-    if st.button(
-        "🔍 Đọc và kiểm toán toàn bộ hồ sơ NSX",
+    incoming = [(f.name, f.getvalue()) for f in uploads or []]
+    try:
+        plan = stage_append(records, incoming,
+                            batch_cap=MAX_FILES, combined_cap=MAX_FILES)
+    except ValueError as exc:
+        plan = {"status": "ERROR", "conflicts": [str(exc)],
+                "added": [], "repeated": [], "records": records}
+    st.caption(f"Đã lưu tạm {len(records)} tệp NSX thuộc phạm vi này; "
+               f"đợt mới có {len(plan['added'])} tệp chưa nạp, "
+               f"{len(plan['repeated'])} tệp trùng SHA-256.")
+    st.caption("Bộ nhớ tạm chỉ tồn tại trong phiên Streamlit; "
+               "chưa bảo đảm lưu hồ sơ qua ngày hay sau khi máy chủ khởi động lại.")
+    if records:
+        with st.expander("Nhật ký các đợt NSX đang lưu trong phiên"):
+            st.dataframe(pd.DataFrame(manifest_for_report(records)),
+                         hide_index=True, use_container_width=True)
+    if plan["status"] in ("CONFLICT", "LIMIT", "ERROR"):
+        for issue in plan["conflicts"]:
+            st.error(issue)
+        st.info("Lỗi đợt bổ sung KHÔNG làm mất dữ liệu các đợt đã nhận.")
+    if plan["status"] == "REPEAT_ONLY" and incoming:
+        st.info("Toàn bộ tệp mới đã có trong phiên; không tạo đợt nạp trùng.")
+    if plan["status"] == "READY" and st.button(
+        "📥 Nhận đợt NSX mới và đọc lại toàn bộ chứng cứ",
         key="tdv_nsx_auto_analyze", type="primary",
     ):
-        with st.spinner("Tự phân loại, trích xuất, liên kết và lập kiểm toán nguồn..."):
+        candidate = plan["records"]
+        new_files = payload_for_analysis(candidate)
+        new_digest = hashlib.sha256(
+            (repr(scope) + _signature(new_files)).encode()).hexdigest()
+        with st.spinner("Đang đọc lại các nguồn cũ và mới để kiểm tra mâu thuẫn..."):
             try:
-                report = analyze_auto(files, enable_ocr=True)
-                if report.get("analysis_version") != NSX_EXPECTED_PIPELINE_VERSION:
-                    st.error(
-                        "Bộ đọc trả về báo cáo từ phiên bản không khớp; "
-                        "kết quả bị loại, không xuất Excel."
-                    )
+                new_report = analyze_auto(new_files, enable_ocr=True)
+                if new_report.get("analysis_version") != NSX_EXPECTED_PIPELINE_VERSION:
+                    st.error("Sai phiên bản engine NSX; không nhận đợt mới.")
                     return
-                report["analysis_fingerprint"] = digest
+                new_report = bind_report(new_report, scope, new_files)
+                new_report["analysis_fingerprint"] = new_digest
+                new_report["_tdv_nsx_batches"] = manifest_for_report(candidate)
             except Exception as exc:
-                st.error(
-                    f"Không hoàn tất lượt đọc ({type(exc).__name__}). "
-                    "Tệp nguồn vẫn được giữ nguyên; kiểm tra định dạng và dung lượng."
-                )
+                st.error(f"Đợt NSX chưa được nhận vì đọc lỗi: {type(exc).__name__}. "
+                         "Các đợt đã xác nhận vẫn giữ nguyên.")
                 return
-        st.session_state["tdv_nsx_auto_report"] = report
-        st.session_state["tdv_nsx_auto_signature"] = digest
-
+        # Atomic commit only after full successful reanalysis.
+        ledger_store[scope_key] = candidate
+        records = candidate
+        st.session_state["tdv_nsx_auto_report"] = new_report
+        st.session_state["tdv_nsx_auto_signature"] = new_digest
+        st.success(f"Đã nhận {len(plan['added'])} tệp mới; "
+                   f"tổng {len(candidate)} nguồn được kiểm toán lại.")
+    if not records:
+        st.caption("Chưa có đợt NSX nào được đọc và xác nhận.")
+        return
+    files = payload_for_analysis(records)
+    digest = hashlib.sha256(
+        (repr(scope) + _signature(files)).encode()).hexdigest()
     report = st.session_state.get("tdv_nsx_auto_report")
     if (not _report_from_current_pipeline(report, digest)
             or st.session_state.get("tdv_nsx_auto_signature") != digest):
+        st.warning("Bộ nguồn tạm có nhưng báo cáo engine chưa đồng bộ; "
+                   "không dùng số liệu cũ để lập Báo cáo Lãnh đạo.")
         return
     st.caption(
         f"Phiên bản thực sự xử lý báo cáo: {report['analysis_version']} "

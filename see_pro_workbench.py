@@ -21,6 +21,7 @@ from see_pro_pdf_viewer import render_original_pdf_viewer
 from tdv_readable_tables import render_readable_table
 
 from tdv_ehsmt_xlsx import inspect_ehsmt_xlsx
+from tdv_see_pro_scope import bind_report, validate_scope
 from see_pro_quality_gate import audit_ehsmt
 from tdv_tender_context import (
     detect_procurement_document, index_tender_documents, PUBLIC_REFERENCES,
@@ -282,9 +283,14 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
 def render_ehsmt_workbench() -> None:
     st.markdown("### E-HSMT · SEE PRO – Tiếp nhận, đọc và kiểm toán hồ sơ")
     st.caption("Một luồng cho PDF, Word, Excel, CSV và ảnh. Dữ liệu đọc được là sơ bộ, có chứng cứ; không tự duyệt thầu.")
+    scope = validate_scope(st.session_state.get("tdv_see_pro_active_scope"))
+    if not scope:
+        st.warning("Chọn dự án / BP / phiên bản E-HSMT trước khi nạp để đối chiếu.")
+        return
     files = st.file_uploader(
         "Tải một hoặc nhiều tài liệu E-HSMT / hồ sơ thuốc / GMP / báo giá",
-        type=list(ACCEPTED), accept_multiple_files=True, key="tdv_see_pro_documents")
+        type=list(ACCEPTED), accept_multiple_files=True,
+        key="tdv_see_pro_documents_" + "_".join(scope.values()))
     ocr = st.checkbox(
         "Bật OCR cục bộ cho ảnh và trang PDF không có chữ (cần kiểm tra lại nguồn)",
         value=False, key="tdv_see_pro_ocr")
@@ -297,14 +303,20 @@ def render_ehsmt_workbench() -> None:
             digest.update(f.getvalue())
         digest.update(str(ocr).encode())
         digest.update(str(deep).encode())
+        digest.update(repr(scope).encode("utf-8"))
         signature = digest.hexdigest()
         if st.session_state.get("tdv_see_pro_signature") != signature:
             st.session_state.pop("tdv_see_pro_analysis", None)
         if st.button("Đọc và kiểm toán bộ hồ sơ", key="tdv_see_pro_execute", type="primary"):
             with st.spinner("Đang đọc tài liệu và lập danh mục chứng cứ..."):
-                result = analyze_uploads(
-                    [(f.name, f.getvalue()) for f in files], enable_ocr=ocr,
+                batch = [(f.name, f.getvalue()) for f in files]
+                result = analyze_uploads(batch, enable_ocr=ocr,
                     deep_technical=deep)
+                try:
+                    result = bind_report(result, scope, batch)
+                except ValueError as exc:
+                    st.error(f"Chưa thể gắn chứng cứ E-HSMT: {exc}")
+                    return
             st.session_state["tdv_see_pro_signature"] = signature
             st.session_state["tdv_see_pro_analysis"] = result
     else:
