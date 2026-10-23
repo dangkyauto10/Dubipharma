@@ -193,6 +193,72 @@ def render_comparison_view():
         _criteria(records[selected])
 
 
+
+def _leader_by_product(report):
+    """Project-scoped triage: one E-HSMT lot per row, reasons on click."""
+    register = build_register(report, scope_ok=True)
+    st.markdown("#### Kết quả từng mặt hàng E-HSMT và sản phẩm NSX")
+    st.caption("ĐẠT/CHƯA ĐẠT/KHÔNG ĐẠT chỉ được kết luận từ chứng cứ đã xác minh. "
+               "SEE PRO hiện chưa có người duyệt pháp lý; kết quả trích xuất sơ bộ "
+               "được ghi CHƯA ĐẠT — CHƯA ĐỦ CĂN CỨ.")
+    counts = register["summary"]
+    x,y,z,total = st.columns(4)
+    x.metric("Đạt đã xác minh", counts[DAT])
+    y.metric("Chưa đạt / cần xác minh", counts[CHUA])
+    z.metric("Không đạt đã xác minh", counts[KHONG])
+    total.metric("Mặt hàng E-HSMT đã phân nhóm", register["total"])
+    group = st.selectbox("Lọc danh sách theo kết quả",
+                         ["TẤT CẢ", DAT, CHUA, KHONG], key="tdv_leader_result_filter")
+    selected_rows = [r for r in register["rows"]
+                     if group=="TẤT CẢ" or r["trang_thai"]==group]
+    if selected_rows:
+        frame = pd.DataFrame([{
+            "Mã E-HSMT": r["ma_ehsmt"], "Mã NSX":r["ma_nsx"],
+            "Sản phẩm NSX":r["ten_nsx"],"Kết quả":r["trang_thai"],
+            "Nguyên nhân / cần làm":r["nguyen_nhan"],
+            "Khớp sơ bộ":r["khop_so_bo"],"Thiếu":r["thieu_chung_cu"],
+            "Không khớp sơ bộ":r["khac_so_bo"],
+        } for r in selected_rows])
+        render_readable_table(st,frame,key="tdv_leader_drug_list",
+                              label="Danh sách thuốc theo kết quả",
+                              page_size=25,min_width=1250)
+        chosen = st.selectbox("Chọn mã thuốc để xem lý do và chứng cứ",
+                              range(len(selected_rows)),
+                              format_func=lambda i: selected_rows[i]["ma_ehsmt"]+
+                                  " / "+(selected_rows[i]["ten_nsx"] or "chưa gắn NSX"),
+                              key="tdv_leader_select_drug")
+        drug=selected_rows[chosen]
+        st.warning("Kết quả: "+drug["trang_thai"]+" · "+drug["nguyen_nhan"])
+        evidence = [c for c in register["criteria"] if c["ma_ehsmt"]==drug["ma_ehsmt"]]
+        for c in evidence:
+            with st.expander(c["tieu_chi"]+" · "+c["trang_thai_so_bo"]):
+                left,right=st.columns(2)
+                with left:
+                    st.markdown("**E-HSMT — yêu cầu**")
+                    st.write(c["ehsmt"] or "Chưa đọc được")
+                    st.caption(c["file_ehsmt"]+" · "+c["vi_tri_ehsmt"]+
+                               " · SHA256: "+c["sha_ehsmt"])
+                    if c["trich_goc_ehsmt"]:
+                        st.code(c["trich_goc_ehsmt"][:700],language=None)
+                with right:
+                    st.markdown("**NSX — sản phẩm**")
+                    st.write(c["nsx"] or "Chưa có")
+                    st.caption(c["file_nsx"]+" · "+c["vi_tri_nsx"]+
+                               " · SHA256: "+c["sha_nsx"])
+                    if c["trich_goc_nsx"]:
+                        st.code(c["trich_goc_nsx"][:700],language=None)
+                st.info("Nguyên nhân: "+c["nguyen_nhan"])
+    else:
+        st.info("Nhóm này chưa có thuốc đủ căn cứ phân loại.")
+    st.download_button("Tải Excel Lãnh đạo: 3 danh sách và lý do từng tiêu chí",
+                       export_xlsx(register,st.session_state["tdv_see_pro_active_scope"]),
+                       file_name="SEE_PRO_BAO_CAO_LANH_DAO_THEO_THUOC_SO_BO.xlsx",
+                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                       key="tdv_leader_per_drug_xlsx")
+    st.caption("Mẫu số theo mã E-HSMT, không phải số tài liệu/ứng viên NSX. "
+               "Đối chiếu chỉ đang ở mức sơ bộ và phạm vi người dùng khai báo.")
+
+
 def render_leadership_view():
     st.markdown("### 📊 Báo cáo Lãnh đạo · E-HSMT làm chuẩn đối chiếu")
     t,n,report=_live_report()
