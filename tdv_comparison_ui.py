@@ -9,6 +9,8 @@ import pandas as pd
 import streamlit as st
 
 from see_pro_quality_gate import audit_comparison
+from tdv_see_pro_scope import check_scope
+from tdv_see_pro_leadership import build_register, export_xlsx, DAT, CHUA, KHONG
 from tdv_readable_tables import render_readable_table
 from tdv_leadership_report import (
     compare_sources, export_leadership_xlsx, export_leadership_docx,
@@ -25,6 +27,9 @@ PALETTE = {
 def _live_report():
     tender = st.session_state.get("tdv_see_pro_analysis")
     supplier = st.session_state.get("tdv_nsx_auto_report")
+    ok, reason = check_scope(st.session_state.get("tdv_see_pro_active_scope"), tender, supplier)
+    if not ok:
+        return tender, supplier, {"blocked": True, "block_reason": reason}
     return tender, supplier, compare_sources(tender, supplier)
 
 
