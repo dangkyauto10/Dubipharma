@@ -468,6 +468,13 @@ h1,h2,h3 {color:#0b316b;}
 st.markdown(STYLE, unsafe_allow_html=True)
 
 from tdv_price_controls import PRICE_PAGE, price_permission
+
+# Optional, deny-by-default feature secrets must not break startup tests.
+try:
+    TDV_PRICE_CONFIG = st.secrets.get('tdv_price_access')
+except Exception:
+    TDV_PRICE_CONFIG = None
+
 PAGES = [
     "🏠 Trang chủ / Dự án",
     "📄 E-HSMT",
@@ -484,7 +491,7 @@ PAGES = [
 TDV_PRICE_PERMISSION = price_permission(
     TDV_EMAIL, TDV_ROLE,
     st.session_state.get("tdv_see_pro_active_scope"),
-    st.secrets.get("tdv_price_access"),
+    TDV_PRICE_CONFIG,
 )
 ALLOWED_PAGES = [p for p in PAGES
                  if p != PAGES[4] and
@@ -874,7 +881,7 @@ with st.container(key="tdv_main_scroll"):
     elif page == PRICE_PAGE:
         from tdv_price_ui import render_price_workspace
         render_price_workspace(st, email=TDV_EMAIL, role=TDV_ROLE,
-                               grant_config=st.secrets.get("tdv_price_access"))
+                               grant_config=TDV_PRICE_CONFIG)
     elif page == PAGES[-1]:
         st.markdown('<div class="tdv-page-title">☁️ Tiến độ Online</div>',unsafe_allow_html=True)
         st.table([
