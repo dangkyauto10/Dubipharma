@@ -87,6 +87,8 @@ def role_from_claims(claims: Mapping, auth: Mapping, access: Mapping) -> str | N
 
 def may_open_section(role: str, page: str) -> bool:
     """Viewer is read-only: no file intake or technical input pages."""
+    if page == "💰 Cân đối & phê duyệt giá chào":
+        return False  # Requires a distinct grant validated on every request.
     return role in ("admin", "analyst") or (role == "viewer" and
             page not in BUSINESS_SENSITIVE)
 
