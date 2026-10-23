@@ -256,9 +256,6 @@ def render_manufacturer_evidence_review(report: dict, st_module=None) -> None:
 def render_nsx_workbench() -> None:
     scope = validate_scope(st.session_state.get("tdv_see_pro_active_scope"))
     st.markdown("### SEE PRO · Hồ sơ NSX & Báo giá — đọc tự động")
-    if not scope:
-        st.warning("Chọn dự án / BP / phiên bản E-HSMT trước khi đọc hồ sơ NSX.")
-        return
     st.caption(
         "PHIÊN BẢN NGHIỆP VỤ NSX: 2026-10-22J · "
         "Đối chiếu giá trị hai nguồn đặt trước danh sách mâu thuẫn. "
@@ -283,6 +280,10 @@ def render_nsx_workbench() -> None:
         st.session_state.pop("tdv_nsx_auto_report", None)
         st.session_state.pop("tdv_nsx_auto_signature", None)
         st.info("Xác nhận phạm vi bảo mật trước khi nạp một bộ hồ sơ.")
+        return
+
+    if not scope:
+        st.warning("Chọn dự án / BP / phiên bản E-HSMT trước khi đọc hồ sơ NSX.")
         return
 
     revisions = _runtime_revisions()
