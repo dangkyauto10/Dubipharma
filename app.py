@@ -469,76 +469,69 @@ h1,h2,h3 {color:#0b316b;}
 @media(max-width:1150px){.tdv-left-photo{left:12%;width:19%;opacity:.34;}}
 @media(max-width:899px){.tdv-left-photo{display:none!important;}}
 
-/* 23/10 UX polish: dimensional logo + medical banner, contrast-first mini labels.
-   Pure CSS: preserves original corporate artwork, existing text and layout. */
+/* 23/10 corrective review — credible enterprise medical system, not a 3D ad.
+   Keep original brand files and proportions; remove fake depth/glow.
+   Source images are intentionally subdued so real text remains dominant. */
 .tdv-main-hero{
- background:
-   radial-gradient(ellipse at 15% 0%,rgba(255,255,255,.98) 0%,rgba(255,255,255,0) 52%),
-   radial-gradient(ellipse at 78% 86%,rgba(31,137,203,.22) 0%,transparent 48%),
-   linear-gradient(113deg,#edfaff 0%,#deeffb 31%,#b9e3f6 72%,#71bfdf 100%)!important;
- border:1px solid rgba(92,161,206,.55)!important;
- box-shadow:0 14px 24px -16px rgba(11,57,101,.35),
-            0 5px 16px rgba(34,112,166,.12),
-            inset 0 2px 2px rgba(255,255,255,.95),
-            inset 0 -2px 4px rgba(39,112,158,.10)!important;
+ background:linear-gradient(108deg,#f7fbff 0%,#eef6fc 45%,#dfeefa 100%)!important;
+ border:1px solid #c8dbe9!important;
+ box-shadow:0 2px 7px rgba(20,65,106,.07)!important;
 }
 .tdv-main-hero::after{
- background:
-   linear-gradient(180deg,rgba(255,255,255,.50) 0%,rgba(255,255,255,0) 37%),
-   radial-gradient(ellipse at 81% 15%,rgba(255,255,255,.50),transparent 49%),
-   linear-gradient(0deg,rgba(20,111,175,.08),transparent 35%)!important;
+ background:linear-gradient(90deg,rgba(247,251,255,.04) 0%,
+   rgba(247,251,255,.19) 35%,rgba(247,251,255,.30) 100%)!important;
 }
 .tdv-main-hero .tdv-main-logo{
- border-right:0!important;
- filter:drop-shadow(0 9px 9px rgba(15,64,112,.13));
+ background:transparent!important;
+ border:0!important;
+ filter:none!important;
 }
 .tdv-main-hero .tdv-main-logo img{
- position:relative;
- filter:drop-shadow(0 2px 1px rgba(255,255,255,.95))
-        drop-shadow(0 6px 5px rgba(12,70,121,.29))
-        drop-shadow(0 14px 11px rgba(25,82,124,.17))!important;
- transform:perspective(650px) rotateY(-3deg) translateZ(0);
- transform-origin:center center;
+ transform:none!important;
+ filter:none!important;
+ box-shadow:none!important;
+ border:0!important;
+ background:transparent!important;
 }
 .tdv-main-hero .tdv-main-art{
- filter:saturate(1.11) contrast(1.08) brightness(1.03)
-        drop-shadow(-3px 4px 8px rgba(12,73,125,.10))!important;
+ opacity:.42!important;
+ filter:saturate(.60) contrast(.94) brightness(.99)!important;
 }
 .tdv-main-hero .tdv-left-photo{
- opacity:.68!important;
- filter:saturate(1.23) contrast(1.15) brightness(1.06)
-        drop-shadow(1px 6px 8px rgba(26,99,151,.17))!important;
+ opacity:.28!important;
+ filter:saturate(.60) contrast(.96) brightness(1.02)!important;
+}
+.tdv-main-hero .tdv-main-title{
+ color:#143e70!important;
+ text-shadow:none!important;
+}
+.tdv-main-hero .tdv-main-subtitle{
+ color:#42617b!important;
+ text-shadow:none!important;
+ font-weight:550!important;
 }
 .tdv-main-hero .tdv-pill{
- color:#08412f!important;
- background:rgba(243,255,247,.96)!important;
- border:1px solid #8acdad!important;
- box-shadow:0 2px 7px rgba(20,104,72,.16),inset 0 1px 0 #fff!important;
- font-weight:850!important;
+ color:#185c43!important;
+ background:#edf7f1!important;
+ border:1px solid #bfdfcd!important;
+ box-shadow:none!important;
  text-shadow:none!important;
+ font-weight:750!important;
  line-height:1.45!important;
 }
 .tdv-main-hero .tdv-tags span{
- color:#113f69!important;
- background:rgba(255,255,255,.96)!important;
- border:1px solid #a7c9e3!important;
- box-shadow:0 2px 7px rgba(20,75,125,.13),inset 0 1px 0 #fff!important;
- font-weight:800!important;
+ color:#315674!important;
+ background:#f9fbfd!important;
+ border:1px solid #d4e1ea!important;
+ box-shadow:none!important;
  text-shadow:none!important;
+ font-weight:650!important;
  line-height:1.35!important;
 }
-.tdv-main-hero .tdv-main-title{
- text-shadow:0 2px 0 rgba(255,255,255,.90),0 5px 10px rgba(29,74,123,.12)!important;
-}
-.tdv-main-hero .tdv-main-subtitle{
- color:#204d70!important;
- text-shadow:0 1px 1px rgba(255,255,255,.94)!important;
- font-weight:650!important;
-}
+/* Desktop and mobile must consistently avoid perspective and fake shadows. */
 @media(max-width:899px),(max-height:569px){
- .tdv-main-hero .tdv-main-logo img{transform:none;}
- .tdv-main-hero .tdv-main-logo{filter:none;}
- .tdv-main-hero .tdv-main-title{text-shadow:0 1px 0 #fff!important;}
+ .tdv-main-hero .tdv-main-logo img{transform:none!important;filter:none!important;}
+ .tdv-main-hero .tdv-main-title{text-shadow:none!important;}
 }
 
 </style>
