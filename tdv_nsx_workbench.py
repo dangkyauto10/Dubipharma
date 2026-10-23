@@ -341,6 +341,7 @@ def render_nsx_workbench() -> None:
                         "kết quả bị loại, không xuất Excel."
                     )
                     return
+                report = bind_report(report, scope, files)
                 report["analysis_fingerprint"] = digest
             except Exception as exc:
                 st.error(
