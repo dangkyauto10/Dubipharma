@@ -178,6 +178,9 @@ def render_comparison_view():
         st.write("E-HSMT:", "ĐÃ CÓ" if t else "CHƯA CÓ")
         st.write("Hồ sơ NSX:", "ĐÃ CÓ" if n else "CHƯA CÓ")
         return
+    if report.get("blocked"):
+        st.error("ĐÃ CHẶN ĐỐI CHIẾU: " + report["block_reason"])
+        return
     _summary(report)
     _records(report)
     records=report["comparison"]
@@ -196,6 +199,10 @@ def render_leadership_view():
     if not t or not n:
         st.warning("Chưa đủ E-HSMT và NSX đã đọc từ tài liệu thật; KHÔNG tạo báo cáo giả.")
         return
+    if report.get("blocked"):
+        st.error("ĐÃ CHẶN BÁO CÁO: " + report["block_reason"])
+        return
+    _leader_by_product(report)
     _summary(report)
     _records(report)
     from tdv_review_priorities import build_review_priorities
