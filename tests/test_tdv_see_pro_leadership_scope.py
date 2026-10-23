@@ -2,7 +2,7 @@
 import unittest
 from io import BytesIO
 from openpyxl import load_workbook
-from tdv_see_pro_scope import bind_report, check_scope
+from tdv_see_pro_scope import bind_report, check_scope, switch_workspace
 from tdv_see_pro_leadership import build_register, export_xlsx, DAT, CHUA, KHONG, CHO
 
 S={"project_id":"DA-TQ-01","package_id":"BP2600899572","ehsmt_revision_id":"R01"}
@@ -23,6 +23,28 @@ def comparison(status="DAT_SO_BO",linked=True):
     }]}
 
 class ScopedLeadershipQA(unittest.TestCase):
+    def test_ram_switch_restores_only_own_project(self):
+        a,b=sample()
+        s={"tdv_see_pro_active_scope":dict(S),
+           "tdv_see_pro_analysis":a,"tdv_see_pro_signature":"one",
+           "tdv_nsx_auto_report":b,"tdv_nsx_auto_signature":"two"}
+        other={**S,"project_id":"DA-TQ-02"}
+        switch_workspace(s,other)
+        self.assertNotIn("tdv_see_pro_analysis",s)
+        self.assertNotIn("tdv_nsx_auto_report",s)
+        c=bind_report({"rows":[]},other,[("B.pdf",b"b")])
+        s["tdv_see_pro_analysis"]=c
+        s["tdv_see_pro_signature"]="three"
+        switch_workspace(s,S)
+        self.assertEqual(s["tdv_see_pro_analysis"]["_tdv_scope"],S)
+        self.assertEqual(s["tdv_nsx_auto_report"]["_tdv_scope"],S)
+        self.assertEqual(s["tdv_see_pro_signature"],"one")
+        self.assertEqual(s["tdv_nsx_auto_signature"],"two")
+        switch_workspace(s,other)
+        self.assertEqual(s["tdv_see_pro_signature"],"three")
+        self.assertNotIn("tdv_nsx_auto_report",s)
+    def test_workspace_rejects_missing_scope(self):
+        with self.assertRaises(ValueError):switch_workspace({},{"project_id":"A"})
     def test_same_scope(self):
         a,b=sample()
         self.assertTrue(check_scope(S,a,b)[0])
