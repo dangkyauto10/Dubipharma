@@ -112,21 +112,13 @@ def render_scope_selector(st, role="analyst"):
             else:
                 key="::".join(candidate.values())
                 saved[key]=candidate
-                if current!=candidate:
-                    for k in ("tdv_see_pro_analysis","tdv_see_pro_signature",
-                              "tdv_nsx_auto_report","tdv_nsx_auto_signature"):
-                        s.pop(k,None)
-                s["tdv_see_pro_active_scope"]=candidate
+                switch_workspace(s,candidate)
                 st.success("Đã chọn phạm vi, nạp E-HSMT và NSX trong đúng gói này.")
         if saved:
             chosen=st.selectbox("Các gói đã mở trong phiên",list(saved),
                                 format_func=lambda x:x.replace("::"," / "),key="tdv_scope_choice")
             if st.button("Chuyển gói đã chọn",key="tdv_scope_switch"):
                 selected=saved[chosen]
-                if current!=selected:
-                    for k in ("tdv_see_pro_analysis","tdv_see_pro_signature",
-                              "tdv_nsx_auto_report","tdv_nsx_auto_signature"):
-                        s.pop(k,None)
-                s["tdv_see_pro_active_scope"]=selected
-                st.info("Đã chuyển. Cần đọc lại hai đầu vào; không tái dùng kết quả gói khác.")
+                switch_workspace(s,selected)
+                st.info("Đã chuyển phạm vi. Chỉ phục hồi báo cáo thuộc đúng gói này nếu còn trong phiên RAM.")
     st.caption("Preview: dữ liệu chỉ trong phiên RAM; chưa có lưu trữ bền vững/phân quyền dự án.")
