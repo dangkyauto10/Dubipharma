@@ -313,7 +313,7 @@ def render_nsx_workbench() -> None:
         st.caption("Chưa có tài liệu để đọc.")
         return
 
-    digest = _signature(files)
+    digest = hashlib.sha256((repr(scope) + _signature(files)).encode()).hexdigest()
     old_report = st.session_state.get("tdv_nsx_auto_report")
     if (st.session_state.get("tdv_nsx_auto_signature") != digest
             or (old_report and not _report_from_current_pipeline(old_report, digest))):
