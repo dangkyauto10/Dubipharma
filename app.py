@@ -467,6 +467,7 @@ h1,h2,h3 {color:#0b316b;}
 """
 st.markdown(STYLE, unsafe_allow_html=True)
 
+from tdv_price_controls import PRICE_PAGE, price_permission
 PAGES = [
     "🏠 Trang chủ / Dự án",
     "📄 E-HSMT",
@@ -475,12 +476,20 @@ PAGES = [
     "🛡️ Chứng cứ nhà sản xuất",
     "⚖️ So sánh kỹ thuật",
     "📊 Báo cáo lãnh đạo",
+    PRICE_PAGE,
     "🔗 Google Sheets",
     "☁️ Tình trạng Online",
 ]
 
+TDV_PRICE_PERMISSION = price_permission(
+    TDV_EMAIL, TDV_ROLE,
+    st.session_state.get("tdv_see_pro_active_scope"),
+    st.secrets.get("tdv_price_access"),
+)
 ALLOWED_PAGES = [p for p in PAGES
-                 if p != PAGES[4] and may_open_section(TDV_ROLE, p)]
+                 if p != PAGES[4] and
+                 (may_open_section(TDV_ROLE, p) or
+                  (p == PRICE_PAGE and TDV_PRICE_PERMISSION is not None))]
 # Previously selected standalone manufacturer-evidence page now lives inside NSX.
 if (st.session_state.get("tdv_sidebar_nav") == PAGES[4]
         and PAGES[2] in ALLOWED_PAGES):
@@ -862,6 +871,10 @@ with st.container(key="tdv_main_scroll"):
     elif page == PAGES[6]:
         from tdv_comparison_ui import render_leadership_view
         render_leadership_view()
+    elif page == PRICE_PAGE:
+        from tdv_price_ui import render_price_workspace
+        render_price_workspace(st, email=TDV_EMAIL, role=TDV_ROLE,
+                               grant_config=st.secrets.get("tdv_price_access"))
     elif page == PAGES[-1]:
         st.markdown('<div class="tdv-page-title">☁️ Tiến độ Online</div>',unsafe_allow_html=True)
         st.table([
