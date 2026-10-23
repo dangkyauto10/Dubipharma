@@ -585,6 +585,8 @@ with st.container(key="tdv_main_scroll"):
                 unsafe_allow_html=True)
     st.markdown(f'<div class="tdv-crumb">🏠 TDV QC7 &nbsp;›&nbsp; {page}</div>',
                 unsafe_allow_html=True)
+    from tdv_see_pro_scope import render_scope_selector
+    render_scope_selector(st, role=TDV_ROLE)
     if page == PAGES[0]:
         st.markdown('<div class="tdv-section-label">🏛️ Trang chủ · Quy trình điều hành dự án</div>',
                     unsafe_allow_html=True)
