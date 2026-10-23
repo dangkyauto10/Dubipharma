@@ -52,6 +52,40 @@ def check_scope(active, ehsmt, nsx):
             return False,f"E-HSMT có mã gói {package} khác phạm vi đã chọn"
     return True,"Đủ điều kiện đối chiếu SƠ BỘ phạm vi; chưa xác minh nghiệp vụ"
 
+def switch_workspace(session, target):
+    """Swap scoped RAM-only reports; never carry active data across workspaces."""
+    chosen=validate_scope(target)
+    if not chosen: raise ValueError("Phạm vi không hợp lệ")
+    old=validate_scope(session.get("tdv_see_pro_active_scope"))
+    if old==chosen: return
+    cache=session.setdefault("tdv_see_pro_ram_cache",{})
+    pairs=(("tdv_see_pro_analysis","tdv_see_pro_signature"),
+           ("tdv_nsx_auto_report","tdv_nsx_auto_signature"))
+    if old:
+        old_key="::".join(old[k] for k in FIELDS)
+        snapshot={}
+        for data_key,sig_key in pairs:
+            value=session.get(data_key)
+            if (isinstance(value,dict) and
+                    validate_scope(value.get("_tdv_scope"))==old and
+                    isinstance(value.get("_tdv_source_bindings"),list) and
+                    value.get("_tdv_source_bindings")):
+                snapshot[data_key]=value
+                snapshot[sig_key]=session.get(sig_key)
+        if snapshot: cache[old_key]=snapshot
+    for data_key,sig_key in pairs:
+        session.pop(data_key,None)
+        session.pop(sig_key,None)
+    session["tdv_see_pro_active_scope"]=chosen
+    target_key="::".join(chosen[k] for k in FIELDS)
+    for data_key,sig_key in pairs:
+        report=cache.get(target_key,{}).get(data_key)
+        if (isinstance(report,dict)
+                and validate_scope(report.get("_tdv_scope"))==chosen
+                and report.get("_tdv_source_bindings")):
+            session[data_key]=report
+            session[sig_key]=cache[target_key].get(sig_key)
+
 def render_scope_selector(st, role="analyst"):
     s=st.session_state
     saved=s.setdefault("tdv_see_pro_workspaces",{})
