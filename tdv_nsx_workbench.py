@@ -17,6 +17,9 @@ from tdv_manufacturer_evidence import audit_manufacturer_evidence
 
 from see_pro_multiformat import ACCEPTED
 from tdv_see_pro_scope import bind_report, validate_scope
+from tdv_see_pro_nsx_batches import (
+    stage_append, manifest_for_report, payload_for_analysis, verify_ledger,
+)
 from tdv_nsx_auto import export_auto_xlsx
 from tdv_nsx_gmp_guarded_auto import analyze_auto
 from tdv_nsx_intake import KINDS
