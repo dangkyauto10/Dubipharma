@@ -97,3 +97,50 @@ def export_xlsx(report,scope):
         for row in ws.iter_rows(min_row=2):
             for cell in row:cell.alignment=Alignment(wrap_text=True,vertical="top")
     out=BytesIO();wb.save(out);return out.getvalue()
+
+def export_docx(register, scope):
+    """Word executive summary; full two-source audit always in matching Excel."""
+    from docx import Document
+    from docx.shared import Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    doc=Document()
+    section=doc.sections[0]
+    section.header.paragraphs[0].text="TDV QC7 ONLINE  |  SEE PRO"
+    doc.add_heading("BÁO CÁO LÃNH ĐẠO — ĐỐI CHIẾU TỪNG MẶT HÀNG",0)
+    doc.add_paragraph("BÁO CÁO SƠ BỘ — KHÔNG PHẢI KẾT LUẬN ĐỦ ĐIỀU KIỆN DỰ THẦU")
+    doc.add_paragraph("Dự án: "+scope["project_id"]+"  |  Gói: "+scope["package_id"]+
+                      "  |  Phiên bản E-HSMT: "+scope["ehsmt_revision_id"])
+    doc.add_paragraph("Đơn vị đếm: một mã mặt hàng E-HSMT; không đếm trùng các ứng viên NSX.")
+    table=doc.add_table(rows=1,cols=2);table.style="Light Shading Accent 1"
+    table.rows[0].cells[0].text="Nhóm";table.rows[0].cells[1].text="Số mặt hàng"
+    for key in (DAT,CHUA,KHONG,CHO):
+        cells=table.add_row().cells;cells[0].text=key;cells[1].text=str(register["summary"][key])
+    doc.add_paragraph("Tổng mã E-HSMT đã phân nhóm: "+str(register["total"]))
+    doc.add_paragraph("Mọi mục đã ghép NSX chưa được xác minh đầy đủ đều thuộc CHƯA ĐẠT; "
+                      "chưa ghép NSX được xếp CHỜ ĐỐI CHIẾU. Không tự kết luận KHÔNG ĐẠT.")
+    for status in (DAT,CHUA,KHONG,CHO):
+        group=[x for x in register["rows"] if x["trang_thai"]==status]
+        doc.add_heading(status+" — "+str(len(group))+" mặt hàng",level=1)
+        if not group:
+            doc.add_paragraph("Chưa có mặt hàng đủ căn cứ xếp nhóm này.")
+            continue
+        for r in group:
+            doc.add_paragraph(r["ma_ehsmt"]+" / "+(r["ten_nsx"] or "chưa ghép NSX")+
+                              ": "+r["nguyen_nhan"],style="List Bullet")
+    doc.add_heading("Các tiêu chí cần truy cứu và chứng cứ",level=1)
+    doc.add_paragraph("Bảng đầy đủ tất cả tiêu chí nằm tại sheet 06_HAI_NGUON_LY_DO "
+                      "của Excel xuất kèm. Dưới đây là tối đa 20 điểm cần rà soát.")
+    needs=[x for x in register["criteria"] if x["so_bo"]!="DAT_SO_BO"][:20]
+    for f in needs:
+        doc.add_heading(f["ma_ehsmt"]+" — "+f["tieu_chi"],level=2)
+        doc.add_paragraph("E-HSMT: "+(f["ehsmt"] or "CHƯA ĐỌC ĐƯỢC")+" | "+
+                          f["file_ehsmt"]+" "+f["vi_tri_ehsmt"])
+        doc.add_paragraph("NSX: "+(f["nsx"] or "CHƯA CÓ")+" | "+
+                          f["file_nsx"]+" "+f["vi_tri_nsx"])
+        doc.add_paragraph("Lý do: "+f["nguyen_nhan"])
+    doc.add_heading("Lưu ý xử lý",level=1)
+    doc.add_paragraph("Cần kiểm tra đúng trang/ô của hồ sơ gốc, hiệu lực văn bản, SĐK, GMP, "
+                      "điều kiện E-HSMT và người phê duyệt. Không dùng phần trăm trích xuất "
+                      "làm kết luận dự thầu.")
+    normal=doc.styles["Normal"];normal.font.name="Arial";normal.font.size=Pt(10)
+    out=BytesIO();doc.save(out);return out.getvalue()
