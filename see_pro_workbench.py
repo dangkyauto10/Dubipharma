@@ -283,9 +283,14 @@ def analyze_uploads(uploaded: list[tuple[str, bytes]], *, enable_ocr: bool = Fal
 def render_ehsmt_workbench() -> None:
     st.markdown("### E-HSMT · SEE PRO – Tiếp nhận, đọc và kiểm toán hồ sơ")
     st.caption("Một luồng cho PDF, Word, Excel, CSV và ảnh. Dữ liệu đọc được là sơ bộ, có chứng cứ; không tự duyệt thầu.")
+    scope = validate_scope(st.session_state.get("tdv_see_pro_active_scope"))
+    if not scope:
+        st.warning("Chọn dự án / BP / phiên bản E-HSMT trước khi nạp để đối chiếu.")
+        return
     files = st.file_uploader(
         "Tải một hoặc nhiều tài liệu E-HSMT / hồ sơ thuốc / GMP / báo giá",
-        type=list(ACCEPTED), accept_multiple_files=True, key="tdv_see_pro_documents")
+        type=list(ACCEPTED), accept_multiple_files=True,
+        key="tdv_see_pro_documents_" + "_".join(scope.values()))
     ocr = st.checkbox(
         "Bật OCR cục bộ cho ảnh và trang PDF không có chữ (cần kiểm tra lại nguồn)",
         value=False, key="tdv_see_pro_ocr")
