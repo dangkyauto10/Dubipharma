@@ -309,9 +309,14 @@ def render_ehsmt_workbench() -> None:
             st.session_state.pop("tdv_see_pro_analysis", None)
         if st.button("Đọc và kiểm toán bộ hồ sơ", key="tdv_see_pro_execute", type="primary"):
             with st.spinner("Đang đọc tài liệu và lập danh mục chứng cứ..."):
-                result = analyze_uploads(
-                    [(f.name, f.getvalue()) for f in files], enable_ocr=ocr,
+                batch = [(f.name, f.getvalue()) for f in files]
+                result = analyze_uploads(batch, enable_ocr=ocr,
                     deep_technical=deep)
+                try:
+                    result = bind_report(result, scope, batch)
+                except ValueError as exc:
+                    st.error(f"Chưa thể gắn chứng cứ E-HSMT: {exc}")
+                    return
             st.session_state["tdv_see_pro_signature"] = signature
             st.session_state["tdv_see_pro_analysis"] = result
     else:
