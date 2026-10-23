@@ -542,20 +542,22 @@ with st.sidebar:
             ALLOWED_PAGES, key="tdv_sidebar_nav", label_visibility="collapsed"
         )
         render_handbook_sidebar(st)
-        st.markdown(
-            '<div class="tdv-left-note">🔐 Google đã xác thực · chỉ tài khoản '
-            'trong danh sách được V duyệt. Preview vẫn chưa có kho hồ sơ '
-            'và phân quyền pháp lý cấp dự án.</div>',
-            unsafe_allow_html=True)
-        st.caption(f"Người dùng: {TDV_EMAIL} · Vai trò: {TDV_ROLE}")
-        if st.button("Đăng xuất", key="tdv_google_logout"):
-            st.session_state.clear()
-            st.logout()
-        st.divider()
-        st.caption("Ứng dụng: Streamlit Preview · Google OIDC")
-        st.caption("Dữ liệu nghiệp vụ: CHƯA KẾT NỐI")
-        st.caption("Tài khoản: ĐÃ XÁC THỰC VÀ KIỂM TRA QUYỀN")
-        st.caption("Báo cáo: dữ liệu trích xuất chưa thay thế thẩm định")
+        # Native popover opens on click and closes when user clicks elsewhere.
+        # Preserve the full security notice and current signed-in identity.
+        with st.popover("🔐 Tài khoản & bảo mật", use_container_width=True):
+            st.markdown("**Google đã xác thực**")
+            st.warning(
+                "Chỉ tài khoản trong danh sách được V duyệt. "
+                "Preview vẫn chưa có kho hồ sơ và phân quyền pháp lý cấp dự án."
+            )
+            st.caption(f"Người dùng: {TDV_EMAIL} · Vai trò: {TDV_ROLE}")
+            st.caption("Ứng dụng: Streamlit Preview · Google OIDC")
+            st.caption("Dữ liệu nghiệp vụ: CHƯA KẾT NỐI")
+            st.caption("Tài khoản: ĐÃ XÁC THỰC VÀ KIỂM TRA QUYỀN")
+            st.caption("Báo cáo: dữ liệu trích xuất chưa thay thế thẩm định")
+            if st.button("Đăng xuất", key="tdv_google_logout"):
+                st.session_state.clear()
+                st.logout()
 
 with st.container(key="tdv_main_fixed"):
     st.markdown('<div class="tdv-globalbar"><div class="tdv-globalbar-search">🔎 Tìm kiếm dự án, gói thầu, thuốc… (đang tích hợp)</div><div class="tdv-globalbar-status">🔐 TDV QC7 · GOOGLE ĐÃ XÁC THỰC</div></div>', unsafe_allow_html=True)
@@ -598,13 +600,17 @@ def tdv_open_section(destination: str) -> None:
         st.session_state["tdv_sidebar_nav"] = destination
 
 with st.container(key="tdv_main_scroll"):
-    st.markdown('<div class="tdv-notice">🛡️ <b>TDV QC7 ONLINE — PREVIEW NGHIỆM THU THEO PHÂN HỆ.</b>'
-                ' SEE PRO đã qua các bài kiểm tra đã xác nhận; phần NSX đang thử nghiệm nghiệp vụ.'
-                ' Đã có đăng nhập Google và phân quyền chức năng mức cơ bản, nhưng chưa có'
-                ' phân quyền dự án/Drive và lưu hồ sơ mật đạt chuẩn doanh nghiệp.'
-                ' Chỉ nạp tài liệu được phép và hạn chế dữ liệu nhạy cảm;'
-                ' chức năng tự ghi Drive/Sheets vẫn khóa.</div>',
-                unsafe_allow_html=True)
+    # Keep the business warning available, but collapsed by default.
+    # A popover dismisses automatically on outside click, unlike st.expander.
+    with st.popover("🛡️ TDV QC7 · Trạng thái Preview"):
+        st.markdown("**TDV QC7 ONLINE — PREVIEW NGHIỆM THU THEO PHÂN HỆ.**")
+        st.warning(
+            "SEE PRO đã qua các bài kiểm tra đã xác nhận; phần NSX đang thử "
+            "nghiệm nghiệp vụ. Đã có đăng nhập Google và phân quyền chức năng "
+            "mức cơ bản, nhưng chưa có phân quyền dự án/Drive và lưu hồ sơ mật "
+            "đạt chuẩn doanh nghiệp. Chỉ nạp tài liệu được phép và hạn chế "
+            "dữ liệu nhạy cảm; chức năng tự ghi Drive/Sheets vẫn khóa."
+        )
     st.markdown(f'<div class="tdv-crumb">🏠 TDV QC7 &nbsp;›&nbsp; {page}</div>',
                 unsafe_allow_html=True)
     from tdv_see_pro_scope import render_scope_selector
