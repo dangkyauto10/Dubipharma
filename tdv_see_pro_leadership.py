@@ -23,7 +23,7 @@ def _reason(field):
 def build_register(report,scope_ok=False,reason=""):
     if not scope_ok:
         return {"blocked":True,"reason":reason,"rows":[],"criteria":[],
-                "summary":{DAT:0,CHUA:0,KHONG:0},"total":0}
+                "summary":{DAT:0,CHUA:0,KHONG:0,CHO:0},"total":0}
     seen=set();rows=[];criteria=[]
     for drug in report.get("comparison") or []:
         code=_s(drug.get("MA_THUOC_EHSMT"))
@@ -61,7 +61,7 @@ def build_register(report,scope_ok=False,reason=""):
                              "trich_goc_nsx":_s(b.get("raw")),"sha_nsx":_s(b.get("sha256"))})
     count=Counter(x["trang_thai"] for x in rows)
     return {"blocked":False,"rows":rows,"criteria":criteria,
-            "summary":{key:count[key] for key in (DAT,CHUA,KHONG)},
+            "summary":{key:count[key] for key in (DAT,CHUA,KHONG,CHO)},
             "total":len(rows)}
 
 def export_xlsx(report,scope):
@@ -74,16 +74,16 @@ def export_xlsx(report,scope):
     for label,key in (("Dự án","project_id"),("Mã gói","package_id"),("Phiên bản","ehsmt_revision_id")):
         overview.append([label,scope[key]])
     overview.append(["Đơn vị thống kê","Mã mặt hàng E-HSMT không trùng"])
-    for state in (DAT,CHUA,KHONG): overview.append([state,report["summary"][state]])
+    for state in (DAT,CHUA,KHONG,CHO): overview.append([state,report["summary"][state]])
     overview.append(["Tổng đã phân nhóm",report["total"]])
     overview.append(["Giới hạn","Khớp/khác sơ bộ chưa phải quyết định đủ điều kiện"])
     rows=report["rows"];keys=list(rows[0]) if rows else ["ma_ehsmt","trang_thai","nguyen_nhan"]
-    for state,name in ((DAT,"02_DAT"),(CHUA,"03_CHUA_DAT"),(KHONG,"04_KHONG_DAT")):
+    for state,name in ((DAT,"02_DAT"),(CHUA,"03_CHUA_DAT"),(KHONG,"04_KHONG_DAT"),(CHO,"05_CHO_DOI_CHIEU")):
         ws=wb.create_sheet(name);ws.append(keys)
         for x in rows:
             if x["trang_thai"]==state: ws.append([safe_cell(x.get(k)) for k in keys])
         ws.freeze_panes="D2";ws.auto_filter.ref=ws.dimensions
-    ws=wb.create_sheet("05_HAI_NGUON_LY_DO")
+    ws=wb.create_sheet("06_HAI_NGUON_LY_DO")
     cols=list(report["criteria"][0]) if report["criteria"] else ["ma_ehsmt","tieu_chi","ehsmt","nsx","nguyen_nhan"]
     ws.append(cols)
     for x in report["criteria"]: ws.append([safe_cell(x.get(k)) for k in cols])
