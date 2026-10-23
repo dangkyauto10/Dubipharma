@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 import unittest
-from bs4 import BeautifulSoup
+import re
 from streamlit.testing.v1 import AppTest
 from tdv_guide import handbook_bytes, guide_requested, GUIDE_FILENAME
 
@@ -15,13 +15,13 @@ class TestGuideAssets(unittest.TestCase):
     def test_same_download_document_has_all_roles(self):
         data=handbook_bytes()
         self.assertGreater(len(data),20000)
-        soup=BeautifulSoup(data,"html.parser")
-        ids={x.get("data-target") for x in soup.select("nav button[data-target]")}
+        html=data.decode("utf-8")
+        ids=set(re.findall(r'<button[^>]*data-target="([^"]+)"',html))
         self.assertEqual(len(ids),12)
         self.assertTrue({"leader","tender","pricing","approver","admin","nsx",
                          "exceptions","acceptance"}.issubset(ids))
-        self.assertTrue(soup.select_one("#searchBox"))
-        self.assertTrue(soup.select_one("script"))
+        self.assertIn('id="searchBox"',html)
+        self.assertIn("<script>",html)
         self.assertTrue(GUIDE_FILENAME.endswith(".html"))
 
     def test_query_flag_requires_explicit_one(self):
