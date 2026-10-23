@@ -31,12 +31,18 @@ class BannerContrastQA(unittest.TestCase):
         self.assertIn("box-shadow:none!important",logo)
         self.assertIn("background:transparent!important",logo)
 
-    def test_artwork_calm_not_glowing(self):
+    def test_image3_artwork_visible_without_obscuring_headline(self):
         art=self.final.split(".tdv-main-hero .tdv-main-art{",1)[1].split("}",1)[0]
         vignette=self.final.split(".tdv-main-hero .tdv-left-photo{",1)[1].split("}",1)[0]
-        self.assertIn("opacity:.42!important",art)
-        self.assertIn("saturate(.60)",art)
-        self.assertIn("opacity:.28!important",vignette)
+        logo=self.final.split(".tdv-main-hero .tdv-main-logo{",1)[1].split("}",1)[0]
+        self.assertIn("width:32%!important",art)
+        self.assertIn("opacity:.88!important",art)
+        self.assertIn("mask-image:linear-gradient(",art)
+        self.assertIn("left:18.3%!important",vignette)
+        self.assertIn("opacity:.65!important",vignette)
+        self.assertIn("mask-image:radial-gradient(",vignette)
+        self.assertIn("border-right:0!important",logo)
+        self.assertIn(".tdv-main-logo,.tdv-main-body{z-index:3!important;}",self.style)
 
     def test_small_text_has_contrast_but_no_fake_depth(self):
         for sel,color,bg in [
