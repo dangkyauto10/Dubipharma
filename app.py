@@ -484,6 +484,7 @@ h1,h2,h3 {color:#0b316b;}
 .tdv-main-hero .tdv-main-logo{
  background:transparent!important;
  border:0!important;
+ border-right:0!important;
  filter:none!important;
 }
 .tdv-main-hero .tdv-main-logo img{
@@ -493,13 +494,28 @@ h1,h2,h3 {color:#0b316b;}
  border:0!important;
  background:transparent!important;
 }
+/* Image 3: visible medical illustration on the right, with a soft
+   detail in the gap between logo and headline. Text always stays above art. */
 .tdv-main-hero .tdv-main-art{
- opacity:.42!important;
- filter:saturate(.60) contrast(.94) brightness(.99)!important;
+ width:32%!important;
+ opacity:.88!important;
+ filter:saturate(1.04) contrast(1.05) brightness(1.01)!important;
+ -webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.35) 16%,#000 37%)!important;
+ mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.35) 16%,#000 37%)!important;
 }
 .tdv-main-hero .tdv-left-photo{
- opacity:.28!important;
- filter:saturate(.60) contrast(.96) brightness(1.02)!important;
+ left:18.3%!important;
+ width:15.5%!important;
+ top:7%!important;
+ height:86%!important;
+ opacity:.65!important;
+ filter:saturate(.97) contrast(1.04) brightness(1.03)!important;
+ -webkit-mask-image:radial-gradient(ellipse at 50% 50%,#000 9%,rgba(0,0,0,.72) 35%,transparent 74%)!important;
+ mask-image:radial-gradient(ellipse at 50% 50%,#000 9%,rgba(0,0,0,.72) 35%,transparent 74%)!important;
+}
+@media(max-width:1200px){
+ .tdv-main-hero .tdv-left-photo{display:none!important;}
+ .tdv-main-hero .tdv-main-art{width:28%!important;opacity:.72!important;}
 }
 .tdv-main-hero .tdv-main-title{
  color:#143e70!important;
