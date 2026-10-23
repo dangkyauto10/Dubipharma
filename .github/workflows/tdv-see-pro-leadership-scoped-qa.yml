@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - tdv-see-pro-leadership-scoped-qa-20261023
+      - tdv-qc7-online-preview-20261020
   workflow_dispatch:
 permissions:
   contents: read
