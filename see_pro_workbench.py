@@ -303,6 +303,7 @@ def render_ehsmt_workbench() -> None:
             digest.update(f.getvalue())
         digest.update(str(ocr).encode())
         digest.update(str(deep).encode())
+        digest.update(repr(scope).encode("utf-8"))
         signature = digest.hexdigest()
         if st.session_state.get("tdv_see_pro_signature") != signature:
             st.session_state.pop("tdv_see_pro_analysis", None)
