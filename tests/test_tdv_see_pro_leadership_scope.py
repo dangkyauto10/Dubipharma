@@ -2,8 +2,9 @@
 import unittest
 from io import BytesIO
 from openpyxl import load_workbook
+from docx import Document
 from tdv_see_pro_scope import bind_report, check_scope, switch_workspace
-from tdv_see_pro_leadership import build_register, export_xlsx, DAT, CHUA, KHONG, CHO
+from tdv_see_pro_leadership import build_register, export_xlsx, export_docx, DAT, CHUA, KHONG, CHO
 
 S={"project_id":"DA-TQ-01","package_id":"BP2600899572","ehsmt_revision_id":"R01"}
 
@@ -89,6 +90,15 @@ class ScopedLeadershipQA(unittest.TestCase):
         r=comparison()
         r["comparison"].append(dict(r["comparison"][0]))
         with self.assertRaises(ValueError):build_register(r,scope_ok=True)
+    def test_word_lists_drugs_reasons_and_scope(self):
+        r=build_register(comparison("KHONG_KHOP_CAN_XAC_MINH"),scope_ok=True)
+        doc=Document(BytesIO(export_docx(r,S)))
+        whole=" ".join(x.text for x in doc.paragraphs)
+        self.assertIn("G1.001",whole)
+        self.assertIn("50mg",whole)
+        self.assertIn("100mg",whole)
+        self.assertIn(S["package_id"],whole)
+        self.assertIn("CHƯA ĐẠT",whole)
     def test_excel_contains_reasons_and_proof(self):
         r=build_register(comparison("KHONG_KHOP_CAN_XAC_MINH"),scope_ok=True)
         book=load_workbook(BytesIO(export_xlsx(r,S)),read_only=True)
