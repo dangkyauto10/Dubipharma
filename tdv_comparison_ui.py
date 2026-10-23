@@ -10,7 +10,7 @@ import streamlit as st
 
 from see_pro_quality_gate import audit_comparison
 from tdv_see_pro_scope import check_scope
-from tdv_see_pro_leadership import build_register, export_xlsx, DAT, CHUA, KHONG
+from tdv_see_pro_leadership import build_register, export_xlsx, DAT, CHUA, KHONG, CHO
 from tdv_readable_tables import render_readable_table
 from tdv_leadership_report import (
     compare_sources, export_leadership_xlsx, export_leadership_docx,
@@ -202,13 +202,14 @@ def _leader_by_product(report):
                "SEE PRO hiện chưa có người duyệt pháp lý; kết quả trích xuất sơ bộ "
                "được ghi CHƯA ĐẠT — CHƯA ĐỦ CĂN CỨ.")
     counts = register["summary"]
-    x,y,z,total = st.columns(4)
+    x,y,z,wait,total = st.columns(5)
     x.metric("Đạt đã xác minh", counts[DAT])
     y.metric("Chưa đạt / cần xác minh", counts[CHUA])
     z.metric("Không đạt đã xác minh", counts[KHONG])
-    total.metric("Mặt hàng E-HSMT đã phân nhóm", register["total"])
+    wait.metric("Chờ ghép NSX", counts[CHO])
+    total.metric("Mã E-HSMT", register["total"])
     group = st.selectbox("Lọc danh sách theo kết quả",
-                         ["TẤT CẢ", DAT, CHUA, KHONG], key="tdv_leader_result_filter")
+                         ["TẤT CẢ", DAT, CHUA, KHONG, CHO], key="tdv_leader_result_filter")
     selected_rows = [r for r in register["rows"]
                      if group=="TẤT CẢ" or r["trang_thai"]==group]
     if selected_rows:
