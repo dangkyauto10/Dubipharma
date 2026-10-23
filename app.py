@@ -42,6 +42,11 @@ if st.session_state.get("tdv_authenticated_identity") != TDV_IDENTITY:
             del st.session_state[key]
     st.session_state["tdv_authenticated_identity"] = TDV_IDENTITY
 
+from tdv_guide import guide_requested, render_handbook_page, render_handbook_sidebar
+if guide_requested(st):
+    render_handbook_page(st)
+    st.stop()
+
 ROOT = Path(__file__).resolve().parent
 
 def asset_base64(filename: str) -> str:
@@ -536,6 +541,7 @@ with st.sidebar:
             "Chọn chức năng",
             ALLOWED_PAGES, key="tdv_sidebar_nav", label_visibility="collapsed"
         )
+        render_handbook_sidebar(st)
         st.markdown(
             '<div class="tdv-left-note">🔐 Google đã xác thực · chỉ tài khoản '
             'trong danh sách được V duyệt. Preview vẫn chưa có kho hồ sơ '
