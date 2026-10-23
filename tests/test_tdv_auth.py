@@ -2,7 +2,8 @@
 import time
 import unittest
 from tdv_auth import (
-    GOOGLE_DISCOVERY, valid_configuration, role_from_claims,
+    GOOGLE_DISCOVERY, AUTH_SESSION_MAX_AGE_SECONDS,
+    valid_configuration, role_from_claims,
     may_open_section, require_google_access,
 )
 
@@ -84,12 +85,45 @@ class AuthSecurityQA(unittest.TestCase):
             {"email_verified":False},
             {"email_verified":"false"},
             {"sub":""},
-            {"exp":int(time.time())-10},
             {"iat":int(time.time())+3600},
+            {"exp":int(time.time())-100, "iat":int(time.time())-50},
+            {"iat":int(time.time())-AUTH_SESSION_MAX_AGE_SECONDS-5,
+             "exp":int(time.time())-AUTH_SESSION_MAX_AGE_SECONDS+3595},
         ]
         for changes in bad:
             with self.subTest(changes=changes):
                 self.assertIsNone(role_from_claims(claims(**changes),AUTH,ACCESS))
+
+    def test_short_lived_id_token_does_not_end_valid_streamlit_session(self):
+        now=int(time.time())
+        # Google's exp may be over, but Streamlit's signed identity cookie is live.
+        identity=claims(iat=now-3*3600, exp=now-2*3600)
+        self.assertEqual(role_from_claims(identity,AUTH,ACCESS),"admin")
+        self.assertEqual(
+            require_google_access(FakeStreamlit(AUTH,ACCESS,identity)),
+            ("admin","owner@example.com"),
+        )
+        # Never accept the same old identity without the Streamlit login cookie.
+        self.assertIsNone(role_from_claims(
+            {**identity,"is_logged_in":False},AUTH,ACCESS))
+
+    def test_signed_session_has_24h_cap_and_fails_closed(self):
+        now=int(time.time())
+        old=claims(iat=now-AUTH_SESSION_MAX_AGE_SECONDS-2,
+                   exp=now-AUTH_SESSION_MAX_AGE_SECONDS+3598)
+        self.assertIsNone(role_from_claims(old,AUTH,ACCESS))
+        with self.assertRaises(Halt):
+            require_google_access(FakeStreamlit(AUTH,ACCESS,old))
+        # New Google authentication restores a bounded working session.
+        new=claims(iat=now-15, exp=now+3585)
+        self.assertEqual(role_from_claims(new,AUTH,ACCESS),"admin")
+        for malformed in (
+            {"iat":True},
+            {"exp":False},
+            {"iat":"not-a-timestamp"},
+            {"exp":None},
+        ):
+            self.assertIsNone(role_from_claims(claims(**malformed),AUTH,ACCESS))
 
     def test_missing_verified_email_and_expiry_fail_closed(self):
         for missing in ("email","email_verified","iat","exp","sub"):

@@ -13,6 +13,12 @@ from urllib.parse import urlparse
 GOOGLE_ISSUERS = frozenset(("https://accounts.google.com", "accounts.google.com"))
 ROLES = frozenset(("admin", "analyst", "viewer"))
 GOOGLE_DISCOVERY = "https://accounts.google.com/.well-known/openid-configuration"
+# Streamlit stores OIDC identity in a signed browser cookie (up to 30 days).
+# Google's ID token can expire much earlier, commonly within an hour.
+# Accept a signed Streamlit login for at most 24 hours from Google's
+# original issued-at claim; then require Google reauthentication.
+# Do not trust caller-provided token claims without st.user.is_logged_in.
+AUTH_SESSION_MAX_AGE_SECONDS = 24 * 60 * 60
 BUSINESS_SENSITIVE = frozenset((
     "📄 E-HSMT", "💊 Báo giá & hồ sơ NSX",
     "🔬 TDV-IDP 3.0 · Đọc đa tầng", "🛡️ Chứng cứ nhà sản xuất",
@@ -55,7 +61,12 @@ def valid_configuration(auth: Mapping | None, access: Mapping | None) -> bool:
 
 
 def role_from_claims(claims: Mapping, auth: Mapping, access: Mapping) -> str | None:
-    """Enforce Google's verified email, signed-client audience, live token age."""
+    """Enforce verified OIDC identity, allowlist, and bounded Streamlit session age.
+
+    A previously authenticated Streamlit session uses a signed identity cookie.
+    An expired Google ID-token exp alone is not a logout signal. We still require
+    its exp claim and cap the total session age to 24 hours from its iat claim.
+    """
     if not isinstance(claims, Mapping) or not claims.get("is_logged_in"):
         return None
     if claims.get("iss") not in GOOGLE_ISSUERS:
@@ -75,9 +86,11 @@ def role_from_claims(claims: Mapping, auth: Mapping, access: Mapping) -> str | N
     try:
         now = int(datetime.now(timezone.utc).timestamp())
         # Fail closed when claims do not provide a verifiable token lifetime.
-        if not isinstance(issued, (int, float)) or not isinstance(expiry, (int, float)):
+        if (not isinstance(issued, (int, float)) or isinstance(issued, bool)
+                or not isinstance(expiry, (int, float)) or isinstance(expiry, bool)):
             return None
-        if issued > now + 120 or expiry <= now or expiry <= issued:
+        if (issued > now + 120 or issued < now - AUTH_SESSION_MAX_AGE_SECONDS
+                or expiry <= issued):
             return None
     except (TypeError, ValueError, OverflowError):
         return None
