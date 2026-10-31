@@ -60,13 +60,14 @@ class BannerContrastQA(unittest.TestCase):
         self.assertIn("@media(max-width:899px),(max-height:569px)",self.final)
         self.assertIn("tdv-main-logo img{transform:none!important;filter:none!important;}",self.final)
 
-    def test_unauthorized_app_locked(self):
+    def test_guest_only_has_separate_demo(self):
         at=AppTest.from_file(str(SOURCE),default_timeout=45).run()
         self.assertFalse(at.exception,str(list(at.exception)))
-        self.assertFalse(at.sidebar.radio)
+        self.assertTrue(any("DỮ LIỆU MẪU GIẢ LẬP" in x.value for x in at.warning))
+        self.assertNotIn("📄 E-HSMT",at.sidebar.radio[0].options)
 
     def test_authorized_homepage_renders(self):
-        with patch("tdv_auth.require_google_access",return_value=("admin","owner@example.com")):
+        with patch("tdv_public_preview.is_public_visitor",return_value=False), patch("tdv_auth.require_google_access",return_value=("admin","owner@example.com")):
             at=AppTest.from_file(str(SOURCE),default_timeout=45).run()
         self.assertFalse(at.exception,str(list(at.exception)))
         self.assertTrue(at.sidebar.radio)

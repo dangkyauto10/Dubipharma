@@ -39,7 +39,7 @@ def toy():
 class LeadershipUiScopeSmoke(unittest.TestCase):
     def test_full_report_render_with_real_layout_synthetic_data(self):
         app=Path(__file__).resolve().parents[1]/"app.py"
-        with patch("tdv_auth.require_google_access",return_value=("admin","owner@example.com")):
+        with patch("tdv_public_preview.is_public_visitor",return_value=False), patch("tdv_auth.require_google_access",return_value=("admin","owner@example.com")):
             at=AppTest.from_file(str(app),default_timeout=60).run()
         self.assertFalse(at.exception,str(list(at.exception)))
         e,n=toy()
@@ -47,7 +47,7 @@ class LeadershipUiScopeSmoke(unittest.TestCase):
         at.session_state["tdv_see_pro_analysis"]=e
         at.session_state["tdv_nsx_auto_report"]=n
         at.sidebar.radio[0].set_value("📊 Báo cáo lãnh đạo")
-        with patch("tdv_auth.require_google_access",return_value=("admin","owner@example.com")):
+        with patch("tdv_public_preview.is_public_visitor",return_value=False), patch("tdv_auth.require_google_access",return_value=("admin","owner@example.com")):
             at.run()
         self.assertFalse(at.exception,str(list(at.exception)))
         metrics=[x.label for x in at.metric]

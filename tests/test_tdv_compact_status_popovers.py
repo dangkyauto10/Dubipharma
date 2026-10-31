@@ -19,14 +19,15 @@ class CompactNoticesQA(unittest.TestCase):
         self.assertIn('key="tdv_google_logout"',code)
         self.assertNotIn("st.expander(\"🛡️ TDV QC7",code)
 
-    def test_unauthenticated_user_still_cannot_enter(self):
+    def test_guest_is_limited_to_separate_synthetic_demo(self):
         at=AppTest.from_file(str(ROOT/"app.py"),default_timeout=45).run()
         self.assertFalse(at.exception,str(list(at.exception)))
-        self.assertFalse(at.sidebar.radio)
-        self.assertTrue(any("ĐÃ KHÓA" in m.value for m in at.error))
+        self.assertTrue(any("DỮ LIỆU MẪU GIẢ LẬP" in m.value for m in at.warning))
+        self.assertNotIn("📄 E-HSMT", at.sidebar.radio[0].options)
+        self.assertFalse(at.error)
 
     def test_authorized_app_runs_with_both_short_triggers(self):
-        with patch("tdv_auth.require_google_access",
+        with patch("tdv_public_preview.is_public_visitor",return_value=False), patch("tdv_auth.require_google_access",
                    return_value=("admin","owner@example.com")):
             at=AppTest.from_file(str(ROOT/"app.py"),default_timeout=45).run()
         self.assertFalse(at.exception,str(list(at.exception)))

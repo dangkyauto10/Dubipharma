@@ -51,7 +51,7 @@ class TestGuideAssets(unittest.TestCase):
 class TestGuideAuthenticatedUi(unittest.TestCase):
     def test_sidebar_button_visible_on_authorized_account(self):
         app=Path(__file__).resolve().parents[1]/"app.py"
-        with patch("tdv_auth.require_google_access",
+        with patch("tdv_public_preview.is_public_visitor",return_value=False), patch("tdv_auth.require_google_access",
                    return_value=("admin","owner@example.com")):
             at=AppTest.from_file(str(app),default_timeout=45).run()
         self.assertFalse(at.exception,str(list(at.exception)))
@@ -59,19 +59,20 @@ class TestGuideAuthenticatedUi(unittest.TestCase):
                             for x in at.sidebar.markdown))
         # Separate guide entry isn't a business page that viewers can edit.
 
-    def test_guide_route_requires_google_access(self):
+    def test_guest_guide_route_does_not_expose_private_handbook(self):
         app=Path(__file__).resolve().parents[1]/"app.py"
         at=AppTest.from_file(str(app),default_timeout=45)
         at.query_params["see_pro_guide"]="1"
         at.run()
         self.assertFalse(at.exception,str(list(at.exception)))
-        self.assertTrue(any("ĐÃ KHÓA" in x.value for x in at.error))
+        self.assertTrue(any("DỮ LIỆU MẪU GIẢ LẬP" in x.value for x in at.warning))
+        self.assertFalse(any("Cẩm nang sử dụng theo từng vai trò" in x.value for x in at.markdown))
 
     def test_open_guide_with_approved_identity_no_app_crash(self):
         app=Path(__file__).resolve().parents[1]/"app.py"
         at=AppTest.from_file(str(app),default_timeout=45)
         at.query_params["see_pro_guide"]="1"
-        with patch("tdv_auth.require_google_access",
+        with patch("tdv_public_preview.is_public_visitor",return_value=False), patch("tdv_auth.require_google_access",
                    return_value=("viewer","leader@example.com")):
             at.run()
         self.assertFalse(at.exception,str(list(at.exception)))

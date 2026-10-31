@@ -29,8 +29,13 @@ st.set_page_config(
     page_icon="💊", layout="wide", initial_sidebar_state="expanded"
 )
 
-# SECURITY BOUNDARY: No navigation, upload, cache or business code is rendered
-# before Google OIDC sign-in + a live verified-email allowlist succeeds.
+# Guests get only a separate synthetic, non-uploading demonstration.
+# Authenticated business sections are unchanged and remain protected.
+from tdv_public_preview import is_public_visitor, render_public_preview
+if is_public_visitor(st):
+    render_public_preview(st)
+    st.stop()
+
 from tdv_auth import require_google_access, may_open_section
 TDV_ROLE, TDV_EMAIL = require_google_access(st)
 TDV_SUBJECT = str(st.user.get("sub") or "")
