@@ -6,6 +6,7 @@ Nothing here reads authenticated workspace state, Drive, Sheets or user files.
 from __future__ import annotations
 
 from tdv_auth import valid_configuration
+from tdv_admin_ui import render_local_login
 from tdv_leadership_report import compare_sources
 
 DEMO_PROJECT = "DEMO-SEE-PRO"
@@ -92,6 +93,8 @@ def render_public_preview(st) -> None:
     with st.sidebar:
         st.markdown("### SEE PRO · DÙNG THỬ")
         page = st.radio("Chọn bước kiểm thử", MENU, key="see_pro_public_demo_page")
+        st.divider()
+        render_local_login(st)
         st.divider()
         _admin_entry(st)
         st.caption("Admin có xác thực riêng. Dữ liệu chính thức và chức năng "

@@ -54,7 +54,7 @@ def render_handbook_sidebar(st):
         use_container_width=True,
     )
     st.caption("Mở tab hướng dẫn cạnh SEE PRO để xem và thực hành đồng thời. "
-               "Tài khoản vẫn phải đăng nhập Google được cấp quyền.")
+               "Khu vực nghiệp vụ yêu cầu tài khoản nội bộ hoặc Google được cấp quyền.")
 
 
 def render_handbook_page(st):

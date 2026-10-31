@@ -32,13 +32,26 @@ st.set_page_config(
 # Guests get only a separate synthetic, non-uploading demonstration.
 # Authenticated business sections are unchanged and remain protected.
 from tdv_public_preview import is_public_visitor, render_public_preview
-if is_public_visitor(st):
+from tdv_admin_ui import (
+    local_identity, render_password_change, render_local_logout,
+    render_admin_security,
+)
+TDV_LOCAL = local_identity(st)
+if TDV_LOCAL is None and is_public_visitor(st):
     render_public_preview(st)
     st.stop()
 
 from tdv_auth import require_google_access, may_open_section
-TDV_ROLE, TDV_EMAIL = require_google_access(st)
-TDV_SUBJECT = str(st.user.get("sub") or "")
+if TDV_LOCAL:
+    if TDV_LOCAL["must_change"]:
+        render_password_change(st, TDV_LOCAL, forced=True)
+        st.stop()
+    TDV_ROLE = "admin" if TDV_LOCAL["role"] == "admin" else "analyst"
+    TDV_EMAIL = "seepro:" + TDV_LOCAL["username"]
+    TDV_SUBJECT = TDV_EMAIL
+else:
+    TDV_ROLE, TDV_EMAIL = require_google_access(st)
+    TDV_SUBJECT = str(st.user.get("sub") or "")
 TDV_IDENTITY = (TDV_SUBJECT, TDV_ROLE)
 if st.session_state.get("tdv_authenticated_identity") != TDV_IDENTITY:
     # Avoid recycling prior user's live tender/NSX data between sign-ins.
@@ -577,18 +590,27 @@ PAGES = [
     "📊 Báo cáo lãnh đạo",
     PRICE_PAGE,
     "🔗 Google Sheets",
+    "🔐 Quản trị bảo mật",
     "☁️ Tình trạng Online",
 ]
 
-TDV_PRICE_PERMISSION = price_permission(
+# Local credentials never inherit pricing or external Google Sheets grants.
+TDV_PRICE_PERMISSION = (None if TDV_LOCAL else price_permission(
     TDV_EMAIL, TDV_ROLE,
     st.session_state.get("tdv_see_pro_active_scope"),
     TDV_PRICE_CONFIG,
-)
+))
+SECURITY_PAGE = "🔐 Quản trị bảo mật"
 ALLOWED_PAGES = [p for p in PAGES
-                 if p != PAGES[4] and
-                 (may_open_section(TDV_ROLE, p) or
-                  (p == PRICE_PAGE and TDV_PRICE_PERMISSION is not None))]
+                 if p != PAGES[4]
+                 and (may_open_section(TDV_ROLE, p) or
+                      (p == PRICE_PAGE and TDV_PRICE_PERMISSION is not None))
+                 and (p != SECURITY_PAGE or TDV_ROLE == "admin")
+                 and (not TDV_LOCAL or (
+                     p == PAGES[0]
+                     or (TDV_LOCAL["role"] == "admin" and
+                         p != PRICE_PAGE and p != "🔗 Google Sheets")
+                     or p in TDV_LOCAL["grants"]))]
 # Previously selected standalone manufacturer-evidence page now lives inside NSX.
 if (st.session_state.get("tdv_sidebar_nav") == PAGES[4]
         and PAGES[2] in ALLOWED_PAGES):
@@ -632,22 +654,30 @@ with st.sidebar:
         # Native popover opens on click and closes when user clicks elsewhere.
         # Preserve the full security notice and current signed-in identity.
         with st.popover("🔐 Tài khoản & bảo mật", use_container_width=True):
-            st.markdown("**Google đã xác thực**")
-            st.warning(
-                "Chỉ tài khoản trong danh sách được V duyệt. "
-                "Preview vẫn chưa có kho hồ sơ và phân quyền pháp lý cấp dự án."
-            )
-            st.caption(f"Người dùng: {TDV_EMAIL} · Vai trò: {TDV_ROLE}")
-            st.caption("Ứng dụng: Streamlit Preview · Google OIDC")
-            st.caption("Dữ liệu nghiệp vụ: CHƯA KẾT NỐI")
-            st.caption("Tài khoản: ĐÃ XÁC THỰC VÀ KIỂM TRA QUYỀN")
-            st.caption("Báo cáo: dữ liệu trích xuất chưa thay thế thẩm định")
-            if st.button("Đăng xuất", key="tdv_google_logout"):
-                st.session_state.clear()
-                st.logout()
+            if TDV_LOCAL:
+                st.markdown("**Tài khoản nội bộ SEE PRO**")
+                st.caption(f"Người dùng: {TDV_LOCAL['username']} · "
+                           f"Vai trò: {TDV_LOCAL['role']}")
+                st.caption("Quyền được xác minh từ kho quản trị.")
+                render_local_logout(st)
+            else:
+                st.markdown("**Google đã xác thực**")
+                st.warning(
+                    "Chỉ tài khoản trong danh sách được V duyệt. "
+                    "Preview vẫn chưa có kho hồ sơ và phân quyền pháp lý cấp dự án."
+                )
+                st.caption(f"Người dùng: {TDV_EMAIL} · Vai trò: {TDV_ROLE}")
+                st.caption("Ứng dụng: Streamlit Preview · Google OIDC")
+                st.caption("Dữ liệu nghiệp vụ: CHƯA KẾT NỐI")
+                st.caption("Tài khoản: ĐÃ XÁC THỰC VÀ KIỂM TRA QUYỀN")
+                st.caption("Báo cáo: dữ liệu trích xuất chưa thay thế thẩm định")
+                if st.button("Đăng xuất", key="tdv_google_logout"):
+                    st.session_state.clear()
+                    st.logout()
 
 with st.container(key="tdv_main_fixed"):
-    st.markdown('<div class="tdv-globalbar"><div class="tdv-globalbar-search">🔎 Tìm kiếm dự án, gói thầu, thuốc… (đang tích hợp)</div><div class="tdv-globalbar-status">🔐 TDV QC7 · GOOGLE ĐÃ XÁC THỰC</div></div>', unsafe_allow_html=True)
+    status = ("🔐 TÀI KHOẢN SEE PRO" if TDV_LOCAL else "🔐 GOOGLE ĐÃ XÁC THỰC")
+    st.markdown('<div class="tdv-globalbar"><div class="tdv-globalbar-search">🔎 Tìm kiếm dự án, gói thầu, thuốc… (đang tích hợp)</div><div class="tdv-globalbar-status">'+status+'</div></div>', unsafe_allow_html=True)
     st.markdown(
         '<section class="tdv-main-hero">' + art + art_small +
         '<div class="tdv-main-logo">' + logo + '</div>'
@@ -933,6 +963,9 @@ with st.container(key="tdv_main_scroll"):
         from tdv_price_ui import render_price_workspace
         render_price_workspace(st, email=TDV_EMAIL, role=TDV_ROLE,
                                grant_config=TDV_PRICE_CONFIG)
+    elif page == SECURITY_PAGE:
+        render_admin_security(st, is_google_admin=(TDV_LOCAL is None and TDV_ROLE == "admin"),
+                              local=TDV_LOCAL)
     elif page == PAGES[-1]:
         st.markdown('<div class="tdv-page-title">☁️ Tiến độ Online</div>',unsafe_allow_html=True)
         st.table([
