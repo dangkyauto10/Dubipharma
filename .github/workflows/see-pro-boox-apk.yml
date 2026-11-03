@@ -1,0 +1,56 @@
+name: SEE PRO BOOX - build Android APK
+on:
+  push:
+    branches: [ 'feature/see-pro-boox-reader-20261103' ]
+    paths: [ 'boox-reader/**', '.github/workflows/see-pro-boox-apk.yml' ]
+  pull_request:
+    paths: [ 'boox-reader/**', '.github/workflows/see-pro-boox-apk.yml' ]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Ensure Android SDK platform
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          SDK_MANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -1)"
+          if [ -z "$SDK_MANAGER" ]; then echo "sdkmanager unavailable"; exit 1; fi
+          yes | "$SDK_MANAGER" --licenses >/dev/null || true
+          "$SDK_MANAGER" --install "platforms;android-35" "build-tools;35.0.0"
+      - name: Build debug APK (standalone, local OCR)
+        working-directory: boox-reader
+        run: gradle --no-daemon :app:assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SEE_PRO_READER_BOOX_APK
+          path: boox-reader/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error
+      - name: Publish direct Android APK download (test prerelease)
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="boox-note-air-5c-test-20261103"
+          cp boox-reader/app/build/outputs/apk/debug/app-debug.apk SEE_PRO_READER_BOOX_NOTE_AIR_5C_TEST.apk
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" SEE_PRO_READER_BOOX_NOTE_AIR_5C_TEST.apk --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" SEE_PRO_READER_BOOX_NOTE_AIR_5C_TEST.apk --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "SEE PRO READER BOOX Note Air 5C - APK thu nghiem" \
+              --notes "Ban thu nghiem, cai Android APK tren BOOX. DOCX XLSX PDF anh va doc tieng Viet. Chua kiem thu tren thiet bi that; khong co ket noi TV. OCR can doi chieu tai lieu goc. Khong dung cho tai lieu mat khi chua xac nhan." \
+              --prerelease
+          fi
