@@ -154,7 +154,7 @@ final class DocumentExtractor {
                     if ("is".equals(tag)) {
                         inInline = false;
                     } else if ("c".equals(tag)) {
-                        String cell = inInline.length() > 0 ? inline.toString() : value;
+                        String cell = inline.length() > 0 ? inline.toString() : value;
                         if ("s".equals(type)) {
                             try {
                                 int index = Integer.parseInt(value);
