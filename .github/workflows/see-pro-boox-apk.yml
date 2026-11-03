@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -38,3 +38,19 @@ jobs:
           path: boox-reader/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
           if-no-files-found: error
+      - name: Publish direct Android APK download (test prerelease)
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="boox-note-air-5c-test-20261103"
+          cp boox-reader/app/build/outputs/apk/debug/app-debug.apk SEE_PRO_READER_BOOX_NOTE_AIR_5C_TEST.apk
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" SEE_PRO_READER_BOOX_NOTE_AIR_5C_TEST.apk --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" SEE_PRO_READER_BOOX_NOTE_AIR_5C_TEST.apk --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "SEE PRO READER BOOX Note Air 5C - APK thu nghiem" \
+              --notes "Ban thu nghiem, cai Android APK tren BOOX. DOCX XLSX PDF anh va doc tieng Viet. Chua kiem thu tren thiet bi that; khong co ket noi TV. OCR can doi chieu tai lieu goc. Khong dung cho tai lieu mat khi chua xac nhan." \
+              --prerelease
+          fi
