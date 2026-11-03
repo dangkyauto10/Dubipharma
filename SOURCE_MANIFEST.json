@@ -1,0 +1,380 @@
+{
+  "source_repository": "dangkyauto10/Dubipharma",
+  "source_branch": "tdv-qc7-online-preview-20261020",
+  "source_commit": "d680f4addb740bba043c7a15d57000beaa1d298b",
+  "extracted_on": "2026-11-03",
+  "original_file_count": 74,
+  "original_files_unchanged": true,
+  "files": [
+    {
+      "path": "see_pro_adapters.py",
+      "git_blob_sha": "436278fdf4f6ad3894d43615831e87d066fc2bb7",
+      "size_bytes": 3810
+    },
+    {
+      "path": "see_pro_ai_review.py",
+      "git_blob_sha": "7b01fd5ea945341235677fa8d8397de03f447511",
+      "size_bytes": 15348
+    },
+    {
+      "path": "see_pro_core.py",
+      "git_blob_sha": "8653a14cca90da2d86aad1afc680aa07b0a73eb5",
+      "size_bytes": 2929
+    },
+    {
+      "path": "see_pro_multiformat.py",
+      "git_blob_sha": "d2a3dbc4bc33d2842745aaa1a2efc7836a6c62b2",
+      "size_bytes": 6890
+    },
+    {
+      "path": "see_pro_notice.py",
+      "git_blob_sha": "1829e963a6402db021310b620a3c994c40e048a1",
+      "size_bytes": 7134
+    },
+    {
+      "path": "see_pro_pdf_geometry.py",
+      "git_blob_sha": "ceda59e9e17a39a20e52dd27a406297288d146c0",
+      "size_bytes": 7579
+    },
+    {
+      "path": "see_pro_pdf_viewer.py",
+      "git_blob_sha": "f344cb365c29d7cde15369512b4032d4f7ce9b71",
+      "size_bytes": 6806
+    },
+    {
+      "path": "see_pro_quality_gate.py",
+      "git_blob_sha": "afb378362e5bcbe2d07493d80228b9e20ed20ba4",
+      "size_bytes": 6824
+    },
+    {
+      "path": "see_pro_streamlit.py",
+      "git_blob_sha": "29be2190e9164f6c4f3f69ed658678d1612faece",
+      "size_bytes": 7636
+    },
+    {
+      "path": "see_pro_structured.py",
+      "git_blob_sha": "622ee5c3a1ff1313b2aa99281d5118b904fe4c9e",
+      "size_bytes": 13352
+    },
+    {
+      "path": "see_pro_traceability.py",
+      "git_blob_sha": "09f6d34c0230ac52da105c3e7e2ecf21c8f23e5c",
+      "size_bytes": 10489
+    },
+    {
+      "path": "see_pro_workbench.py",
+      "git_blob_sha": "607d2712a14eecd668a4e7126d3aa1c87676d1d5",
+      "size_bytes": 32013
+    },
+    {
+      "path": "tdv_comparison_ui.py",
+      "git_blob_sha": "a1be386515a73094b700e6ddd13fd6548bbf4e4a",
+      "size_bytes": 17957
+    },
+    {
+      "path": "tdv_demo_core.py",
+      "git_blob_sha": "decc5609fb747fbd46f9625fa8afb0826096a0e2",
+      "size_bytes": 6837
+    },
+    {
+      "path": "tdv_ehsmt_intake.py",
+      "git_blob_sha": "feed05726de95e03d15bb37912a29586d8055f14",
+      "size_bytes": 5955
+    },
+    {
+      "path": "tdv_ehsmt_xlsx.py",
+      "git_blob_sha": "ed8a1cf4eaba2bfc763197f6948c81bb39547716",
+      "size_bytes": 7143
+    },
+    {
+      "path": "tdv_idp3_rules.py",
+      "git_blob_sha": "cacdb75068719af8147ba104ac8b364d403db734",
+      "size_bytes": 7301
+    },
+    {
+      "path": "tdv_idp3_workflow.py",
+      "git_blob_sha": "18198f8816011dc0a82a564fe305e69300fc943b",
+      "size_bytes": 17715
+    },
+    {
+      "path": "tdv_leadership_report.py",
+      "git_blob_sha": "1b521f9abd23a655cc719a19cd5a0c4925be079d",
+      "size_bytes": 25465
+    },
+    {
+      "path": "tdv_manufacturer_evidence.py",
+      "git_blob_sha": "fe95bd8e3fb0d7918f5d5161c04ee465d81bff9b",
+      "size_bytes": 7526
+    },
+    {
+      "path": "tdv_nsx_adaptive.py",
+      "git_blob_sha": "ed20171265246c1357e6308ebc7ce647b4d995ae",
+      "size_bytes": 6990
+    },
+    {
+      "path": "tdv_nsx_auto.py",
+      "git_blob_sha": "498d8f55a3b9c66376056cdb98f3bf75de3ae9fc",
+      "size_bytes": 46332
+    },
+    {
+      "path": "tdv_nsx_evidence_candidates.py",
+      "git_blob_sha": "de43105fd09f5269d4b8e4603a557da3f89a9940",
+      "size_bytes": 10139
+    },
+    {
+      "path": "tdv_nsx_gmp_guarded_auto.py",
+      "git_blob_sha": "85cf145f1531b48085ab01c231bf9228f832c8c5",
+      "size_bytes": 6163
+    },
+    {
+      "path": "tdv_nsx_gmp_role_guard.py",
+      "git_blob_sha": "85080d567d66f4b3a39e4b21765ec6b1062e3b4c",
+      "size_bytes": 2792
+    },
+    {
+      "path": "tdv_nsx_intake.py",
+      "git_blob_sha": "1beeac37699449fb7aa014b6c118789c644ff010",
+      "size_bytes": 25358
+    },
+    {
+      "path": "tdv_nsx_multisheet.py",
+      "git_blob_sha": "0fee0a2e1f02c1fb018e3276f047b07dee352807",
+      "size_bytes": 5486
+    },
+    {
+      "path": "tdv_nsx_proof_hints.py",
+      "git_blob_sha": "b91faa6dfd37d6bcb7f146a7b786e815f46ee24c",
+      "size_bytes": 12407
+    },
+    {
+      "path": "tdv_nsx_public_guard.py",
+      "git_blob_sha": "39871759568030c2c35d8e1b1dde75fd60251588",
+      "size_bytes": 6764
+    },
+    {
+      "path": "tdv_nsx_source_diff.py",
+      "git_blob_sha": "3a91a2b1130e4649e44a89603418605e1a92bf4b",
+      "size_bytes": 2577
+    },
+    {
+      "path": "tdv_nsx_workbench.py",
+      "git_blob_sha": "d24ade0de4570fcd75674e04982376a566bdb1e4",
+      "size_bytes": 36387
+    },
+    {
+      "path": "tdv_readable_tables.py",
+      "git_blob_sha": "881f25940085f9483e6daf23fb7465bc17a9184a",
+      "size_bytes": 6199
+    },
+    {
+      "path": "tdv_real_intake.py",
+      "git_blob_sha": "3395b1e4cf34278a24a7f19fc1ecea08cc577baf",
+      "size_bytes": 4723
+    },
+    {
+      "path": "tdv_review_priorities.py",
+      "git_blob_sha": "386550fc8b8f2d611106dd264cd825948fa8b226",
+      "size_bytes": 7120
+    },
+    {
+      "path": "tdv_see_pro_leadership.py",
+      "git_blob_sha": "b5f77101c2b1dc7805c39b946fe8aee1057d912b",
+      "size_bytes": 9106
+    },
+    {
+      "path": "tdv_see_pro_nsx_batches.py",
+      "git_blob_sha": "a8b2258e8fd2065dc7e2a07112b35b883504dd6e",
+      "size_bytes": 3700
+    },
+    {
+      "path": "tdv_see_pro_scope.py",
+      "git_blob_sha": "60b9c43ec05bf9b69e2038a073f723dda44dd57c",
+      "size_bytes": 6724
+    },
+    {
+      "path": "tdv_tender_context.py",
+      "git_blob_sha": "851287dec4840b43cb83ea667ac76347500a7a54",
+      "size_bytes": 7152
+    },
+    {
+      "path": "tdv_tender_trace.py",
+      "git_blob_sha": "b67fab1fcab6b8fa7f3fc0f8899a576303c79ca8",
+      "size_bytes": 8007
+    },
+    {
+      "path": "test_tdv_manufacturer_evidence.py",
+      "git_blob_sha": "6f4b92375d89f4c5f3dec061bf68e5f446bf666a",
+      "size_bytes": 2987
+    },
+    {
+      "path": "test_tdv_nsx_gmp_guarded_auto.py",
+      "git_blob_sha": "b39e704a34c0146cb2d5d3cdfb3d16278cafd3a1",
+      "size_bytes": 7118
+    },
+    {
+      "path": "test_tdv_nsx_proof_hints.py",
+      "git_blob_sha": "b552163e6aaf4c2120fc267dff4bc6d3cc2d1bf9",
+      "size_bytes": 12010
+    },
+    {
+      "path": "test_tdv_nsx_proof_hints_flow.py",
+      "git_blob_sha": "63ae1a05b05979dded673bc148146f9dfd11dbd6",
+      "size_bytes": 8478
+    },
+    {
+      "path": "test_tdv_nsx_runtime_cache.py",
+      "git_blob_sha": "a6a1ef6d9ed16e8744c2f61839f93cff705589b3",
+      "size_bytes": 2556
+    },
+    {
+      "path": "tests/test_see_pro_adapters.py",
+      "git_blob_sha": "86dbf4b845c65caee7f0be8429a185dedc6f6e55",
+      "size_bytes": 3674
+    },
+    {
+      "path": "tests/test_see_pro_ai_review.py",
+      "git_blob_sha": "f5e0ceda3a5994094419926943570ba0a747f46d",
+      "size_bytes": 8158
+    },
+    {
+      "path": "tests/test_see_pro_multiformat.py",
+      "git_blob_sha": "a42f7f7117f91a5ff2af97056ae49206aae57953",
+      "size_bytes": 5188
+    },
+    {
+      "path": "tests/test_see_pro_notice.py",
+      "git_blob_sha": "5336207a95f28838c28c1c71719627b4592bbd6b",
+      "size_bytes": 6855
+    },
+    {
+      "path": "tests/test_see_pro_pdf_geometry.py",
+      "git_blob_sha": "c7a8ce0133d39ea95a693230a26dea7cb616bb20",
+      "size_bytes": 3248
+    },
+    {
+      "path": "tests/test_see_pro_quality_gate.py",
+      "git_blob_sha": "335aac46329b5b06827b08b9bdee74fa969fe31f",
+      "size_bytes": 6025
+    },
+    {
+      "path": "tests/test_see_pro_structured.py",
+      "git_blob_sha": "a638db23dbddcc8c8427552849432c9157a4b333",
+      "size_bytes": 7168
+    },
+    {
+      "path": "tests/test_see_pro_traceability.py",
+      "git_blob_sha": "d7e51dc35debde8d5d2502c34755323685e5d670",
+      "size_bytes": 6478
+    },
+    {
+      "path": "tests/test_tdv_ehsmt_intake.py",
+      "git_blob_sha": "f0056c4a03f680408951f7a279531f1c7ea42872",
+      "size_bytes": 1656
+    },
+    {
+      "path": "tests/test_tdv_ehsmt_real_audit_regression.py",
+      "git_blob_sha": "891bf1174de40830385c5c501c5e83cc67b7f843",
+      "size_bytes": 5842
+    },
+    {
+      "path": "tests/test_tdv_idp3_rules.py",
+      "git_blob_sha": "2e28a0cb70451e131109a67aed2fb21e65623c35",
+      "size_bytes": 3889
+    },
+    {
+      "path": "tests/test_tdv_idp3_workflow.py",
+      "git_blob_sha": "cccfb1013925d9e6316a97f4921c08ffc9c0abb6",
+      "size_bytes": 5974
+    },
+    {
+      "path": "tests/test_tdv_leadership_triage.py",
+      "git_blob_sha": "69d71698589a78ce0e8087390c9ec1ce24c67c04",
+      "size_bytes": 7881
+    },
+    {
+      "path": "tests/test_tdv_nsx_adaptive.py",
+      "git_blob_sha": "f6b6db4f789a74772569afa197cb448dcc971df3",
+      "size_bytes": 6227
+    },
+    {
+      "path": "tests/test_tdv_nsx_diagnostic.py",
+      "git_blob_sha": "1242fadc51ecdcd8920365b0cb51cccc30faeaaa",
+      "size_bytes": 2940
+    },
+    {
+      "path": "tests/test_tdv_nsx_evidence_candidates.py",
+      "git_blob_sha": "0aa6811f12889f273a654ad704f50ddb99f520c5",
+      "size_bytes": 11534
+    },
+    {
+      "path": "tests/test_tdv_nsx_field_mapping.py",
+      "git_blob_sha": "59c8608e2d9c381a5b56d0bd9e94f8863addb41d",
+      "size_bytes": 4953
+    },
+    {
+      "path": "tests/test_tdv_nsx_intake.py",
+      "git_blob_sha": "b4a3cfe7a667fec8dc5d0dde6272593f17b04124",
+      "size_bytes": 10126
+    },
+    {
+      "path": "tests/test_tdv_nsx_multisheet.py",
+      "git_blob_sha": "4d6a05c7fb505f065e320a540d494b8852678b3e",
+      "size_bytes": 6948
+    },
+    {
+      "path": "tests/test_tdv_nsx_source_diff.py",
+      "git_blob_sha": "2ddc5871a5f9a21c6f2c3cef17faaf6cf854a002",
+      "size_bytes": 5144
+    },
+    {
+      "path": "tests/test_tdv_readable_tables.py",
+      "git_blob_sha": "1d244fa69cc3ec6ca33e23f88b4919d645032215",
+      "size_bytes": 5151
+    },
+    {
+      "path": "tests/test_tdv_real_comparison.py",
+      "git_blob_sha": "0556cb218a4ba49f588dd19fe209c8cada82c27e",
+      "size_bytes": 5954
+    },
+    {
+      "path": "tests/test_tdv_real_end_to_end.py",
+      "git_blob_sha": "6bf761c8c9aa28135144dfafe07d5103d1b2fbac",
+      "size_bytes": 2832
+    },
+    {
+      "path": "tests/test_tdv_see_pro_leadership_scope.py",
+      "git_blob_sha": "78ac56114b1528864417181cd202364da2392858",
+      "size_bytes": 5336
+    },
+    {
+      "path": "tests/test_tdv_see_pro_nsx_batches.py",
+      "git_blob_sha": "28a664ffa97ae60dc74c3e466e39b7019165d641",
+      "size_bytes": 3927
+    },
+    {
+      "path": "SEE_PRO_EVIDENCE_AI.md",
+      "git_blob_sha": "e2029510de1a046aaeccfd952dcc1b001fa9f393",
+      "size_bytes": 3238
+    },
+    {
+      "path": "TDV_IDP3_READINESS.md",
+      "git_blob_sha": "1717e12634a3ab8e64ae1097d34e4ca634fb6bcd",
+      "size_bytes": 4077
+    },
+    {
+      "path": "TDV_NSX_REAL_INTAKE_STATUS.md",
+      "git_blob_sha": "e433f94b09f75beff221b965d850454644c5e706",
+      "size_bytes": 3741
+    },
+    {
+      "path": "packages.txt",
+      "git_blob_sha": "e5f23081291071821cffd2ae4ec74eae30d56c59",
+      "size_bytes": 50
+    },
+    {
+      "path": "requirements.txt",
+      "git_blob_sha": "445095919d79654ed8cdc211c25566a395a8b75a",
+      "size_bytes": 294
+    }
+  ]
+}
